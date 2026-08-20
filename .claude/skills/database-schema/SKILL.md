@@ -87,8 +87,11 @@ constraint, or seed data.
 - **Never add a foreign key across schemas.**
 - **Never put seed data in a DDL changeset**, or ship it without a context.
 - **Never use `varchar(n)` as a domain constraint** where a `CHECK` states the actual
-  rule; and never store a set as a comma-separated string — `identity.users.roles`
-  is the counter-example.
+  rule; and never store a set as a comma-separated string. `identity.users.roles`
+  held `'USER,OPERATOR'` and could not be constrained, indexed or queried by role,
+  and granting one was a read-modify-write two administrators could race. It is
+  `identity.user_roles` now: one row per grant, `PRIMARY KEY (user_id, role)`, and a
+  `CHECK` against the closed set the code knows.
 - **Never let application code and the schema disagree about an enum**: the `CHECK`
   list and the Kotlin enum's `wireName` values are one fact in two places, so change
   them together in the same commit.

@@ -10,6 +10,6 @@ package pl.barometr.identity.api
 data class UserSnapshot(
     val id: UserId,
     val email: String,
-    val roles: Set<String>,
+    val roles: Set<Role>,
     val enabled: Boolean,
 )

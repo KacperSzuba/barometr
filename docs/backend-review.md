@@ -468,14 +468,16 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: every tranche is done.** `./gradlew check` passes — 126 tests across nine
-Gradle projects, up from 11 test files and no coverage at all of identity.
+**Status: every tranche is done, and so is the one finding left open after them.**
+`./gradlew check` passes — 131 tests across nine Gradle projects, up from 11 test
+files and no coverage at all of identity.
 
-One finding is recorded and deliberately not fixed: `identity.users.roles` is still a
-comma-separated column. It cannot be constrained to known roles, indexed, or queried
-by role, and granting `OPERATOR` (B6) means editing a string. It is a schema change
-rather than a code change, it is now confined behind `JooqUsers`, and it wants a
-decision about how roles are administered before a table is designed for them.
+`identity.users.roles` was the last item: a comma-separated column that could not be
+constrained to known roles, indexed, or queried by role, and where granting `OPERATOR`
+(B6) meant reading a string, editing it and writing it back — two administrators
+racing to lose each other's change. It is now `identity.user_roles`, one row per
+grant, with a `CHECK` against a closed set and a `Role` enum on the Kotlin side. Done
+while the table was empty, which is the only time it is free.
 
 | # | Tranche | Contents | Findings |
 |---|---|---|---|

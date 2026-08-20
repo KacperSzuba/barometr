@@ -13,6 +13,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.web.SecurityFilterChain
+import pl.barometr.identity.api.JwtClaims
 
 /**
  * What is protected, decided by the application.
@@ -60,7 +61,7 @@ class ApplicationSecurityConfig {
     private fun jwtAuthenticationConverter(): JwtAuthenticationConverter =
         JwtAuthenticationConverter().apply {
             setJwtGrantedAuthoritiesConverter { jwt: Jwt ->
-                jwt.getClaimAsStringList(ROLES_CLAIM)
+                jwt.getClaimAsStringList(JwtClaims.ROLES)
                     .orEmpty()
                     .map<String, GrantedAuthority> { SimpleGrantedAuthority("ROLE_$it") }
             }
@@ -71,9 +72,5 @@ class ApplicationSecurityConfig {
         contentType = MediaType.APPLICATION_JSON_VALUE
         characterEncoding = Charsets.UTF_8.name()
         writer.write("""{"error":"$error"}""")
-    }
-
-    private companion object {
-        const val ROLES_CLAIM = "roles"
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import pl.barometr.identity.api.Role
 import pl.barometr.identity.api.UserId
 import pl.barometr.identity.api.UserLookup
 import pl.barometr.identity.internal.auth.InvalidCredentialsException
@@ -37,6 +38,6 @@ class MeController(private val users: UserLookup) {
         // expires even if the user was deleted in the meantime.
         val user = users.findById(userId) ?: throw InvalidCredentialsException()
 
-        return UserResponse(user.id.value, user.email, user.roles.toList())
+        return UserResponse(user.id.value, user.email, user.roles.map(Role::name))
     }
 }

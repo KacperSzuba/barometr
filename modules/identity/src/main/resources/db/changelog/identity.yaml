@@ -12,3 +12,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/identity/0002-refresh-token-successors.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0003-user-roles.sql
+      relativeToChangelogFile: false

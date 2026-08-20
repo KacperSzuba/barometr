@@ -6,7 +6,8 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet
 import org.springframework.security.oauth2.jwt.JwtEncoder
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters
 import org.springframework.stereotype.Service
-import pl.barometr.identity.internal.config.JwtClaims
+import pl.barometr.identity.api.JwtClaims
+import pl.barometr.identity.api.Role
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
@@ -34,7 +35,7 @@ class TokenService(
             .expiresAt(issuedAt.plus(properties.accessTtl))
             .id(Ids.next().toString())
             .claim(JwtClaims.EMAIL, user.email)
-            .claim(JwtClaims.ROLES, user.roles.toList())
+            .claim(JwtClaims.ROLES, user.roles.map(Role::name))
             .build()
 
         val header = JwsHeader.with(MacAlgorithm.HS256).build()

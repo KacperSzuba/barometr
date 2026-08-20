@@ -2,7 +2,8 @@ package pl.barometr.identity.internal.auth
 
 import org.springframework.security.oauth2.jwt.JwtValidationException
 import org.junit.jupiter.api.Test
-import pl.barometr.identity.internal.config.JwtClaims
+import pl.barometr.identity.api.JwtClaims
+import pl.barometr.identity.api.Role
 import pl.barometr.identity.internal.config.JwtConfig
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.User
@@ -33,7 +34,7 @@ class TokenServiceTest {
 
     @Test
     fun `the access token carries the claims the resource server checks`() {
-        val user = user(roles = setOf("USER", "OPERATOR"))
+        val user = user(roles = setOf(Role.USER, Role.OPERATOR))
 
         val token = service.createAccessToken(user)
         val decoded = config.jwtDecoder().decode(token.value)
@@ -87,7 +88,7 @@ class TokenServiceTest {
         }
     }
 
-    private fun user(roles: Set<String> = setOf("USER")) = User(
+    private fun user(roles: Set<Role> = setOf(Role.USER)) = User(
         id = Ids.next(),
         email = "poslanka@example.test",
         passwordHash = "irrelevant",

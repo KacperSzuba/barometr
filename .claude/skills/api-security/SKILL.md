@@ -45,14 +45,19 @@ description: HTTP API and security rules for barometr — controllers and DTOs, 
    who signed up" — which is how a multi-week crawl of a government registry was one
    POST away (review B6).
 9. **A role that grants operator power cannot be self-assigned.** Registration grants
-   the default role and nothing else.
-10. **The filter chain belongs to `:app`; token minting belongs to `identity`.** Only
+   `Role.USER` and nothing else; `OPERATOR` is a row somebody inserts deliberately
+   into `identity.user_roles`, and the database refuses a role the code does not know.
+10. **A claim name is declared once, where it is published.** `JwtClaims` lives in
+    `identity.api` because minting and authorising are two places that must agree —
+    they used to spell `"roles"` out separately, one typo from every request arriving
+    with no authorities.
+11. **The filter chain belongs to `:app`; token minting belongs to `identity`.** Only
     the application knows every context's routes, and identity has no business holding
     a list of them.
-11. **Every rule in the chain that depends on a condition carries that condition in a
+12. **Every rule in the chain that depends on a condition carries that condition in a
     comment.** CSRF is disabled *because* the API is bearer-only and reads no cookie;
     the day a session cookie is trusted, that line is wrong. Same for CORS.
-12. **Authentication failures return a JSON body with a status, never a redirect** —
+13. **Authentication failures return a JSON body with a status, never a redirect** —
     the Next.js route guard keys its silent refresh off the status.
 
 ## Tokens and secrets

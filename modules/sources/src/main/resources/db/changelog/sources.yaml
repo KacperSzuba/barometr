@@ -1,0 +1,20 @@
+# Everything sources has done to the database, in the order it did it.
+#
+# Listed one by one rather than with `includeAll`: the order is the point, and a
+# directory listing is a worse place to state it than a file somebody reads.
+#
+# What this schema is built on is stated in db/changelog/master.yaml, not here —
+# Liquibase would count a changelog reached from two directions twice.
+databaseChangeLog:
+  - include:
+      file: db/changelog/sources/0001-source-registry.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/sources/0002-register-sejm.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/sources/0003-partitioned-cursors.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/sources/0004-register-rcl.sql
+      relativeToChangelogFile: false

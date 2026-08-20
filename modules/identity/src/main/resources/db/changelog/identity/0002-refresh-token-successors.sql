@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:identity-0002-refresh-token-successors
+--comment: A refresh inside the grace window issues a successor of its own.
 -- A refresh inside the grace window issues a successor of its own.
 --
 -- The unique index dropped here assumed one successor per token, which is the one
@@ -15,3 +19,6 @@ DROP INDEX identity.ux_refresh_tokens_predecessor;
 CREATE INDEX ix_refresh_tokens_predecessor
     ON identity.refresh_tokens (predecessor_id)
     WHERE predecessor_id IS NOT NULL;
+
+--rollback DROP INDEX identity.ix_refresh_tokens_predecessor;
+--rollback CREATE UNIQUE INDEX ux_refresh_tokens_predecessor ON identity.refresh_tokens (predecessor_id);

@@ -1,9 +1,10 @@
--- Extensions the domain schema depends on. Runs before any module's tables.
---
--- Migration versions are namespaced by module ordinal so modules can evolve
--- independently without their Flyway versions ever colliding:
---   1xxx identity · 2xxx platform · 3xxx sources · 4xxx ingestion
---   5xxx corpus   · 6xxx legislative
+--liquibase formatted sql
+
+--changeset kacper:platform-0001-extensions
+--comment: Extensions and schema the domain model rests on.
+-- Extensions the domain schema depends on. Runs before any context's tables,
+-- because db/changelog/master.yaml lists platform first and every other schema is
+-- built on what this creates.
 
 -- Embeddings live beside the relational data instead of in a separate vector
 -- database — one system to operate, and joins between a chunk and its vector
@@ -21,3 +22,7 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE SCHEMA IF NOT EXISTS platform;
+
+-- Extensions are deliberately not dropped: they are database-wide and other
+-- schemas depend on them, so undoing this changeset must not take them away.
+--rollback DROP SCHEMA platform;

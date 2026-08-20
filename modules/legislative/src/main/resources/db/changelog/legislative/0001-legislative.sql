@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:legislative-0001-legislative
+--comment: Acts, drafts, and the path a draft takes through the process.
 -- Acts, drafts and the path a draft takes through the legislative process.
 --
 -- The design goal is one question answerable in SQL alone: *what was the status
@@ -198,3 +202,5 @@ CREATE TABLE legislative.draft_status (
 CREATE INDEX ix_draft_status_stage ON legislative.draft_status (current_stage);
 CREATE INDEX ix_draft_status_stalled ON legislative.draft_status (stalled_since)
     WHERE stalled_since IS NOT NULL;
+
+--rollback DROP SCHEMA legislative CASCADE;

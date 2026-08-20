@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:platform-0002-job-queue
+--comment: Durable work queue: claim, backoff, dead letter.
 -- Asynchronous work queue.
 --
 -- Postgres rather than a broker: at the volumes this system will see, `SELECT …
@@ -54,3 +58,5 @@ CREATE INDEX ix_job_stuck ON platform.job (locked_at)
 
 CREATE INDEX ix_job_dead ON platform.job (updated_at DESC)
     WHERE status = 'dead';
+
+--rollback DROP TABLE platform.job;

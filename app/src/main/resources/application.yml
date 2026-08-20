@@ -9,17 +9,16 @@ spring:
     virtual:
       enabled: true
   jpa:
-    # The schema belongs to Flyway. `validate` fails fast when an entity and a
-    # migration drift apart instead of silently altering tables.
+    # The schema belongs to the changelog. `validate` fails fast when an entity and
+    # a changeset drift apart instead of silently altering tables.
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  flyway:
-    enabled: true
-    # Flyway scans locations recursively, so every module's
-    # `db/migration/<schema>/` directory is picked up from the classpath without
-    # this list needing an entry per module.
-    locations: classpath:db/migration
+  liquibase:
+    # One entry point. It names the six contexts; each pulls in whatever its own
+    # schema is built on, so the order is a consequence of the dependency graph
+    # rather than of a filename convention.
+    change-log: classpath:db/changelog/master.yaml
 
 server:
   port: 8080

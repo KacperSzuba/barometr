@@ -1,0 +1,47 @@
+# The order the database is built in, stated once.
+#
+# `platform` first, because its extensions are what every domain schema rests on; the
+# rest follow the direction their contracts already point in. This replaces a filename
+# convention — `1xxx identity · 2xxx platform · 3xxx sources` — that encoded the same
+# order in numbers each context had to be told about, and that would have run out the
+# first time a context needed a thousand changes or a new one needed a free range.
+#
+# `errorIfMissing: false` is what lets one file serve both the application and a single
+# module's tests. A module has only its own changelog and its dependencies' on the
+# classpath — `platform`'s tests have never heard of `legislative` — and this way they
+# run the same manifest the application does rather than a second copy that can drift
+# from it.
+#
+# It lives in `platform` because that is the module every context depends on, so it is
+# the one place visible from every classpath. Naming contexts here is a manifest, not
+# a dependency: nothing in platform's code knows they exist.
+#
+# Environment-specific data would carry `context: local,test` on the changeset. None
+# does: both source registrations are reference data production cannot run without,
+# which is a different thing from a developer fixture, and is why they are changesets
+# of their own rather than lines inside the DDL.
+databaseChangeLog:
+  - include:
+      file: db/changelog/platform.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/identity.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/sources.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/ingestion.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/corpus.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/legislative.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false

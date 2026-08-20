@@ -14,8 +14,8 @@ that covers what you are touching before writing code**, and run
 done.
 
 The reasoning behind them, including every known defect and the refactoring roadmap,
-is in [docs/backend-review.md](docs/backend-review.md). Work in progress: moving
-Flyway → Liquibase, and removing JPA from `identity`.
+is in [docs/backend-review.md](docs/backend-review.md). Work in progress: removing
+JPA from `identity`, and a pass over naming.
 
 ## Non-negotiables
 
@@ -31,7 +31,8 @@ Flyway → Liquibase, and removing JPA from `identity`.
    `package-info.java` naming its `api`.
 4. **jOOQ is the persistence model.** No new `@Entity`, no `spring-boot-starter-data-jpa`.
 5. **The database holds the invariants.** `CHECK` constraints, unique indexes for
-   idempotency, no foreign keys across schemas.
+   idempotency, no foreign keys across schemas. Schema changes are Liquibase
+   changesets; an applied one is never edited.
 6. **Testcontainers on `pgvector/pgvector:pg16`, never H2.** The schema under test is
    the schema the migrations produce.
 7. **One public type per file**, and names that state the domain action — not

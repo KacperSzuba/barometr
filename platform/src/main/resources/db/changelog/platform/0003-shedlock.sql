@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:platform-0003-shedlock
+--comment: Lock table for work that must happen once across the deployment.
 -- ShedLock's table: which scheduled task is being run, by whom, and until when.
 --
 -- Needed because some scheduled work must happen once across the whole deployment
@@ -14,3 +18,5 @@ CREATE TABLE platform.shedlock (
     locked_at  timestamp    NOT NULL,
     locked_by  varchar(255) NOT NULL
 );
+
+--rollback DROP TABLE platform.shedlock;

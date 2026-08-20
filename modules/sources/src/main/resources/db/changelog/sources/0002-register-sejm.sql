@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:sources-0002-register-sejm
+--comment: The Sejm API as registry data.
 -- The Sejm API, seeded as registry data.
 --
 -- A source is reference data the system cannot run without, so it belongs in a
@@ -33,3 +37,5 @@ INSERT INTO sources.source (
     now()
 )
 ON CONFLICT (connector_id) DO NOTHING;
+
+--rollback DELETE FROM sources.source WHERE connector_id = 'sejm';

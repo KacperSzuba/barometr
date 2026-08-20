@@ -18,10 +18,9 @@ dependencies {
     implementation(libs.springBootGradlePlugin)
 
     // Code generation runs inside the build, not through a third-party plugin:
-    // a container is started, Flyway migrates it, jOOQ reads the result.
+    // a container is started, Liquibase migrates it, jOOQ reads the result.
     implementation(libs.buildJooqCodegen)
-    implementation(libs.buildFlywayCore)
-    implementation(libs.buildFlywayPostgresql)
+    implementation(libs.buildLiquibaseCore)
     implementation(libs.buildPostgresql)
     implementation(libs.buildTestcontainersPostgres)
 }

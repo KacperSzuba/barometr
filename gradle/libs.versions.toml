@@ -14,7 +14,10 @@ resilience4j = "2.4.0"
 crawlerCommons = "1.6"
 jsoup = "1.23.1"
 testcontainers = "1.21.4"
-flywayBuild = "13.3.0"
+# Used only by build-logic, which has no Boot BOM to inherit from. Kept in step with
+# the version the Boot 4.1 BOM manages, so the schema the build generates code from is
+# produced by the same engine that migrates production.
+liquibaseBuild = "5.0.3"
 postgresqlBuild = "42.7.13"
 uuidCreator = "6.1.1"
 pgvector = "0.1.6"
@@ -32,11 +35,10 @@ kotlinNoArgPlugin = { module = "org.jetbrains.kotlin:kotlin-noarg", version.ref 
 springBootGradlePlugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "springBoot" }
 
 # ——— Code generation, build classpath only ————————————————————————————————
-# jOOQ classes are generated from a container that Flyway has just migrated, so
-# the generated code can never drift from the migrations.
+# jOOQ classes are generated from a container Liquibase has just migrated, so the
+# generated code can never drift from the changelog.
 buildJooqCodegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
-buildFlywayCore = { module = "org.flywaydb:flyway-core", version.ref = "flywayBuild" }
-buildFlywayPostgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flywayBuild" }
+buildLiquibaseCore = { module = "org.liquibase:liquibase-core", version.ref = "liquibaseBuild" }
 buildPostgresql = { module = "org.postgresql:postgresql", version.ref = "postgresqlBuild" }
 buildTestcontainersPostgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 
@@ -65,9 +67,9 @@ springBootStarterJdbc = { module = "org.springframework.boot:spring-boot-starter
 springBootStarterJooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
 springBootStarterValidation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 springBootStarterActuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
-# Boot 4 moved autoconfiguration into per-technology modules: `flyway-core` alone
+# Boot 4 moved autoconfiguration into per-technology modules: `liquibase-core` alone
 # sits on the classpath and never runs. The starter is what wires it up.
-springBootStarterFlyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+springBootStarterLiquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
 springBootStarterTest = { module = "org.springframework.boot:spring-boot-starter-test" }
 springSecurityTest = { module = "org.springframework.security:spring-security-test" }
 # Boot 4 ships Jackson 3, whose coordinates moved from `com.fasterxml` to `tools.jackson`.
@@ -101,8 +103,7 @@ crawlerCommons = { module = "com.github.crawler-commons:crawler-commons", versio
 # so a layout change is an edit to YAML rather than to Kotlin.
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
-flywayCore = { module = "org.flywaydb:flyway-core" }
-flywayPostgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+liquibaseCore = { module = "org.liquibase:liquibase-core" }
 postgresql = { module = "org.postgresql:postgresql" }
 pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
 # Time-ordered identifiers: B-tree locality of a bigint without its coordination cost.

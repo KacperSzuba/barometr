@@ -1,8 +1,8 @@
--- Identity module schema.
---
--- Migration versions are namespaced by module ordinal (identity owns the 1xxx
--- range) so that modules can evolve their schemas independently without their
--- Flyway versions ever colliding.
+--liquibase formatted sql
+
+--changeset kacper:identity-0001-identity
+--comment: Users and refresh tokens.
+-- Identity's schema: who can sign in, and the sessions they hold.
 
 CREATE SCHEMA IF NOT EXISTS identity;
 
@@ -40,3 +40,7 @@ CREATE INDEX ix_refresh_tokens_family ON identity.refresh_tokens (family_id);
 CREATE INDEX ix_refresh_tokens_user ON identity.refresh_tokens (user_id);
 -- One successor per token keeps the grace-window lookup unambiguous.
 CREATE UNIQUE INDEX ux_refresh_tokens_predecessor ON identity.refresh_tokens (predecessor_id);
+
+--rollback DROP TABLE identity.refresh_tokens;
+--rollback DROP TABLE identity.users;
+--rollback DROP SCHEMA identity;

@@ -18,14 +18,14 @@ val migratedPostgres =
         maxParallelUsages.set(1)
     }
 
-val allMigrations = rootProject.layout.projectDirectory.asFileTree.matching {
-    include("**/src/main/resources/db/migration/**/*.sql")
+val allChangelogs = rootProject.layout.projectDirectory.asFileTree.matching {
+    include("**/src/main/resources/db/changelog/**")
     exclude("**/build/**")
 }
 
 val generateJooq = tasks.register<GenerateJooqSources>("generateJooq") {
     group = "build"
-    description = "Generates jOOQ sources for this module's schema from the migrated database."
+    description = "Generates jOOQ sources for this context's schema from the migrated database."
 
     postgres.set(migratedPostgres)
     usesService(migratedPostgres)
@@ -35,7 +35,7 @@ val generateJooq = tasks.register<GenerateJooqSources>("generateJooq") {
     // unreachable from other modules for exactly the same reason the rest of the
     // implementation is.
     packageName.set(codegen.schema.map { "pl.barometr.$it.internal.jooq" })
-    migrations.from(allMigrations)
+    migrations.from(allChangelogs)
     outputDirectory.set(layout.buildDirectory.dir("generated/jooq"))
 }
 

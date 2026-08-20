@@ -69,7 +69,7 @@ Every method belongs to exactly one layer and touches only that layer's vocabula
 
 13. **A comment explains why, and what breaks otherwise.** Not what the line does.
     The house style here is good and worth keeping: read
-    [V2100__job_queue.sql](platform/src/main/resources/db/migration/platform/V2100__job_queue.sql)
+    [0002-job-queue.sql](platform/src/main/resources/db/changelog/platform/0002-job-queue.sql)
     or [JobWorker.kt](platform/src/main/kotlin/pl/barometr/platform/internal/JobWorker.kt).
 14. **A comment must stay true.** In a codebase that argues its decisions in prose, a
     stale comment is a defect, not untidiness — V4001 still claims `blob_key` equals

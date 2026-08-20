@@ -23,7 +23,12 @@ than sign tokens with a known key.
 ```
 
 Tests run against the same Postgres image production uses, migrated by the project's
-own migrations. Docker must be running.
+own changelog. Docker must be running.
+
+The schema is managed by Liquibase; the manifest is
+`platform/src/main/resources/db/changelog/master.yaml`. A database created before the
+move from Flyway still carries `flyway_schema_history` and will refuse to migrate —
+`docker compose down -v` once, and it rebuilds from scratch.
 
 ## How it is laid out
 

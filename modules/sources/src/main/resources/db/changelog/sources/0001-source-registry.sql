@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:sources-0001-source-registry
+--comment: The registry of everything the system ingests from.
 -- The registry of everything the system ingests from.
 --
 -- Two jobs beyond bookkeeping: recording the legal basis each source is used
@@ -87,3 +91,8 @@ CREATE INDEX ix_source_run_recent ON sources.source_run (source_id, started_at D
 -- rolling average for its source.
 CREATE INDEX ix_source_run_finished ON sources.source_run (source_id, finished_at DESC)
     WHERE finished_at IS NOT NULL;
+
+--rollback DROP TABLE sources.source_run;
+--rollback DROP TABLE sources.ingestion_cursor;
+--rollback DROP TABLE sources.source;
+--rollback DROP SCHEMA sources;

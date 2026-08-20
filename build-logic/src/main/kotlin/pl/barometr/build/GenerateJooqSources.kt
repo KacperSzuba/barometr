@@ -42,7 +42,7 @@ abstract class GenerateJooqSources : DefaultTask() {
     abstract val packageName: Property<String>
 
     /**
-     * Every migration in the repository, not just this module's: a foreign key
+     * Every changelog in the repository, not just this context's: a foreign key
      * added elsewhere changes what this schema looks like, and the generated
      * code has to be rebuilt when it does.
      */
@@ -74,8 +74,8 @@ abstract class GenerateJooqSources : DefaultTask() {
                             .withName("org.jooq.meta.postgres.PostgresDatabase")
                             .withInputSchema(schemaName.get())
                             .withIncludes(".*")
-                            // Flyway's bookkeeping is not part of any module's model.
-                            .withExcludes("flyway_schema_history")
+                            // Liquibase's bookkeeping is not part of any context's model.
+                            .withExcludes("databasechangelog|databasechangeloglock")
                             .withForcedTypes(
                                 // `tstzrange` carries the valid-time axis of the
                                 // legislative model. Left unmapped it generates as

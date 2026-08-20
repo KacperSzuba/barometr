@@ -8,8 +8,7 @@ plugins {
 // waiting to happen.
 dependencies {
     api(libs.testcontainersPostgres)
-    api(libs.flywayCore)
-    api(libs.flywayPostgresql)
+    api(libs.liquibaseCore)
     api(libs.jooq)
     api(libs.postgresql)
 }

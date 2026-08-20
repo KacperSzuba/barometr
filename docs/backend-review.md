@@ -98,12 +98,25 @@ context has to be granted a free thousand. Seed data (`V3002`, `V3004`) is appli
 in every environment including production because a Flyway migration has no notion
 of a context.
 
-**Decision.** Liquibase with `--liquibase formatted sql`, so the SQL and its
-comments stay exactly as readable as they are now. A master changelog declares the
-order explicitly instead of encoding it in filenames; each context owns a changelog;
-seed data moves to `context:local,test`. Preconditions replace the assumptions
-currently written as prose, and rollback blocks are written where an honest one
-exists (and omitted, deliberately, where it does not).
+**Decision, applied.** Liquibase with `--liquibase formatted sql`, so the SQL and its
+comments stay exactly as readable as they were. A master changelog declares the order
+explicitly instead of encoding it in filenames; each context owns a changelog; every
+changeset carries a rollback where an honest one exists.
+
+**Two things the move corrected about this plan.** The first: a context changelog must
+*not* include the ones it is built on, however natural that reads — Liquibase does not
+deduplicate `include`, so a changelog reached from two directions is a validation
+failure. Order lives in the master alone. The second: `context:local,test` turned out
+to be the wrong answer for D22. Asked out loud, both source registrations are
+reference data production cannot run without — the file says so itself — so they ship
+unconditioned. What was actually wrong was that they were indistinguishable from DDL;
+they are now changesets of their own, and the mechanism is there for data that really
+is environment-specific.
+
+The master lives in `platform`, the one module every context depends on, and carries
+`errorIfMissing: false`. That lets a module's tests run the same manifest the
+application runs against whatever part of the schema is on their classpath, instead of
+a second copy that drifts.
 
 The cost is real — changesets carry an id/author header, and a checksum must be
 respected once applied. It is being paid now because the repository has zero commits
@@ -444,14 +457,13 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: tranches 1 and 4 are done, along with the parts of 6 and 7 that did not
-depend on the rest.** `./gradlew check` passes. Tranches 2 (Liquibase), 3 (JPA
-removal) and 5 (naming) remain.
+**Status: tranches 1, 2, 4 and 7 are done, along with most of 6.** `./gradlew check`
+passes. Tranche 3 (JPA removal) and tranche 5 (naming) remain.
 
 | # | Tranche | Contents | Findings |
 |---|---|---|---|
 | 1 ✅ | Structure | 20 projects → 9; connectors folded into `ingestion`, `platform/*` into `platform`; `package-info.java` per contract; Modulith + ArchUnit replace `barometr.module` | D-1, D20 |
-| 2 | Migrations | Liquibase formatted SQL; master changelog; seeds into contexts; one configuration for app, codegen and tests | D-2, D21, D22, D23 |
+| 2 ✅ | Migrations | Liquibase formatted SQL; master changelog; seeds into contexts; one configuration for app, codegen and tests | D-2, D21, D22, D23 |
 | 3 | Persistence | identity onto jOOQ; drop `kotlin-jpa`, `starter-data-jpa`, `spring.jpa` | D-3 |
 | 4 ✅ | Correctness | `ConnectorDescriptor` deleted; modes from interfaces; shared `ConnectorRegistry`; sink-owned counters; grace window via the database; typed job payloads; typed cursor decoding; injected `Clock`; `DomainException` on request paths; `@PreAuthorize`; shared `RobotsGate`; shared connector exceptions; ShedLock wired | A1–A6, B6–B14, D26 |
 | 5 | Naming | one type per file; the rename table; bag files split | E27–E32 |

@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:corpus-0001-corpus
+--comment: Documents, their versions, and the text extracted from them.
 -- Documents, their versions, and the text extracted from them.
 --
 -- Character offsets recorded here are what every downstream claim points at:
@@ -102,3 +106,5 @@ CREATE TABLE corpus.chunk_embedding (
 CREATE INDEX ix_chunk_embedding_hnsw_mmlw_v1
     ON corpus.chunk_embedding USING hnsw (embedding vector_cosine_ops)
     WHERE model_version = 'mmlw-v1';
+
+--rollback DROP SCHEMA corpus CASCADE;

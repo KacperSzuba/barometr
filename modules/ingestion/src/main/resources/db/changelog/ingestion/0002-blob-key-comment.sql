@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:ingestion-0002-blob-key-comment
+--comment: Corrects what the first changeset says about blob_key.
 -- Corrects what V4001 says about `blob_key`.
 --
 -- That migration calls the column "deliberately equal to the hex content hash".
@@ -17,3 +21,5 @@
 COMMENT ON COLUMN ingestion.raw_document.blob_key IS
     'Object-storage key, derived from content_hash as <aa>/<bb>/<hex>. Denormalised: '
     'BlobStore.keyOf() computes the same value from content_hash alone.';
+
+--rollback COMMENT ON COLUMN ingestion.raw_document.blob_key IS NULL;

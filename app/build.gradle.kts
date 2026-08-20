@@ -25,8 +25,7 @@ dependencies {
     implementation(libs.springModulithStarterJdbc)
     implementation(libs.springModulithActuator)
 
-    runtimeOnly(libs.springBootStarterFlyway)
-    runtimeOnly(libs.flywayPostgresql)
+    runtimeOnly(libs.springBootStarterLiquibase)
     runtimeOnly(libs.postgresql)
 
     testImplementation(libs.springModulithTest)

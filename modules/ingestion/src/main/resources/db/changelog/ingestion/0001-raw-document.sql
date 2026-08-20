@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:ingestion-0001-raw-document
+--comment: Everything ever fetched, exactly as it arrived.
 -- Everything ever fetched, exactly as it arrived.
 --
 -- This table is the system's audit trail against its own sources: every derived
@@ -56,3 +60,6 @@ CREATE INDEX ix_raw_document_hash ON ingestion.raw_document (content_hash);
 -- here is a few hundred bytes; ten million of them are unremarkable for
 -- Postgres. Partitioning by `fetched_at` would also force that column into the
 -- unique index above and destroy the idempotency guarantee.
+
+--rollback DROP TABLE ingestion.raw_document;
+--rollback DROP SCHEMA ingestion;

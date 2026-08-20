@@ -14,11 +14,11 @@ These are current for the versions in
 [gradle/libs.versions.toml](gradle/libs.versions.toml) (Boot 4.1, Kotlin 2.3) and are
 the errors most likely to be introduced from habit:
 
-1. **Autoconfiguration is split per technology.** `flyway-core` on the classpath alone
-   never runs — the starter wires it. There is no auto-configured `RestClient.Builder`
-   without `spring-boot-starter-restclient`, and with it come the
-   `spring.http.client.*` properties and the Micrometer instrumentation that made
-   `RestClient` the right choice.
+1. **Autoconfiguration is split per technology.** `liquibase-core` on the classpath
+   alone never runs — `spring-boot-starter-liquibase` wires it. There is no
+   auto-configured `RestClient.Builder` without `spring-boot-starter-restclient`, and
+   with it come the `spring.http.client.*` properties and the Micrometer
+   instrumentation that made `RestClient` the right choice.
 2. **Jackson 3 lives under `tools.jackson`**, not `com.fasterxml.jackson`. Imports are
    `tools.jackson.databind.ObjectMapper`, `tools.jackson.module.kotlin.kotlinModule`.
 3. **The resource-server starter was renamed** to

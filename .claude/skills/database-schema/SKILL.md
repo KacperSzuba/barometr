@@ -8,11 +8,6 @@ description: Database changes for barometr — writing Liquibase formatted-SQL c
 **Apply when** changing anything about the database: a table, a column, an index, a
 constraint, or seed data.
 
-> Migrations are moving from Flyway `V<n>__*.sql` files to Liquibase formatted SQL —
-> see `docs/backend-review.md` (D-2). Until tranche 2 lands, existing files keep the
-> Flyway naming; **new schema work is written as changesets** in the layout below, and
-> the design rules apply unchanged to both.
-
 ## Changesets
 
 1. **One changeset per logical change**, with a header that never changes afterwards:
@@ -23,15 +18,21 @@ constraint, or seed data.
    Ids are `<context>-<sequence>-<what>`; the sequence is local to the context, so two
    contexts never have to agree on a number. This replaces the old `1xxx…6xxx`
    ordinal scheme, which was a cross-module coupling pretending to be independence.
-2. **Order lives in the master changelog**, explicitly, not in filenames. Extensions
-   first, then each context. When one context's changelog must precede another's, the
-   master file says so in one readable place.
+2. **Order lives in the master changelog**, explicitly, not in filenames:
+   [master.yaml](platform/src/main/resources/db/changelog/master.yaml) lists the
+   contexts, `platform` first because its extensions are what the rest is built on.
+   It carries `errorIfMissing: false` so a module's tests run the same manifest the
+   application does against whatever part of it is on their classpath — a second copy
+   for tests is a copy that drifts.
+   **Do not make a context's changelog include its prerequisites.** Liquibase does not
+   deduplicate `include`, so a changelog reached from two directions fails validation
+   with duplicate identifiers.
 3. **A changeset that has been applied is immutable.** Fix forward with a new one; a
    checksum failure means somebody edited history.
-4. **Seed data carries a context**: `--changeset kacper:sources-0002-seed-sejm context:local,test`.
-   Anything a production database genuinely needs is configuration and deserves that
-   name — today's `V3002`/`V3004` seed rows go to every environment (review D22), and
-   splitting them is the moment to decide which is which.
+4. **Reference data is a changeset of its own, never a tail on a DDL changeset**, so
+   the question "does production need this row?" has to be answered out loud. When the
+   answer is no, the changeset carries `context:local,test`; when it is yes, it is
+   configuration and ships unconditioned, as both source registrations do (review D22).
 5. **Write a rollback only when an honest one exists**; state its absence otherwise:
    ```sql
    --rollback DROP INDEX ingestion.ix_raw_document_fetched;
@@ -41,8 +42,8 @@ constraint, or seed data.
    idempotent guard, a real failure when the assumption is load-bearing.
 7. **Every changeset opens with a comment saying what the object is for and what
    breaks without it.** The existing migrations are the standard to keep:
-   [V2100__job_queue.sql](platform/src/main/resources/db/migration/platform/V2100__job_queue.sql)
-   and [V4001__raw_document.sql](modules/ingestion/src/main/resources/db/migration/ingestion/V4001__raw_document.sql).
+   [0002-job-queue.sql](platform/src/main/resources/db/changelog/platform/0002-job-queue.sql)
+   and [0001-raw-document.sql](modules/ingestion/src/main/resources/db/changelog/ingestion/0001-raw-document.sql).
 8. **After any schema change, regenerate jOOQ** — the generated classes come from a
    container the migrations have just been applied to, so they cannot drift, but only
    if the task runs. See `jooq-persistence`.

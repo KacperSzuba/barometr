@@ -1,3 +1,7 @@
+--liquibase formatted sql
+
+--changeset kacper:sources-0004-register-rcl
+--comment: RCL as registry data, disabled until someone writes down why we may read it.
 -- Rządowy Proces Legislacyjny, seeded disabled and without a legal basis.
 --
 -- Both of those are the point. RCL publishes no API and its robots.txt disallows
@@ -38,3 +42,5 @@ INSERT INTO sources.source (
     now()
 )
 ON CONFLICT (connector_id) DO NOTHING;
+
+--rollback DELETE FROM sources.source WHERE connector_id = 'rcl';

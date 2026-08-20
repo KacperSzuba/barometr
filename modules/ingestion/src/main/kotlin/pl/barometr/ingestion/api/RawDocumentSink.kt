@@ -1,51 +1,5 @@
 package pl.barometr.ingestion.api
 
-/** The source's own identifier for a document: print number, RCL id, ELI, URL. */
-@JvmInline
-value class ExternalId(val value: String) {
-    init {
-        require(value.isNotBlank()) { "External id must not be blank" }
-    }
-
-    override fun toString(): String = value
-}
-
-enum class PayloadKind(val wireName: String) {
-    JSON("json"),
-    XML("xml"),
-    HTML("html"),
-    PDF("pdf"),
-    DOC("doc"),
-    DOCX("docx"),
-    CSV("csv"),
-    BINARY("binary"),
-}
-
-/**
- * One document as the source returned it.
- *
- * A plain class rather than a `data class` on purpose: generated equality over a
- * [ByteArray] compares references, which would be quietly wrong wherever two
- * payloads are checked for sameness. Identity of a payload is its content hash,
- * and computing that is the sink's job.
- */
-class RawPayload(
-    val externalId: ExternalId,
-    val payload: ByteArray,
-    val kind: PayloadKind,
-    /** Passed straight through so the next run can make a conditional request. */
-    val etag: String? = null,
-    val lastModified: String? = null,
-)
-
-enum class SinkOutcome {
-    /** New content; downstream processing has been triggered. */
-    STORED,
-
-    /** This exact content was already recorded. Nothing happened, and that is correct. */
-    ALREADY_KNOWN,
-}
-
 /**
  * The only way a connector writes anything.
  *
@@ -61,32 +15,12 @@ enum class SinkOutcome {
  */
 interface RawDocumentSink {
 
-    fun accept(payload: RawPayload): SinkOutcome
+    fun archive(payload: RawPayload): SinkOutcome
 
     /**
      * Recorded when a response carries a field the connector does not know, or
      * omits one it expects. A source changing shape underneath us shows up here
      * before it shows up as missing data.
      */
-    fun warn(warning: SchemaWarning)
-}
-
-data class SchemaWarning(
-    /** Where in the response, e.g. `votings[].kind`. */
-    val path: String,
-    val kind: Kind,
-    val detail: String? = null,
-) {
-    enum class Kind {
-        UNKNOWN_FIELD,
-        MISSING_FIELD,
-        UNEXPECTED_TYPE,
-
-        /**
-         * The source refused a resource — robots.txt or a rights reservation.
-         * A gap in the archive with a legal cause, worth telling apart from a
-         * shape change.
-         */
-        ACCESS_DENIED,
-    }
+    fun recordSchemaWarning(warning: SchemaWarning)
 }

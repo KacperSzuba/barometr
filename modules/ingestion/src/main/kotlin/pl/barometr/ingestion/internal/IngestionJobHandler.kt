@@ -38,6 +38,6 @@ class IngestionJobHandler(
 
         // Any exception propagates: the queue applies backoff and retries, and the
         // run is already recorded as failed with its reason.
-        runner.run(source, request.mode, request.partition)
+        runner.readSourceOnce(source, request.mode, request.partition)
     }
 }

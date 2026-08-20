@@ -3,7 +3,6 @@ package pl.barometr.platform.internal
 import io.micrometer.core.instrument.MeterRegistry
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
-import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import pl.barometr.platform.ClaimedJob
@@ -12,15 +11,6 @@ import pl.barometr.platform.JobQueue
 import pl.barometr.platform.JobType
 import java.net.InetAddress
 import java.time.Clock
-import java.time.Duration
-import java.time.Instant
-
-@ConfigurationProperties(prefix = "app.jobs")
-data class JobWorkerProperties(
-    val batchSize: Int = 8,
-    /** A worker holding a job longer than this is presumed dead. */
-    val abandonedAfter: Duration = Duration.ofMinutes(15),
-)
 
 /**
  * Polls the queue and dispatches to handlers.
@@ -51,11 +41,11 @@ class JobWorker(
     }
 
     @Scheduled(fixedDelayString = "\${app.jobs.poll-interval:1000}")
-    fun poll() {
-        queue.claim(workerId, properties.batchSize).forEach(::dispatch)
+    fun claimAndRun() {
+        queue.claim(workerId, properties.batchSize).forEach(::runHandlerFor)
     }
 
-    private fun dispatch(job: ClaimedJob) {
+    private fun runHandlerFor(job: ClaimedJob) {
         val handler = handlersByType[job.type]
         if (handler == null) {
             // A payload nobody can process is a deployment mistake, not a transient

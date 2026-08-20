@@ -1,31 +1,12 @@
 package pl.barometr.connectors.rcl
 
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import pl.barometr.ingestion.api.SourceAccessDeniedException
 import pl.barometr.ingestion.api.SourceFetchException
 import pl.barometr.http.HttpFetch
 import pl.barometr.http.HttpOutcome
 import pl.barometr.http.SourceHttpClient
 import java.net.URI
-
-/**
- * A page as RPL served it: the bytes for the archive, and a parse tree for
- * deciding where to go next.
- *
- * Both, because they answer different questions and only one of them is a fact.
- * The bytes are what gets stored and content-addressed; the parse tree is this
- * connector's reading of them, which will be wrong the day RPL changes its markup.
- * Keeping the original means that day costs a re-parse of the archive rather than
- * a re-crawl of the site.
- */
-class RclPage(
-    val url: URI,
-    val html: ByteArray,
-    val document: Document,
-    val etag: String?,
-    val lastModified: String?,
-)
 
 /**
  * Fetches RPL pages and hands back parsed documents.

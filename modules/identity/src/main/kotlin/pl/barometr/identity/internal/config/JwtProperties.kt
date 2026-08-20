@@ -19,9 +19,3 @@ data class JwtProperties(
     val refreshTtl: Duration,
     val refreshGrace: Duration,
 )
-
-/** Claim names shared between token creation and authority mapping. */
-object JwtClaims {
-    const val EMAIL = "email"
-    const val ROLES = "roles"
-}

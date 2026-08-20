@@ -3,6 +3,7 @@ package pl.barometr.platform.internal
 import org.jooq.DSLContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import pl.barometr.platform.JobPriority
 import pl.barometr.platform.JobType
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
@@ -71,9 +72,9 @@ class JooqJobQueueTest {
     }
 
     @Test
-    fun `lower priority number wins`() {
-        queue.enqueue(NewJob(type = BACKFILL, priority = NewJob.BACKGROUND, dedupKey = "b"))
-        queue.enqueue(NewJob(type = INGEST, priority = NewJob.INTERACTIVE, dedupKey = "i"))
+    fun `a more urgent job is claimed first`() {
+        queue.enqueue(NewJob(type = BACKFILL, priority = JobPriority.BACKGROUND, dedupKey = "b"))
+        queue.enqueue(NewJob(type = INGEST, priority = JobPriority.INTERACTIVE, dedupKey = "i"))
 
         assertEquals(INGEST, queue.claim(worker = "w1", limit = 1).single().type)
     }

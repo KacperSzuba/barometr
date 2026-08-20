@@ -11,45 +11,6 @@ import java.net.URI
 import java.time.LocalDate
 
 /**
- * One entity exactly as the Sejm API returned it.
- *
- * The body stays wrapped: callers get the key they need and hand the whole thing
- * to a canonicaliser, so nothing outside this file navigates a `JsonNode`.
- */
-class SejmEntity internal constructor(
-    /** The source's own identifier: a print number, a club symbol, an MP id. */
-    val naturalKey: String,
-    internal val body: JsonNode,
-)
-
-/** A sitting, plus the number its votings hang off. */
-class SejmProceeding internal constructor(
-    val number: Int,
-    val entity: SejmEntity,
-)
-
-class SejmTerm internal constructor(
-    val number: Int,
-    val isCurrent: Boolean,
-    val from: LocalDate?,
-    val to: LocalDate?,
-    /**
-     * When prints in this term last changed, as the API reports it. The whole
-     * incremental strategy rests on this one field.
-     */
-    val printsLastChangedAt: String?,
-    /** The source's own tally, for checking a finished backfill against. */
-    val printCount: Int,
-) {
-    fun overlaps(windowStart: LocalDate, windowEnd: LocalDate): Boolean {
-        val start = from ?: return false
-        // An ongoing term runs to today, so it always reaches the window's end.
-        val end = to ?: LocalDate.MAX
-        return !start.isAfter(windowEnd) && !end.isBefore(windowStart)
-    }
-}
-
-/**
  * Typed access to the Sejm API.
  *
  * Everything specific to *how* this source speaks lives here: URL shapes, JSON

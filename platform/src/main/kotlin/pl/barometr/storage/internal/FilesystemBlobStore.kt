@@ -1,6 +1,5 @@
 package pl.barometr.storage.internal
 
-import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 import pl.barometr.shared.ContentHash
 import pl.barometr.storage.BlobBucket
@@ -10,12 +9,6 @@ import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-
-@ConfigurationProperties(prefix = "app.storage")
-data class StorageProperties(
-    /** Root directory for the filesystem implementation. */
-    val root: Path,
-)
 
 /**
  * Filesystem-backed blob store.

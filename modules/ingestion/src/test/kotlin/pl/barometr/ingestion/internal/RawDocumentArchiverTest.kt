@@ -62,7 +62,7 @@ class RawDocumentArchiverTest {
     fun `new content is stored, recorded and announced`() {
         val payload = """{"druk":"123","tytul":"Ustawa o cenach energii"}""".toByteArray()
 
-        val outcome = sink.accept(
+        val outcome = sink.archive(
             RawPayload(ExternalId("druk-123"), payload, PayloadKind.JSON, etag = "\"abc\""),
         )
 
@@ -96,9 +96,9 @@ class RawDocumentArchiverTest {
         val payload = """{"druk":"123"}""".toByteArray()
         val document = { RawPayload(ExternalId("druk-123"), payload.copyOf(), PayloadKind.JSON) }
 
-        assertEquals(SinkOutcome.STORED, sink.accept(document()))
-        assertEquals(SinkOutcome.ALREADY_KNOWN, sink.accept(document()))
-        assertEquals(SinkOutcome.ALREADY_KNOWN, sink.accept(document()))
+        assertEquals(SinkOutcome.STORED, sink.archive(document()))
+        assertEquals(SinkOutcome.ALREADY_KNOWN, sink.archive(document()))
+        assertEquals(SinkOutcome.ALREADY_KNOWN, sink.archive(document()))
 
         assertEquals(1, dsl.fetchCount(RAW_DOCUMENT), "one row for one piece of content")
         assertEquals(1, events.ingested.size, "the pipeline must run once")
@@ -112,11 +112,11 @@ class RawDocumentArchiverTest {
 
         assertEquals(
             SinkOutcome.STORED,
-            sink.accept(RawPayload(externalId, "wersja 1".toByteArray(), PayloadKind.HTML)),
+            sink.archive(RawPayload(externalId, "wersja 1".toByteArray(), PayloadKind.HTML)),
         )
         assertEquals(
             SinkOutcome.STORED,
-            sink.accept(RawPayload(externalId, "wersja 2".toByteArray(), PayloadKind.HTML)),
+            sink.archive(RawPayload(externalId, "wersja 2".toByteArray(), PayloadKind.HTML)),
         )
 
         // Two versions of one document: the idempotency key includes the content
@@ -133,9 +133,9 @@ class RawDocumentArchiverTest {
         val factory = RawDocumentSinkFactory(archiverOver(blobRoot))
 
         factory.forRun(sourceId, null)
-            .accept(RawPayload(ExternalId("druk-9"), payload.copyOf(), PayloadKind.PDF))
+            .archive(RawPayload(ExternalId("druk-9"), payload.copyOf(), PayloadKind.PDF))
         factory.forRun(otherSourceId, null)
-            .accept(RawPayload(ExternalId("UD-9"), payload.copyOf(), PayloadKind.PDF))
+            .archive(RawPayload(ExternalId("UD-9"), payload.copyOf(), PayloadKind.PDF))
 
         // Two provenance rows — each source really did serve it — but one object.
         assertEquals(2, dsl.fetchCount(RAW_DOCUMENT))
@@ -147,8 +147,8 @@ class RawDocumentArchiverTest {
 
     @Test
     fun `schema warnings are collected for the run`() {
-        sink.warn(SchemaWarning("votings[].kind", SchemaWarning.Kind.UNKNOWN_FIELD, "saw 'ELECTRONIC_V2'"))
-        sink.warn(SchemaWarning("sitting.date", SchemaWarning.Kind.MISSING_FIELD))
+        sink.recordSchemaWarning(SchemaWarning("votings[].kind", SchemaWarning.Kind.UNKNOWN_FIELD, "saw 'ELECTRONIC_V2'"))
+        sink.recordSchemaWarning(SchemaWarning("sitting.date", SchemaWarning.Kind.MISSING_FIELD))
 
         assertEquals(2, sink.schemaWarnings.size)
         assertTrue(sink.schemaWarnings.any { it.kind == SchemaWarning.Kind.UNKNOWN_FIELD })

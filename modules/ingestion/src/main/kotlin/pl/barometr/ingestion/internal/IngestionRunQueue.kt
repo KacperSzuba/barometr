@@ -2,6 +2,7 @@ package pl.barometr.ingestion.internal
 
 import org.springframework.stereotype.Component
 import pl.barometr.platform.ClaimedJob
+import pl.barometr.platform.JobPriority
 import pl.barometr.platform.JobQueue
 import pl.barometr.platform.JobType
 import pl.barometr.platform.NewJob
@@ -51,9 +52,9 @@ class IngestionRunQueue(
             ),
             runAfter = runAfter,
             priority = when (mode) {
-                IngestionMode.INCREMENTAL -> NewJob.DEFAULT_PRIORITY
+                IngestionMode.INCREMENTAL -> JobPriority.STANDARD
                 // Below live ingestion, so a five-year replay never delays today.
-                IngestionMode.BACKFILL -> NewJob.BACKGROUND
+                IngestionMode.BACKFILL -> JobPriority.BACKGROUND
             },
             // The partition is part of the key, so every partition of a backfill can
             // be queued at once while each stays unique.

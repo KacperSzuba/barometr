@@ -11,9 +11,6 @@ import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import java.time.Clock
-import java.time.Instant
-
-data class AccessToken(val value: String, val expiresInSeconds: Long)
 
 @Service
 class TokenService(

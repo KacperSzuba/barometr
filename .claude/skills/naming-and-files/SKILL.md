@@ -13,13 +13,17 @@ half the codebase, which is always a missing abstraction wearing a disguise.
 
 ## Rules
 
-1. **One public type per file, and the file is named after it.** A file may hold
-   private helpers of that type and nothing else. Today 35 files break this;
-   `SourceRegistry.kt` holds eight unrelated public types, so finding `RunReport`
-   means grepping (review E27).
+1. **A file is named after what it contains, and its name covers everything in it.**
+   Kotlin's own style guide is explicit that several declarations may share a file
+   when they are closely related and the file stays small — `DomainException.kt`
+   holding `ErrorKind` beside it is right, because the name covers both. What is
+   wrong is a file named after one of several unrelated siblings:
+   `SourceRegistry.kt` held eight types including `IngestionMode` and `RunReport`, so
+   finding either meant grepping (review E27). Thirty-one such files were split.
 2. **No category files.** `Repositories.kt`, `AuthDtos.kt`, `IdentityErrors.kt`,
    `Ids.kt` name a bucket, not a thing. A file's history should be the history of one
-   subject; a bucket file's history is noise.
+   subject; a bucket file's history is noise. When in doubt, one type per file is
+   never wrong — it is grouping that has to be justified.
 3. **Name a method for the domain action it performs, in the vocabulary of its
    layer.** `insertIfAbsent`, `hasChangedSince`, `readTermChunk`, `revokeFamilyOf`,
    `reviewCompletedRun`, `declaredVolumes` are right. If a name could describe half
@@ -51,7 +55,9 @@ half the codebase, which is always a missing abstraction wearing a disguise.
 
 Worked examples from this codebase — the shape of the fix, not just the rule:
 
-| Now | Becomes | Why |
+All of these have been applied; they are kept as worked examples of the rule.
+
+| Was | Is | Why |
 |---|---|---|
 | `IncrementalConnector.fetch(cursor, sink)` | `readChangesSince(cursor, sink)` | states what is read and from where |
 | `BackfillConnector.fetchPartition(...)` | `readPartitionChunk(...)` | a chunk, not the partition — the whole point of the method |
@@ -62,17 +68,24 @@ Worked examples from this codebase — the shape of the fix, not just the rule:
 | `ArchiveCompleteness.audit(id)` | `compareArchiveAgainstSource(id)` | the actual comparison |
 | `RclPages` | `RclUrls` | it builds URLs |
 | `RclDates` | `RclDateFormats` | it holds the site's two formats |
-| `Tally` | *(deleted)* | the sink already counts; see review A4 — done |
-| `NewJob.priority: Int` | `priority: JobPriority` | `priority = 42` should not compile |
+| `Tally` | *(deleted)* | the sink already counts; see review A4 |
+| `NewJob.priority: Int` | `priority: JobPriority` | `priority = 42` compiled and meant nothing |
 
 ## File splits
 
-`SourceRegistry.kt` → `IngestionMode.kt`, `SourceDefinition.kt`, `SourceRegistry.kt`,
-`IngestionCursors.kt`, `RunId.kt`, `RunReport.kt`, `SourceRuns.kt`.
-`Repositories.kt` → `UserRepository.kt`, `RefreshTokenRepository.kt` — done.
-`IngestionScheduling.kt` → `IngestionScheduler.kt`, `IngestionJobHandler.kt` — done.
-`AuthController.kt` → `AuthController.kt`, `MeController.kt` — done; `MeController`
-serves `/api/v1/me` and should still move out of the `auth` package.
+Done: `SourceRegistry.kt` (eight types) split by subject; `AuthDtos.kt` and
+`IdentityErrors.kt` dissolved into one file per request, response and failure;
+`Connector.kt`, `RawDocumentSink.kt`, `SourceHttpClient.kt`, `JobQueue.kt` and
+`BlobStore.kt` reduced to the type they are named after; every `*Properties`,
+`*Factory` and `*Configuration` that had been sharing a file with its subject given
+its own.
+
+Two files deliberately keep two types: `DomainException.kt` (`ErrorKind` is its
+parameter) and `ApiExceptionHandler.kt` (`ErrorResponse` is its output). The name
+covers both in each case.
+
+Still to move: `MeController` serves `/api/v1/me` and does not belong in the `auth`
+package.
 
 ## Never
 

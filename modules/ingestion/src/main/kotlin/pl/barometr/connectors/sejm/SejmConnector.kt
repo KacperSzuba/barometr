@@ -49,7 +49,7 @@ class SejmConnector(
 
     // ——— Incremental ————————————————————————————————————————————————————————
 
-    override fun fetch(cursor: Cursor?, sink: RawDocumentSink): FetchResult {
+    override fun readChangesSince(cursor: Cursor?, sink: RawDocumentSink): FetchResult {
         val term = api.currentTerm() ?: return reportMissingTerms(sink)
 
         if (isUnchangedSince(term, cursor)) {
@@ -107,7 +107,7 @@ class SejmConnector(
      * one call would mean an interruption anywhere in those hours discarded all of
      * it — precisely the failure backfill exists to prevent.
      */
-    override fun fetchPartition(
+    override fun readPartitionChunk(
         partition: BackfillPartition,
         cursor: Cursor?,
         sink: RawDocumentSink,
@@ -230,7 +230,7 @@ class SejmConnector(
     }
 
     private fun store(externalId: ExternalId, entity: SejmEntity, sink: RawDocumentSink) {
-        sink.accept(
+        sink.archive(
             RawPayload(
                 externalId = externalId,
                 payload = payloads.bytesOf(entity),
@@ -250,14 +250,14 @@ class SejmConnector(
             read()
         } catch (denied: SourceAccessDeniedException) {
             log.warn("Denied access to {}: {}", denied.resource, denied.reason)
-            sink.warn(
+            sink.recordSchemaWarning(
                 SchemaWarning(denied.resource, SchemaWarning.Kind.ACCESS_DENIED, denied.reason),
             )
         }
     }
 
     private fun reportMissingTerms(sink: RawDocumentSink): FetchResult {
-        sink.warn(SchemaWarning("/sejm/term", SchemaWarning.Kind.MISSING_FIELD, "no terms returned"))
+        sink.recordSchemaWarning(SchemaWarning("/sejm/term", SchemaWarning.Kind.MISSING_FIELD, "no terms returned"))
         return FetchResult.NOTHING
     }
 

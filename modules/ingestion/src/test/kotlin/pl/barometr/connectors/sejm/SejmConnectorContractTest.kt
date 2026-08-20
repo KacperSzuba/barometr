@@ -50,7 +50,7 @@ class SejmConnectorContractTest {
         val http = FixtureHttpClient()
         val sink = RecordingSink()
 
-        connectorOf(http).fetch(cursor = null, sink = sink)
+        connectorOf(http).readChangesSince(cursor = null, sink = sink)
 
         // 5 prints + 2 clubs + 3 MPs + 2 proceedings + 2 x 3 votings
         assertEquals(18, sink.accepted.size)
@@ -67,7 +67,7 @@ class SejmConnectorContractTest {
     @Test
     fun `advances the cursor to the term's prints timestamp`() {
         val result = connectorOf(FixtureHttpClient())
-            .fetch(cursor = null, sink = RecordingSink())
+            .readChangesSince(cursor = null, sink = RecordingSink())
 
         val cursor = result.nextCursor!!
         assertEquals("10", cursor[SejmConnector.CURSOR_TERM])
@@ -88,7 +88,7 @@ class SejmConnectorContractTest {
             mapOf(SejmConnector.CURSOR_PRINTS_LAST_CHANGED to "2026-08-17T14:38:12"),
         )
 
-        val result = connectorOf(http).fetch(cursor, sink)
+        val result = connectorOf(http).readChangesSince(cursor, sink)
 
         assertEquals(0, sink.accepted.size)
         assertEquals(listOf("/sejm/term"), http.requestedPaths)
@@ -105,10 +105,10 @@ class SejmConnectorContractTest {
         val connector = connectorOf(FixtureHttpClient())
 
         val straight = RecordingSink()
-        connector.fetch(null, straight)
+        connector.readChangesSince(null, straight)
 
         val reordered = RecordingSink()
-        connectorOf(FixtureHttpClient(reverseKeys = true)).fetch(null, reordered)
+        connectorOf(FixtureHttpClient(reverseKeys = true)).readChangesSince(null, reordered)
 
         val byId = { sink: RecordingSink -> sink.accepted.associate { it.externalId.value to String(it.payload) } }
         assertEquals(byId(straight), byId(reordered))
@@ -123,7 +123,7 @@ class SejmConnectorContractTest {
         val sink = RecordingSink()
         val http = FixtureHttpClient(refusePathPattern = Regex("/sejm/term10/votings/\\d+"))
 
-        val result = connectorOf(http).fetch(null, sink)
+        val result = connectorOf(http).readChangesSince(null, sink)
 
         assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.ACCESS_DENIED })
         // Prints, clubs, MPs and proceedings still arrived; only votings are missing.
@@ -141,7 +141,7 @@ class SejmConnectorContractTest {
         val http = FixtureHttpClient(refusePathPattern = Regex("/sejm/term"))
 
         val failure = assertFailsWith<SourceAccessDeniedException> {
-            connectorOf(http).fetch(null, RecordingSink())
+            connectorOf(http).readChangesSince(null, RecordingSink())
         }
         // The resource, not the sentence: a message is prose and may be reworded,
         // while what the caller has to act on is which resource was refused.
@@ -179,7 +179,7 @@ class SejmConnectorContractTest {
         val sink = RecordingSink()
 
         val result = connectorOf(http)
-            .fetchPartition(BackfillPartition("term10", "Kadencja 10"), cursor = null, sink = sink)
+            .readPartitionChunk(BackfillPartition("term10", "Kadencja 10"), cursor = null, sink = sink)
 
         assertEquals(18, sink.accepted.size)
         assertTrue(result.exhausted)
@@ -205,7 +205,7 @@ class SejmConnectorContractTest {
         )
 
         connectorOf(http)
-            .fetchPartition(BackfillPartition("term10", "Kadencja 10"), cursor, sink)
+            .readPartitionChunk(BackfillPartition("term10", "Kadencja 10"), cursor, sink)
 
         // Collections already done, so they are not fetched again.
         assertTrue(http.requestedPaths.none { it.endsWith("/prints") })
@@ -227,7 +227,7 @@ class SejmConnectorContractTest {
         val connector = connectorOf(FixtureHttpClient(), proceedingsPerChunk = 1)
         val sink = RecordingSink()
 
-        val first = connector.fetchPartition(BackfillPartition("term10", "K10"), null, sink)
+        val first = connector.readPartitionChunk(BackfillPartition("term10", "K10"), null, sink)
 
         // Two proceedings in the fixture, one per chunk: not done yet.
         assertFalse(first.exhausted)
@@ -236,7 +236,7 @@ class SejmConnectorContractTest {
         assertTrue(sink.externalIds.contains("term10/proceeding/1"))
         assertTrue(sink.externalIds.none { it == "term10/proceeding/2" })
 
-        val second = connector.fetchPartition(
+        val second = connector.readPartitionChunk(
             BackfillPartition("term10", "K10"),
             first.nextCursor,
             RecordingSink(),
@@ -253,7 +253,7 @@ class SejmConnectorContractTest {
     fun `a malformed partition key is rejected`() {
         assertFailsWith<IllegalStateException> {
             connectorOf(FixtureHttpClient())
-                .fetchPartition(BackfillPartition("kadencja-X", "?"), null, RecordingSink())
+                .readPartitionChunk(BackfillPartition("kadencja-X", "?"), null, RecordingSink())
         }
     }
 
@@ -312,12 +312,12 @@ class SejmConnectorContractTest {
 
         val externalIds: List<String> get() = accepted.map { it.externalId.value }
 
-        override fun accept(payload: RawPayload): SinkOutcome {
+        override fun archive(payload: RawPayload): SinkOutcome {
             accepted += payload
             return SinkOutcome.STORED
         }
 
-        override fun warn(warning: SchemaWarning) {
+        override fun recordSchemaWarning(warning: SchemaWarning) {
             warnings += warning
         }
     }

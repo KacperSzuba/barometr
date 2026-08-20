@@ -11,18 +11,8 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.Base64
 import java.util.UUID
-
-data class IssuedRefreshToken(
-    val raw: String,
-    val id: UUID,
-    val familyId: UUID,
-    val expiresAt: Instant,
-)
-
-data class RotationResult(val userId: UUID, val refreshToken: IssuedRefreshToken)
 
 @Service
 class RefreshTokenService(

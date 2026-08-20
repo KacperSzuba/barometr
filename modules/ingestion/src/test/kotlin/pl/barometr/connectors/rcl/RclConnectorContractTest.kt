@@ -46,7 +46,7 @@ class RclConnectorContractTest {
         val site = FixtureSite()
         val sink = RecordingSink()
 
-        val result = connectorOf(site).fetch(cursor = null, sink = sink)
+        val result = connectorOf(site).readChangesSince(cursor = null, sink = sink)
 
         // Ten bills, ten regulations, and the one draft a full tree was captured
         // for; the fourth kind has nothing listed.
@@ -69,7 +69,7 @@ class RclConnectorContractTest {
     fun `a cursor stops the walk at drafts already seen`() {
         val site = FixtureSite()
 
-        connectorOf(site).fetch(
+        connectorOf(site).readChangesSince(
             cursor = Cursor(IngestionMode.INCREMENTAL, mapOf(RclConnector.CURSOR_CHANGED_SINCE to "2026-08-13")),
             sink = RecordingSink(),
         )
@@ -82,7 +82,7 @@ class RclConnectorContractTest {
 
     @Test
     fun `the cursor advances to the newest modification seen`() {
-        val result = connectorOf(FixtureSite()).fetch(cursor = null, sink = RecordingSink())
+        val result = connectorOf(FixtureSite()).readChangesSince(cursor = null, sink = RecordingSink())
 
         assertEquals("2026-08-17", result.nextCursor?.get(RclConnector.CURSOR_CHANGED_SINCE))
     }
@@ -91,7 +91,7 @@ class RclConnectorContractTest {
     fun `a pass that reaches no drafts reports the source as unchanged`() {
         val site = FixtureSite()
 
-        val result = connectorOf(site).fetch(
+        val result = connectorOf(site).readChangesSince(
             // Later than anything on the saved index pages.
             cursor = Cursor(IngestionMode.INCREMENTAL, mapOf(RclConnector.CURSOR_CHANGED_SINCE to "2027-01-01")),
             sink = RecordingSink(),
@@ -112,7 +112,7 @@ class RclConnectorContractTest {
     fun `a draft that fails to load is recorded and the walk continues`() {
         val sink = RecordingSink()
 
-        connectorOf(FixtureSite()).fetch(cursor = null, sink = sink)
+        connectorOf(FixtureSite()).readChangesSince(cursor = null, sink = sink)
 
         assertTrue(sink.warnings.isNotEmpty())
         assertTrue(sink.warnings.any { it.path == "/projekt/12413507" })
@@ -137,11 +137,11 @@ class RclConnectorContractTest {
         assertFailsWith<SourceAccessDeniedException> {
             RclConnector(
                 site = RclSiteClient(blocked),
-                pages = RclPages(BASE_URL),
+                pages = RclUrls(BASE_URL),
                 listings = RclListingParser(),
                 cards = RclProjectCardParser(),
                 registers = RclChangeRegisterParser(),
-            ).fetch(cursor = null, sink = RecordingSink())
+            ).readChangesSince(cursor = null, sink = RecordingSink())
         }
     }
 
@@ -157,7 +157,7 @@ class RclConnectorContractTest {
     fun `the walk descends from a stage into the catalogs inside it`() {
         val sink = RecordingSink()
 
-        connectorOf(FixtureSite()).fetch(cursor = null, sink = sink)
+        connectorOf(FixtureSite()).readChangesSince(cursor = null, sink = sink)
 
         val archived = sink.accepted.map { it.externalId.value }
         // The stage register, and then a catalog discovered only by reading it.
@@ -174,7 +174,7 @@ class RclConnectorContractTest {
     fun `depth one stops at the stages without entering them`() {
         val sink = RecordingSink()
 
-        connectorOf(FixtureSite(), catalogDepth = 1).fetch(cursor = null, sink = sink)
+        connectorOf(FixtureSite(), catalogDepth = 1).readChangesSince(cursor = null, sink = sink)
 
         val archived = sink.accepted.map { it.externalId.value }
         assertTrue(archived.contains("projekt/zalozenia/12409051/katalog/13196866/rejestr"))
@@ -189,7 +189,7 @@ class RclConnectorContractTest {
     fun `a catalog is never visited twice within one draft`() {
         val sink = RecordingSink()
 
-        connectorOf(FixtureSite()).fetch(cursor = null, sink = sink)
+        connectorOf(FixtureSite()).readChangesSince(cursor = null, sink = sink)
 
         val archived = sink.accepted.map { it.externalId.value }
         assertEquals(archived.size, archived.distinct().size)
@@ -214,11 +214,11 @@ class RclConnectorContractTest {
         val connector = connectorOf(site)
         val partition = BackfillPartition("ustawy", "Projekty ustaw")
 
-        val first = connector.fetchPartition(partition, cursor = null, sink = RecordingSink())
+        val first = connector.readPartitionChunk(partition, cursor = null, sink = RecordingSink())
         assertEquals("1", first.nextCursor?.get(RclConnector.CURSOR_LAST_PAGE))
         assertFalse(first.exhausted)
 
-        val second = connector.fetchPartition(partition, cursor = first.nextCursor, sink = RecordingSink())
+        val second = connector.readPartitionChunk(partition, cursor = first.nextCursor, sink = RecordingSink())
         assertEquals("2", second.nextCursor?.get(RclConnector.CURSOR_LAST_PAGE))
         assertEquals(2, site.indexPagesRequested.filter { it.contains("typeId=2") }.size)
     }
@@ -228,7 +228,7 @@ class RclConnectorContractTest {
         // A page large enough to hold all 2602 bills, so one page is the whole kind.
         val connector = connectorOf(FixtureSite(), pageSize = 10_000)
 
-        val result = connector.fetchPartition(
+        val result = connector.readPartitionChunk(
             BackfillPartition("ustawy", "Projekty ustaw"),
             cursor = null,
             sink = RecordingSink(),
@@ -282,7 +282,7 @@ class RclConnectorContractTest {
         catalogDepth: Int = RclWalkSettings.DEFAULT_CATALOG_DEPTH,
     ) = RclConnector(
         site = RclSiteClient(site),
-        pages = RclPages(BASE_URL),
+        pages = RclUrls(BASE_URL),
         listings = RclListingParser(),
         cards = RclProjectCardParser(),
         registers = RclChangeRegisterParser(),
@@ -378,12 +378,12 @@ class RclConnectorContractTest {
         val accepted = mutableListOf<RawPayload>()
         val warnings = mutableListOf<SchemaWarning>()
 
-        override fun accept(payload: RawPayload): SinkOutcome {
+        override fun archive(payload: RawPayload): SinkOutcome {
             accepted += payload
             return SinkOutcome.STORED
         }
 
-        override fun warn(warning: SchemaWarning) {
+        override fun recordSchemaWarning(warning: SchemaWarning) {
             warnings += warning
         }
     }

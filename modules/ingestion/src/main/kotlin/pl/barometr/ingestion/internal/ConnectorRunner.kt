@@ -43,7 +43,7 @@ class ConnectorRunner(
      * [partition] names the resumable unit for a backfill — a parliamentary term, a
      * year. Empty for incremental, which has a single position.
      */
-    fun run(source: SourceDefinition, mode: IngestionMode, partition: String = "") {
+    fun readSourceOnce(source: SourceDefinition, mode: IngestionMode, partition: String = "") {
         val connector = connectors.byId(source.connectorId)
             ?: throw UnknownConnectorException(source.connectorId)
         val runId = runs.start(source.id, mode)
@@ -86,7 +86,7 @@ class ConnectorRunner(
                 if (connector !is IncrementalConnector) {
                     throw ModeNotSupportedException(source.connectorId, mode)
                 }
-                connector.fetch(position, sink)
+                connector.readChangesSince(position, sink)
             }
 
             IngestionMode.BACKFILL -> {
@@ -94,7 +94,7 @@ class ConnectorRunner(
                     throw ModeNotSupportedException(source.connectorId, mode)
                 }
                 require(partition.isNotEmpty()) { "Backfill needs a partition to read" }
-                connector.fetchPartition(
+                connector.readPartitionChunk(
                     BackfillPartition(key = partition, label = partition),
                     position,
                     sink,

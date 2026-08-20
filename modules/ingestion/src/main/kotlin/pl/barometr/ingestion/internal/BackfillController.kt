@@ -48,7 +48,7 @@ class BackfillController(
 
     @GetMapping("/completeness")
     fun completeness(@RequestParam connector: String): CompletenessResponse {
-        val report = completeness.audit(ConnectorId(connector))
+        val report = completeness.compareArchiveAgainstSource(ConnectorId(connector))
         return CompletenessResponse(
             connector = report.connectorId.value,
             complete = report.isComplete,

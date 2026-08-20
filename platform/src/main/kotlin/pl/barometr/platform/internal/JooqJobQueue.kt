@@ -33,7 +33,7 @@ class JooqJobQueue(
             .set(JOB.TYPE, job.type.value)
             .set(JOB.PAYLOAD, JSONB.valueOf(job.payload))
             .set(JOB.STATUS, PENDING)
-            .set(JOB.PRIORITY, job.priority.toShort())
+            .set(JOB.PRIORITY, job.priority.level.toShort())
             .set(JOB.ATTEMPTS, 0)
             .set(JOB.MAX_ATTEMPTS, job.maxAttempts)
             .set(JOB.RUN_AFTER, job.runAfter?.atOffset(ZoneOffset.UTC) ?: now)

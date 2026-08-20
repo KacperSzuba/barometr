@@ -3,27 +3,6 @@ package pl.barometr.storage
 import pl.barometr.shared.ContentHash
 import java.io.InputStream
 
-/** Retention and access differ per kind, so each gets its own bucket. */
-enum class BlobBucket(val bucketName: String) {
-    /** Untouched source payloads. Never deleted — this is the archive. */
-    RAW("raw"),
-
-    /** Extracted text, thumbnails, anything recomputable from RAW. */
-    DERIVED("derived"),
-
-    /** User-facing exports, expired on a schedule. */
-    EXPORTS("exports"),
-}
-
-data class StoredBlob(
-    val contentHash: ContentHash,
-    val bucket: BlobBucket,
-    val byteSize: Long,
-    val mediaType: String,
-    /** True when identical content was already present and nothing was written. */
-    val deduplicated: Boolean,
-)
-
 /**
  * Content-addressed object storage: the key *is* the SHA-256 of the payload.
  *

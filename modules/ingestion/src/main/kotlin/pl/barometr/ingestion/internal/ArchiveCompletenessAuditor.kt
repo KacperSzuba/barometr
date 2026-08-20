@@ -33,7 +33,7 @@ class ArchiveCompletenessAuditor(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun audit(connectorId: ConnectorId): CompletenessReport {
+    override fun compareArchiveAgainstSource(connectorId: ConnectorId): CompletenessReport {
         val source = sources.byConnector(connectorId) ?: throw UnknownConnectorException(connectorId)
         val connector = connectors.auditable(connectorId)
             ?: throw ConnectorNotAuditableException(connectorId)

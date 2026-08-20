@@ -2,38 +2,6 @@ package pl.barometr.connectors.rcl
 
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import java.time.LocalDate
-
-/** One row of a draft index: enough to decide whether the draft is worth visiting. */
-data class RclListingEntry(
-    val projectId: String,
-    val title: String,
-    val applicant: String,
-    /**
-     * The draft's number in its ministry's programme of work — `UD412`, `RD319`,
-     * `MZ1921`. Null for drafts filed outside any programme.
-     */
-    val registerNumber: String?,
-    val createdAt: LocalDate?,
-    val modifiedAt: LocalDate?,
-)
-
-/**
- * One page of an index, and how much of the collection lies beyond it.
- *
- * [totalCount] comes from the site's own tally rather than from counting rows,
- * which is what lets the walk know how far it has to go before it starts.
- */
-data class RclListingPage(
-    val totalCount: Int,
-    val entries: List<RclListingEntry>,
-) {
-    val isEmpty: Boolean get() = entries.isEmpty()
-
-    /** How many pages this collection spans at [pageSize] rows each. */
-    fun pageCount(pageSize: Int): Int =
-        if (totalCount <= 0) 0 else (totalCount + pageSize - 1) / pageSize
-}
 
 /**
  * Reads a draft index page.
@@ -60,8 +28,8 @@ class RclListingParser(private val selectors: RclSelectors.Listing = RclSelector
             applicant = row.selectFirst(selectors.applicant)?.text().orEmpty().trim(),
             registerNumber = row.selectFirst(selectors.registerNumber)?.text()?.trim()
                 ?.takeIf { it.isNotEmpty() },
-            createdAt = RclDates.readDate(row.selectFirst(selectors.createdAt)?.text()),
-            modifiedAt = RclDates.readDate(row.selectFirst(selectors.modifiedAt)?.text()),
+            createdAt = RclDateFormats.readDate(row.selectFirst(selectors.createdAt)?.text()),
+            modifiedAt = RclDateFormats.readDate(row.selectFirst(selectors.modifiedAt)?.text()),
         )
     }
 
@@ -74,15 +42,4 @@ class RclListingParser(private val selectors: RclSelectors.Listing = RclSelector
     private companion object {
         val TRAILING_NUMBER = Regex("""(\d+)\s*$""")
     }
-}
-
-/** Draft and stage ids, pulled out of the hrefs RPL uses to link them. */
-object RclIdentifiers {
-
-    private val PROJECT = Regex("""/projekt/(\d+)""")
-    private val CATALOG = Regex("""/katalog/(\d+)""")
-
-    fun projectIdIn(href: String): String? = PROJECT.find(href)?.groupValues?.get(1)
-
-    fun catalogIdIn(href: String): String? = CATALOG.find(href)?.groupValues?.get(1)
 }

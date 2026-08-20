@@ -19,7 +19,7 @@ import java.time.format.DateTimeParseException
  * one archived page; refusing the whole document over it would turn a cosmetic
  * change on the site into an ingestion outage.
  */
-object RclDates {
+object RclDateFormats {
 
     private val DAY_FIRST: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
     private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")

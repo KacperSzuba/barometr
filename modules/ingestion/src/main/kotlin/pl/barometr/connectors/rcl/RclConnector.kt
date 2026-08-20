@@ -38,7 +38,7 @@ import java.time.LocalDate
  */
 class RclConnector(
     private val site: RclSiteClient,
-    private val pages: RclPages,
+    private val pages: RclUrls,
     private val listings: RclListingParser,
     private val cards: RclProjectCardParser,
     private val registers: RclChangeRegisterParser,
@@ -52,7 +52,7 @@ class RclConnector(
 
     // ——— Incremental ————————————————————————————————————————————————————————
 
-    override fun fetch(cursor: Cursor?, sink: RawDocumentSink): FetchResult {
+    override fun readChangesSince(cursor: Cursor?, sink: RawDocumentSink): FetchResult {
         val changedSince = cursor?.get(CURSOR_CHANGED_SINCE)?.let(LocalDate::parse)
         var newest = changedSince
         var draftsVisited = 0
@@ -152,7 +152,7 @@ class RclConnector(
     override fun partitions(from: LocalDate, to: LocalDate): List<BackfillPartition> =
         RclProjectType.entries.map { BackfillPartition(it.slug, it.label) }
 
-    override fun fetchPartition(
+    override fun readPartitionChunk(
         partition: BackfillPartition,
         cursor: Cursor?,
         sink: RawDocumentSink,
@@ -238,7 +238,7 @@ class RclConnector(
 
         val card = cards.readProjectCard(cardPage.document)
         if (card == null) {
-            sink.warn(
+            sink.recordSchemaWarning(
                 SchemaWarning(
                     "/projekt/$projectId",
                     SchemaWarning.Kind.MISSING_FIELD,
@@ -304,7 +304,7 @@ class RclConnector(
     }
 
     private fun store(externalId: ExternalId, page: RclPage, sink: RawDocumentSink) {
-        sink.accept(
+        sink.archive(
             RawPayload(
                 externalId = externalId,
                 payload = page.html,
@@ -340,11 +340,11 @@ class RclConnector(
         site.readPage(url)
     } catch (denied: SourceAccessDeniedException) {
         log.warn("Denied access to {}: {}", denied.resource, denied.reason)
-        sink.warn(SchemaWarning(denied.resource, SchemaWarning.Kind.ACCESS_DENIED, denied.reason))
+        sink.recordSchemaWarning(SchemaWarning(denied.resource, SchemaWarning.Kind.ACCESS_DENIED, denied.reason))
         null
     } catch (failed: SourceFetchException) {
         log.warn("Could not read {}: {}", failed.resource, failed.detail)
-        sink.warn(SchemaWarning(failed.resource, SchemaWarning.Kind.MISSING_FIELD, failed.detail))
+        sink.recordSchemaWarning(SchemaWarning(failed.resource, SchemaWarning.Kind.MISSING_FIELD, failed.detail))
         null
     }
 

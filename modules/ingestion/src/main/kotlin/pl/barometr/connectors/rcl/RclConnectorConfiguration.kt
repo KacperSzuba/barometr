@@ -36,7 +36,7 @@ class RclConnectorConfiguration {
 
         return RclConnector(
             site = site,
-            pages = RclPages(properties.baseUrl),
+            pages = RclUrls(properties.baseUrl),
             listings = RclListingParser(properties.selectors.listing),
             cards = RclProjectCardParser(properties.selectors.projectCard),
             registers = RclChangeRegisterParser(properties.selectors.changeRegister),

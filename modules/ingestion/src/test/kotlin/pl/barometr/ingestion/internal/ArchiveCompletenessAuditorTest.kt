@@ -60,7 +60,7 @@ class ArchiveCompletenessAuditorTest {
     fun `a complete archive reports no gaps`() {
         archivePrints(count = 100)
 
-        val report = auditorFor(declaredPrints = 100).audit(CONNECTOR)
+        val report = auditorFor(declaredPrints = 100).compareArchiveAgainstSource(CONNECTOR)
 
         assertTrue(report.gaps.isEmpty())
         assertTrue(report.isComplete)
@@ -72,7 +72,7 @@ class ArchiveCompletenessAuditorTest {
     fun `a gap within tolerance is not a gap`() {
         archivePrints(count = 997)
 
-        val report = auditorFor(declaredPrints = 1000).audit(CONNECTOR)
+        val report = auditorFor(declaredPrints = 1000).compareArchiveAgainstSource(CONNECTOR)
 
         // 3 of 1000 missing is 0.3%, under the 0.5% tolerance.
         assertTrue(report.gaps.isEmpty())
@@ -83,7 +83,7 @@ class ArchiveCompletenessAuditorTest {
     fun `a gap beyond tolerance is reported`() {
         archivePrints(count = 900)
 
-        val report = auditorFor(declaredPrints = 1000).audit(CONNECTOR)
+        val report = auditorFor(declaredPrints = 1000).compareArchiveAgainstSource(CONNECTOR)
 
         val gap = report.gaps.single()
         assertEquals(1000, gap.declared)
@@ -100,7 +100,7 @@ class ArchiveCompletenessAuditorTest {
     fun `holding more than declared is not a gap`() {
         archivePrints(count = 120)
 
-        val report = auditorFor(declaredPrints = 100).audit(CONNECTOR)
+        val report = auditorFor(declaredPrints = 100).compareArchiveAgainstSource(CONNECTOR)
 
         assertTrue(report.gaps.isEmpty())
         assertTrue(report.findings.single().missingFraction < 0)
@@ -115,7 +115,7 @@ class ArchiveCompletenessAuditorTest {
     fun `a non-authoritative match alone does not establish completeness`() {
         archiveProceedings(count = 40)
 
-        val report = auditorFor(declaredProceedings = 40).audit(CONNECTOR)
+        val report = auditorFor(declaredProceedings = 40).compareArchiveAgainstSource(CONNECTOR)
 
         assertTrue(report.gaps.isEmpty())
         assertFalse(report.isComplete, "only an authoritative count can prove completeness")
@@ -130,7 +130,7 @@ class ArchiveCompletenessAuditorTest {
         archiveProceedings(count = 40)
         archiveVotingsUnderProceedings(proceedings = 40, votingsEach = 20)
 
-        val report = auditorFor(declaredProceedings = 40).audit(CONNECTOR)
+        val report = auditorFor(declaredProceedings = 40).compareArchiveAgainstSource(CONNECTOR)
 
         assertEquals(40, report.findings.single().archived, "votings must not inflate the count")
     }
@@ -142,7 +142,7 @@ class ArchiveCompletenessAuditorTest {
         // No backfill cursor recorded, so nothing has been replayed.
         val auditor = auditorFor(declaredPrints = 1000, replayedPartitions = emptySet())
 
-        assertTrue(auditor.audit(CONNECTOR).findings.isEmpty())
+        assertTrue(auditor.compareArchiveAgainstSource(CONNECTOR).findings.isEmpty())
     }
 
     // ——— Fixtures ————————————————————————————————————————————————————————————

@@ -468,8 +468,8 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: every tranche is done.** `./gradlew check` passes — 128 tests across nine
-Gradle projects, from twenty projects and 11 test files at the start.
+**Status: every tranche is done.** `./gradlew check` passes — 126 tests across nine
+Gradle projects, up from 11 test files and no coverage at all of identity.
 
 One finding is recorded and deliberately not fixed: `identity.users.roles` is still a
 comma-separated column. It cannot be constrained to known roles, indexed, or queried

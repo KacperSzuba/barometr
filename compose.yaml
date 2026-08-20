@@ -1,0 +1,27 @@
+# Local development dependencies.
+#
+# Provisioning for real environments is a separate concern; this file exists so
+# that `docker compose up -d` followed by `./gradlew :app:bootRun` is all it takes
+# to have the application running against the same engine production uses.
+
+services:
+  postgres:
+    # pgvector ships on top of the official Postgres image, so embeddings and the
+    # relational schema live in one database rather than two systems to operate.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: barometr
+      POSTGRES_USER: barometr
+      POSTGRES_PASSWORD: barometr
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barometr -d barometr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: barometr
+  profiles:
+    # Local development needs no environment setup; production must set
+    # SPRING_PROFILES_ACTIVE=prod explicitly.
+    default: local
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    # The schema belongs to Flyway. `validate` fails fast when an entity and a
+    # migration drift apart instead of silently altering tables.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    # Flyway scans locations recursively, so every module's
+    # `db/migration/<schema>/` directory is picked up from the classpath without
+    # this list needing an entry per module.
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+  error:
+    # Never leak stack traces or internal messages to a client.
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, modulith
+
+app:
+  jwt:
+    issuer: barometr
+    audience: barometr-web
+    # Short-lived: this is what substitutes for a revocation list on access tokens.
+    access-ttl: 15m
+    refresh-ttl: 30d
+    # Window in which a second use of an already-rotated refresh token counts as
+    # a request race rather than theft. See RefreshTokenService.
+    refresh-grace: 15s
+
+  connectors:
+    rcl:
+      # RCL's robots.txt is `Disallow: /` for every agent, so with the default
+      # RESPECT the connector reads nothing at all. Switching to EXEMPT requires
+      # a written legal basis of at least twenty characters — the application
+      # refuses to start otherwise, and the basis is logged on every run.
+      #
+      # Enabling the source also means filling in sources.source.legal_basis,
+      # which the schema enforces separately. Two locks, one decision.
+      robots:
+        mode: RESPECT
+        legal-basis: ""
+      # Levels of catalog to descend. 2 reaches the documents — a stage such as
+      # "Konsultacje publiczne" holds five catalogs of its own, and the submitted
+      # comments are in one of them. 1 stops at the stages and costs roughly a
+      # fifth as many requests. At 0.2 req/s a full replay is about a week at
+      # depth 1 and about two months at depth 2; raise requests-per-second once
+      # RCL has agreed a pace, rather than lowering the depth.
+      catalog-depth: 2

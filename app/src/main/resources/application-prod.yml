@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    # Neon connection string, for example:
+    #   jdbc:postgresql://ep-xxx-pooler.eu-central-1.aws.neon.tech/barometr?sslmode=require&prepareThreshold=0
+    #
+    # Two Neon-specific notes:
+    #   * sslmode=require is mandatory — Neon rejects plaintext connections.
+    #   * the `-pooler` endpoint is PgBouncer in transaction mode, which breaks
+    #     server-side prepared statements. Either add prepareThreshold=0 as above
+    #     or connect to the direct (non-pooler) endpoint.
+    url: ${DATABASE_URL}
+    hikari:
+      # Neon counts connections against the plan quota, so keep the pool small.
+      maximum-pool-size: 5
+      minimum-idle: 1
+      # Neon scales to zero; waking a suspended branch takes roughly half a second.
+      connection-timeout: 30000
+      max-lifetime: 300000
+
+app:
+  jwt:
+    # No fallback: the application must refuse to start without a real secret.
+    secret: ${JWT_SECRET}

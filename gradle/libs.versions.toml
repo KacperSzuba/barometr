@@ -1,0 +1,131 @@
+# Version catalog — the single place where dependency versions are declared.
+# https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
+
+[versions]
+kotlin = "2.3.21"
+springBoot = "4.1.0"
+springModulith = "2.1.0"
+jooq = "3.21.7"
+shedlock = "7.8.0"
+# Used only by build-logic, which has no Boot BOM to inherit versions from.
+# Neither has a Spring equivalent: the framework ships no client-side rate
+# limiter and no robots.txt parser. Boot 4 does not manage either version.
+resilience4j = "2.4.0"
+crawlerCommons = "1.6"
+jsoup = "1.23.1"
+testcontainers = "1.21.4"
+flywayBuild = "13.3.0"
+postgresqlBuild = "42.7.13"
+uuidCreator = "6.1.1"
+pgvector = "0.1.6"
+archunit = "1.4.2"
+kotlinxCoroutines = "1.10.2"
+
+[libraries]
+
+# ——— Gradle plugins used from build-logic ————————————————————————————————
+# These are plugin *artifacts*, not [plugins] entries: precompiled script plugins
+# apply them through the build classpath rather than the plugins DSL.
+kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlinAllOpenPlugin = { module = "org.jetbrains.kotlin:kotlin-allopen", version.ref = "kotlin" }
+kotlinNoArgPlugin = { module = "org.jetbrains.kotlin:kotlin-noarg", version.ref = "kotlin" }
+springBootGradlePlugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "springBoot" }
+
+# ——— Code generation, build classpath only ————————————————————————————————
+# jOOQ classes are generated from a container that Flyway has just migrated, so
+# the generated code can never drift from the migrations.
+buildJooqCodegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
+buildFlywayCore = { module = "org.flywaydb:flyway-core", version.ref = "flywayBuild" }
+buildFlywayPostgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flywayBuild" }
+buildPostgresql = { module = "org.postgresql:postgresql", version.ref = "postgresqlBuild" }
+buildTestcontainersPostgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+
+# ——— Platforms ————————————————————————————————————————————————————————
+# Imported as Gradle platforms, which removes the need for the legacy
+# io.spring.dependency-management plugin.
+springBootBom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
+springModulithBom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "springModulith" }
+
+# ——— Spring Boot starters (versions come from the BOM) ————————————————————
+springBootStarter = { module = "org.springframework.boot:spring-boot-starter" }
+springBootStarterWeb = { module = "org.springframework.boot:spring-boot-starter-web" }
+# Boot 4 split autoconfiguration into per-technology modules, and `RestClient` got
+# its own. Without this starter there is no auto-configured `RestClient.Builder`,
+# and with it come the `spring.http.client.*` properties and the Micrometer
+# instrumentation that made RestClient the right choice in the first place.
+springBootStarterRestClient = { module = "org.springframework.boot:spring-boot-starter-restclient" }
+springBootStarterSecurity = { module = "org.springframework.boot:spring-boot-starter-security" }
+# Method-security annotations only. A domain module needs `@PreAuthorize`; it has no
+# business pulling in a filter chain, which belongs to the application.
+springSecurityCore = { module = "org.springframework.security:spring-security-core" }
+# Boot 4 renamed this; `spring-boot-starter-oauth2-resource-server` is deprecated.
+springBootStarterResourceServer = { module = "org.springframework.boot:spring-boot-starter-security-oauth2-resource-server" }
+springBootStarterDataJpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+springBootStarterJdbc = { module = "org.springframework.boot:spring-boot-starter-jdbc" }
+springBootStarterJooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
+springBootStarterValidation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+springBootStarterActuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+# Boot 4 moved autoconfiguration into per-technology modules: `flyway-core` alone
+# sits on the classpath and never runs. The starter is what wires it up.
+springBootStarterFlyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+springBootStarterTest = { module = "org.springframework.boot:spring-boot-starter-test" }
+springSecurityTest = { module = "org.springframework.security:spring-security-test" }
+# Boot 4 ships Jackson 3, whose coordinates moved from `com.fasterxml` to `tools.jackson`.
+jacksonModuleKotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+
+# ——— Spring Modulith ——————————————————————————————————————————————————
+# Just the annotations (@NamedInterface, @ApplicationModule) — api modules need
+# these to declare what they expose, without pulling in any runtime.
+springModulithApi = { module = "org.springframework.modulith:spring-modulith-api" }
+springModulithStarterCore = { module = "org.springframework.modulith:spring-modulith-starter-core" }
+springModulithStarterJdbc = { module = "org.springframework.modulith:spring-modulith-starter-jdbc" }
+springModulithActuator = { module = "org.springframework.modulith:spring-modulith-actuator" }
+springModulithTest = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+
+# ——— Persistence ——————————————————————————————————————————————————————
+jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
+# Typed bindings for Postgres-only types. Without it `tstzrange` generates as
+# `Any?`, which would push range handling back into hand-written SQL strings —
+# precisely the part of the schema that most needs to be type-checked.
+jooqPostgresExtensions = { module = "org.jooq:jooq-postgres-extensions", version.ref = "jooq" }
+jooqCodegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
+jooqMeta = { module = "org.jooq:jooq-meta", version.ref = "jooq" }
+# ——— Connector HTTP layer ——————————————————————————————————————————————
+# Rate limiting with Micrometer metrics, rather than hand-rolled token buckets.
+resilience4jRateLimiter = { module = "io.github.resilience4j:resilience4j-ratelimiter", version.ref = "resilience4j" }
+resilience4jMicrometer = { module = "io.github.resilience4j:resilience4j-micrometer", version.ref = "resilience4j" }
+# The robots.txt parser Nutch and StormCrawler use: wildcards, `$` anchors,
+# malformed files and HTTP-status semantics all handled.
+crawlerCommons = { module = "com.github.crawler-commons:crawler-commons", version.ref = "crawlerCommons" }
+# HTML parsing for sources that publish no API. Selectors come from configuration,
+# so a layout change is an edit to YAML rather than to Kotlin.
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+flywayCore = { module = "org.flywaydb:flyway-core" }
+flywayPostgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+postgresql = { module = "org.postgresql:postgresql" }
+pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
+# Time-ordered identifiers: B-tree locality of a bigint without its coordination cost.
+uuidCreator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuidCreator" }
+shedlockSpring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }
+shedlockJdbc = { module = "net.javacrumbs.shedlock:shedlock-provider-jdbc-template", version.ref = "shedlock" }
+
+# ——— Testing ——————————————————————————————————————————————————————————
+kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+# Explicit versions: the Spring Boot 4 BOM does not manage Testcontainers.
+testcontainersPostgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainersJunit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+archunitJunit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+[bundles]
+springWebModule = [
+    "springBootStarterWeb",
+    "springBootStarterValidation",
+    "jacksonModuleKotlin",
+]
+
+[plugins]
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinPluginSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlinPluginJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+springBoot = { id = "org.springframework.boot", version.ref = "springBoot" }

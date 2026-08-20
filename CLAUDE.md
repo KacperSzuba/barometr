@@ -14,8 +14,8 @@ that covers what you are touching before writing code**, and run
 done.
 
 The reasoning behind them, including every known defect and the refactoring roadmap,
-is in [docs/backend-review.md](docs/backend-review.md). Work in progress: removing
-JPA from `identity`, and a pass over naming.
+is in [docs/backend-review.md](docs/backend-review.md). Work in progress: a pass
+over naming.
 
 ## Non-negotiables
 
@@ -29,7 +29,9 @@ JPA from `identity`, and a pass over naming.
    entity, a record or a row. Nothing but `ModularityTest` enforces this, so it is
    load-bearing: a new context needs a line in its `CONTEXTS` list and a
    `package-info.java` naming its `api`.
-4. **jOOQ is the persistence model.** No new `@Entity`, no `spring-boot-starter-data-jpa`.
+4. **jOOQ is the persistence model.** No `@Entity`, and neither the JPA starter nor
+   the `kotlin-jpa` plugin is in the catalog. A service depends on a narrow port, not
+   on a framework's repository interface.
 5. **The database holds the invariants.** `CHECK` constraints, unique indexes for
    idempotency, no foreign keys across schemas. Schema changes are Liquibase
    changesets; an applied one is never edited.

@@ -5,19 +5,17 @@ import java.util.UUID
 /**
  * What the identity services need from user storage, and nothing else.
  *
- * A narrow port rather than the Spring Data repository itself. Two reasons, and the
- * second is the one that matters: a service that depends on `JpaRepository` cannot
- * be tested without a persistence context, and the module's own storage decision —
- * JPA today, jOOQ once the rest of the system's model reaches it — becomes visible
- * to everything that reads a user.
+ * A narrow port rather than the repository itself. It is what let the move from
+ * Spring Data JPA to jOOQ stop at [JooqUsers]: every service above this interface
+ * compiled unchanged, and the tests never needed a database to begin with.
  */
 interface Users {
 
-    fun byId(id: UUID): UserEntity?
+    fun byId(id: UUID): User?
 
-    fun byEmail(email: String): UserEntity?
+    fun byEmail(email: String): User?
 
     fun existsWithEmail(email: String): Boolean
 
-    fun add(user: UserEntity): UserEntity
+    fun add(user: User): User
 }

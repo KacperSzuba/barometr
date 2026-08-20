@@ -8,12 +8,6 @@ spring:
   threads:
     virtual:
       enabled: true
-  jpa:
-    # The schema belongs to the changelog. `validate` fails fast when an entity and
-    # a changeset drift apart instead of silently altering tables.
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
   liquibase:
     # One entry point. It names the six contexts; each pulls in whatever its own
     # schema is built on, so the order is a consequence of the dependency graph

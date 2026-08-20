@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 import pl.barometr.identity.internal.config.JwtClaims
 import pl.barometr.identity.internal.config.JwtConfig
 import pl.barometr.identity.internal.config.JwtProperties
-import pl.barometr.identity.internal.user.UserEntity
+import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
@@ -33,7 +33,7 @@ class TokenServiceTest {
 
     @Test
     fun `the access token carries the claims the resource server checks`() {
-        val user = user(roles = "USER,OPERATOR")
+        val user = user(roles = setOf("USER", "OPERATOR"))
 
         val token = service.createAccessToken(user)
         val decoded = config.jwtDecoder().decode(token.value)
@@ -87,7 +87,7 @@ class TokenServiceTest {
         }
     }
 
-    private fun user(roles: String = "USER") = UserEntity(
+    private fun user(roles: Set<String> = setOf("USER")) = User(
         id = Ids.next(),
         email = "poslanka@example.test",
         passwordHash = "irrelevant",

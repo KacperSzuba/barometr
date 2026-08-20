@@ -133,10 +133,21 @@ flush semantics, the `kotlin-jpa` plugin, Hibernate's startup cost, and a
 `ddl-auto: validate` contract between entities and migrations that has to keep
 holding. Four classes and two repositories is a small price to unify.
 
-**Decision.** Rewrite identity's persistence on jOOQ; drop `spring-boot-starter-data-jpa`,
-the `kotlin-jpa` plugin and the `spring.jpa` block. The `persistence-choice` skill
-records the conditions under which an entity model would be admissible again, and
-how it must be written if it ever is.
+**Decision, applied.** Identity's persistence is jOOQ; `spring-boot-starter-data-jpa`,
+the `kotlin-jpa` plugin and the `spring.jpa` block are gone, and the first two are out
+of the version catalog so returning to them is a decision rather than an import.
+
+The conversion cost one pass, and the reason is worth recording: the services already
+depended on the narrow `Users` and `RefreshTokens` ports written during tranche 6, not
+on `JpaRepository`. Everything above the two adapters compiled unchanged and no test
+was touched for the change of engine — only for entities becoming immutable values.
+
+One thing the rewrite improved rather than preserved: `roles` is a `Set<String>` on
+`User` and a comma-separated column in `JooqUsers`, so the encoding is now a fact
+about storage. The column itself is still the wrong shape — it cannot be constrained
+to known roles, indexed, or queried by role, and granting `OPERATOR` (B6) means
+editing a string — but that is a schema change, and it is now confined behind one
+repository.
 
 ### D-4 · Naming and file layout become an enforced convention
 
@@ -457,14 +468,16 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: tranches 1, 2, 4 and 7 are done, along with most of 6.** `./gradlew check`
-passes. Tranche 3 (JPA removal) and tranche 5 (naming) remain.
+**Status: tranches 1, 2, 3, 4 and 7 are done, along with most of 6.** `./gradlew check`
+passes — 117 tests. Tranche 5 (naming) remains, plus two items recorded but not fixed:
+`identity.users.roles` as a comma-separated column, and `ContentHash` still untested
+(C19).
 
 | # | Tranche | Contents | Findings |
 |---|---|---|---|
 | 1 ✅ | Structure | 20 projects → 9; connectors folded into `ingestion`, `platform/*` into `platform`; `package-info.java` per contract; Modulith + ArchUnit replace `barometr.module` | D-1, D20 |
 | 2 ✅ | Migrations | Liquibase formatted SQL; master changelog; seeds into contexts; one configuration for app, codegen and tests | D-2, D21, D22, D23 |
-| 3 | Persistence | identity onto jOOQ; drop `kotlin-jpa`, `starter-data-jpa`, `spring.jpa` | D-3 |
+| 3 ✅ | Persistence | identity onto jOOQ behind its ports; `kotlin-jpa`, `starter-data-jpa` and `spring.jpa` gone, catalog included | D-3 |
 | 4 ✅ | Correctness | `ConnectorDescriptor` deleted; modes from interfaces; shared `ConnectorRegistry`; sink-owned counters; grace window via the database; typed job payloads; typed cursor decoding; injected `Clock`; `DomainException` on request paths; `@PreAuthorize`; shared `RobotsGate`; shared connector exceptions; ShedLock wired | A1–A6, B6–B14, D26 |
 | 5 | Naming | one type per file; the rename table; bag files split | E27–E32 |
 | 6 ◐ | Tests | identity suite (24 tests) ✅; context smoke test ✅; `platform-jobs` on `shared-testing` ✅; `println` test replaced ✅; `shared-kernel` tests remain | C15–C19 |

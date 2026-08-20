@@ -62,7 +62,6 @@ springBootStarterSecurity = { module = "org.springframework.boot:spring-boot-sta
 springSecurityCore = { module = "org.springframework.security:spring-security-core" }
 # Boot 4 renamed this; `spring-boot-starter-oauth2-resource-server` is deprecated.
 springBootStarterResourceServer = { module = "org.springframework.boot:spring-boot-starter-security-oauth2-resource-server" }
-springBootStarterDataJpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 springBootStarterJdbc = { module = "org.springframework.boot:spring-boot-starter-jdbc" }
 springBootStarterJooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
 springBootStarterValidation = { module = "org.springframework.boot:spring-boot-starter-validation" }
@@ -128,5 +127,4 @@ springWebModule = [
 [plugins]
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinPluginSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-kotlinPluginJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 springBoot = { id = "org.springframework.boot", version.ref = "springBoot" }

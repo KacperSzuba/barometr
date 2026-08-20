@@ -10,10 +10,12 @@ description: Which persistence model to use in barometr and why — jOOQ is the 
 
 ## The rule
 
-**jOOQ is the persistence model for this system.** JPA/Hibernate exists today only in
-`identity-impl` and is being removed — see `docs/backend-review.md` (D-3).
+**jOOQ is the persistence model for this system.** JPA/Hibernate is gone — the last
+of it left `identity` in tranche 3 (see `docs/backend-review.md`, D-3), and neither
+`spring-boot-starter-data-jpa` nor the `kotlin-jpa` plugin is in the version catalog
+any more.
 
-Do not add `spring-boot-starter-data-jpa` to any module.
+Adding either back is a decision, not a convenience. The conditions are below.
 
 ## Why one model
 
@@ -26,9 +28,15 @@ Do not add `spring-boot-starter-data-jpa` to any module.
 3. **jOOQ's generated code is derived from the migrations**, so a dropped column
    breaks compilation. JPA's equivalent is `ddl-auto: validate`, which fails at
    startup instead — later, and only for what the entity model happens to cover.
-4. **Identity was small enough to convert**: four classes and two repositories. The
-   stated reason for keeping it — "the code already works" — is the reason technical
-   debt survives, so it was converted while it was cheap.
+4. **Identity was small enough to convert**: four classes and two repositories, and
+   the conversion took one pass because the services already talked to the narrow
+   `Users` and `RefreshTokens` ports rather than to `JpaRepository`. The stated reason
+   for keeping it — "the code already works" — is the reason technical debt survives.
+
+   That port is the transferable lesson: **a service depends on the four or five
+   operations it actually performs, never on a persistence framework's interface.**
+   Every service above those ports compiled unchanged, and their tests never needed a
+   database to begin with.
 
 ## When an entity model would be admissible again
 
@@ -41,9 +49,9 @@ State the case explicitly and get it agreed before writing code; all three must 
 
 "It is faster to write" is not one of them.
 
-## If JPA is ever used here
+## If JPA ever returns
 
-Rules that applied to `identity` and would apply again:
+Rules that applied to `identity` while it was there, and would apply again:
 
 5. **`ddl-auto: validate`, never `update` or `create`.** The schema belongs to the
    migration tool; `validate` turns entity/migration drift into a startup failure
@@ -81,7 +89,8 @@ Rules that applied to `identity` and would apply again:
 ## Verify
 
 ```bash
-grep -rn 'jakarta.persistence\|JpaRepository\|starter-data-jpa' --include='*.kt' --include='*.kts' modules platform shared app
+grep -rn 'jakarta.persistence\|JpaRepository\|data-jpa' --include='*.kt' --include='*.kts' modules platform shared shared-testing app gradle
 ```
 
-After tranche 3 this prints nothing.
+This prints nothing. `hibernate-validator` on the classpath is Bean Validation, not
+the ORM, and stays.

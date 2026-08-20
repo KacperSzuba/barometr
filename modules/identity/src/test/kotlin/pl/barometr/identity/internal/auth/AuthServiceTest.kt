@@ -12,7 +12,7 @@ import pl.barometr.identity.internal.config.JwtConfig
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.InMemoryRefreshTokens
 import pl.barometr.identity.internal.user.InMemoryUsers
-import pl.barometr.identity.internal.user.UserEntity
+import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
@@ -61,7 +61,7 @@ class AuthServiceTest {
 
         val stored = assertNotNull(users.byEmail("poslanka@example.test"))
         assertTrue(passwords.matches("correct-horse", stored.passwordHash))
-        assertEquals(setOf(UserEntity.DEFAULT_ROLE), stored.roleNames)
+        assertEquals(setOf(User.DEFAULT_ROLE), stored.roles)
         assertTrue(pair.accessToken.isNotBlank())
         assertTrue(pair.refreshToken.isNotBlank())
 
@@ -112,7 +112,7 @@ class AuthServiceTest {
     @Test
     fun `a disabled account cannot sign in`() {
         service.register(RegisterRequest("poslanka@example.test", "correct-horse"))
-        users.byEmail("poslanka@example.test")!!.enabled = false
+        users.disable("poslanka@example.test")
 
         assertFailsWith<InvalidCredentialsException> {
             service.login(LoginRequest("poslanka@example.test", "correct-horse"))
@@ -132,7 +132,7 @@ class AuthServiceTest {
     @Test
     fun `a disabled account cannot refresh its way back in`() {
         val pair = service.register(RegisterRequest("poslanka@example.test", "correct-horse"))
-        users.byEmail("poslanka@example.test")!!.enabled = false
+        users.disable("poslanka@example.test")
 
         assertFailsWith<InvalidRefreshTokenException> { service.refresh(pair.refreshToken) }
     }

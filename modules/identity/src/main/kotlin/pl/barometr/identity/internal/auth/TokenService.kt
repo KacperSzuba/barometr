@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters
 import org.springframework.stereotype.Service
 import pl.barometr.identity.internal.config.JwtClaims
 import pl.barometr.identity.internal.config.JwtProperties
-import pl.barometr.identity.internal.user.UserEntity
+import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import java.time.Clock
 import java.time.Instant
@@ -26,7 +26,7 @@ class TokenService(
      * Nothing sensitive belongs in these claims — a JWT payload is plain base64
      * and readable by anyone holding the token.
      */
-    fun createAccessToken(user: UserEntity): AccessToken {
+    fun createAccessToken(user: User): AccessToken {
         val issuedAt = clock.instant()
 
         val claims = JwtClaimsSet.builder()
@@ -37,7 +37,7 @@ class TokenService(
             .expiresAt(issuedAt.plus(properties.accessTtl))
             .id(Ids.next().toString())
             .claim(JwtClaims.EMAIL, user.email)
-            .claim(JwtClaims.ROLES, user.roleNames.toList())
+            .claim(JwtClaims.ROLES, user.roles.toList())
             .build()
 
         val header = JwsHeader.with(MacAlgorithm.HS256).build()

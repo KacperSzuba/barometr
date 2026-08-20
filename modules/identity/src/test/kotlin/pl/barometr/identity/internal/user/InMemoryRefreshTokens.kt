@@ -13,26 +13,41 @@ import java.util.UUID
  */
 class InMemoryRefreshTokens : RefreshTokens {
 
-    private val stored = mutableListOf<RefreshTokenEntity>()
+    private val stored = mutableListOf<RefreshToken>()
 
-    val all: List<RefreshTokenEntity> get() = stored.toList()
+    val all: List<RefreshToken> get() = stored.toList()
 
-    fun live(): List<RefreshTokenEntity> = stored.filter { it.revokedAt == null }
+    fun live(): List<RefreshToken> = stored.filter { it.revokedAt == null }
 
-    override fun byTokenHashForUpdate(hash: String): RefreshTokenEntity? =
+    override fun byTokenHashForUpdate(hash: String): RefreshToken? =
         stored.firstOrNull { it.tokenHash == hash }
 
-    override fun add(token: RefreshTokenEntity): RefreshTokenEntity {
+    override fun add(token: RefreshToken): RefreshToken {
         stored += token
         return token
     }
 
     override fun markUsed(id: UUID, at: Instant) {
-        stored.firstOrNull { it.id == id && it.usedAt == null }?.usedAt = at
+        replaceWhere({ it.id == id && it.usedAt == null }) { it.copy(usedAt = at) }
     }
 
     override fun revokeFamily(familyId: UUID, at: Instant): Int =
-        stored.filter { it.familyId == familyId && it.revokedAt == null }
-            .onEach { it.revokedAt = at }
-            .size
+        replaceWhere({ it.familyId == familyId && it.revokedAt == null }) { it.copy(revokedAt = at) }
+
+    /** Rows are values, so a change is a replacement — as it is in the database. */
+    private fun replaceWhere(
+        matches: (RefreshToken) -> Boolean,
+        change: (RefreshToken) -> RefreshToken,
+    ): Int {
+        var changed = 0
+        stored.replaceAll { token ->
+            if (matches(token)) {
+                changed++
+                change(token)
+            } else {
+                token
+            }
+        }
+        return changed
+    }
 }

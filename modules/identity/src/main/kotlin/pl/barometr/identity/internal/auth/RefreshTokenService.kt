@@ -3,7 +3,7 @@ package pl.barometr.identity.internal.auth
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.internal.config.JwtProperties
-import pl.barometr.identity.internal.user.RefreshTokenEntity
+import pl.barometr.identity.internal.user.RefreshToken
 import pl.barometr.identity.internal.user.RefreshTokens
 import pl.barometr.shared.Ids
 import java.nio.charset.StandardCharsets
@@ -40,7 +40,7 @@ class RefreshTokenService(
     ): IssuedRefreshToken {
         val raw = generateRawToken()
         val now = clock.instant()
-        val entity = RefreshTokenEntity(
+        val entity = RefreshToken(
             id = Ids.next(),
             userId = userId,
             tokenHash = sha256Hex(raw),

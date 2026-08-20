@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.api.UserId
 import pl.barometr.identity.api.UserRegistered
 import pl.barometr.identity.api.UserSessionsRevoked
-import pl.barometr.identity.internal.user.UserEntity
+import pl.barometr.identity.internal.user.User
 import pl.barometr.identity.internal.user.Users
 import pl.barometr.shared.Ids
 import java.time.Clock
@@ -29,7 +29,7 @@ class AuthService(
         if (users.existsWithEmail(email)) throw EmailAlreadyUsedException()
 
         val user = users.add(
-            UserEntity(
+            User(
                 id = Ids.next(),
                 email = email,
                 passwordHash = hashPassword(request.password),
@@ -91,7 +91,7 @@ class AuthService(
         )
     }
 
-    private fun issuePair(user: UserEntity): TokenPairResponse {
+    private fun issuePair(user: User): TokenPairResponse {
         val access = tokens.createAccessToken(user)
         val refresh = refreshTokens.issue(user.id)
         return TokenPairResponse(

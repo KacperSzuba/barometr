@@ -20,9 +20,9 @@ interface RefreshTokens {
      * serialised here, so the second sees what the first decided rather than racing
      * it. Without it both mint a successor and one of them looks like theft.
      */
-    fun byTokenHashForUpdate(hash: String): RefreshTokenEntity?
+    fun byTokenHashForUpdate(hash: String): RefreshToken?
 
-    fun add(token: RefreshTokenEntity): RefreshTokenEntity
+    fun add(token: RefreshToken): RefreshToken
 
     /** Records first use. A second use is either a request race or theft. */
     fun markUsed(id: UUID, at: Instant)

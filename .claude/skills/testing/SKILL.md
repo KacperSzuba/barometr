@@ -72,9 +72,9 @@ description: Test conventions for barometr — Testcontainers on the production 
 - **Never assert on a log line** as a substitute for asserting on behaviour.
 - **Never hand-write the schema for a test.** If the migrations do not produce it, the
   test is not testing the system.
-- **Never skip the test because the code is "just plumbing"** — `ContentHash` is
-  plumbing, still has no tests, and every deduplication path in the system depends on
-  it (review C19).
+- **Never skip the test because the code is "just plumbing"** — `ContentHash` looked
+  like plumbing and had no tests for months, while every deduplication path in the
+  system rested on its equality (review C19).
 - **Never mock what you own.** Fake the port, use the real implementation.
 
 ## Verify

@@ -84,8 +84,8 @@ Two files deliberately keep two types: `DomainException.kt` (`ErrorKind` is its
 parameter) and `ApiExceptionHandler.kt` (`ErrorResponse` is its output). The name
 covers both in each case.
 
-Still to move: `MeController` serves `/api/v1/me` and does not belong in the `auth`
-package.
+`MeController` and the `UserResponse` it returns moved to `internal.profile`: the
+endpoint is `/api/v1/me`, which is who the caller is rather than how they signed in.
 
 ## Never
 

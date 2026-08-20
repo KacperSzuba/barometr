@@ -468,10 +468,14 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: tranches 1, 2, 3, 4 and 7 are done, along with most of 6.** `./gradlew check`
-passes — 117 tests. Tranche 5 (naming) remains, plus two items recorded but not fixed:
-`identity.users.roles` as a comma-separated column, and `ContentHash` still untested
-(C19).
+**Status: every tranche is done.** `./gradlew check` passes — 128 tests across nine
+Gradle projects, from twenty projects and 11 test files at the start.
+
+One finding is recorded and deliberately not fixed: `identity.users.roles` is still a
+comma-separated column. It cannot be constrained to known roles, indexed, or queried
+by role, and granting `OPERATOR` (B6) means editing a string. It is a schema change
+rather than a code change, it is now confined behind `JooqUsers`, and it wants a
+decision about how roles are administered before a table is designed for them.
 
 | # | Tranche | Contents | Findings |
 |---|---|---|---|
@@ -479,8 +483,8 @@ passes — 117 tests. Tranche 5 (naming) remains, plus two items recorded but no
 | 2 ✅ | Migrations | Liquibase formatted SQL; master changelog; seeds into contexts; one configuration for app, codegen and tests | D-2, D21, D22, D23 |
 | 3 ✅ | Persistence | identity onto jOOQ behind its ports; `kotlin-jpa`, `starter-data-jpa` and `spring.jpa` gone, catalog included | D-3 |
 | 4 ✅ | Correctness | `ConnectorDescriptor` deleted; modes from interfaces; shared `ConnectorRegistry`; sink-owned counters; grace window via the database; typed job payloads; typed cursor decoding; injected `Clock`; `DomainException` on request paths; `@PreAuthorize`; shared `RobotsGate`; shared connector exceptions; ShedLock wired | A1–A6, B6–B14, D26 |
-| 5 | Naming | one type per file; the rename table; bag files split | E27–E32 |
-| 6 ◐ | Tests | identity suite (24 tests) ✅; context smoke test ✅; `platform-jobs` on `shared-testing` ✅; `println` test replaced ✅; `shared-kernel` tests remain | C15–C19 |
+| 5 ✅ | Naming | 31 bucket files split; the rename table applied; `JobPriority` replaces a loose `Int` | E27–E32 |
+| 6 ✅ | Tests | identity suite; context smoke test; one shared harness; the `println` test replaced; `ContentHash` and `Ids` covered | C15–C19 |
 | 7 ✅ | Hygiene | `.gitignore` for `app/.data`; `README.md` rewritten; first commit made | D24, D25 |
 
 Tranche 4 depends on 1–3 only for where the files live, not for what it changes; if

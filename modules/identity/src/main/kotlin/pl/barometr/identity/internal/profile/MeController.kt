@@ -1,4 +1,4 @@
-package pl.barometr.identity.internal.auth
+package pl.barometr.identity.internal.profile
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import pl.barometr.identity.api.UserId
 import pl.barometr.identity.api.UserLookup
+import pl.barometr.identity.internal.auth.InvalidCredentialsException
 
 /**
  * Who the caller is, as the rest of the system already describes a user.

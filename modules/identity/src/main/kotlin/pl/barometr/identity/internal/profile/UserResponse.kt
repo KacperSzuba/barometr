@@ -1,4 +1,4 @@
-package pl.barometr.identity.internal.auth
+package pl.barometr.identity.internal.profile
 
 import java.util.UUID
 

@@ -28,13 +28,18 @@ own migrations. Docker must be running.
 ## How it is laid out
 
 ```
-app          assembly: wiring, security chain, error mapping. No domain logic.
-shared       value types. No Spring, no persistence, no HTTP.
-platform     technical capability with no domain meaning: http · jobs · storage
-modules      one bounded context each: identity · sources · ingestion · corpus ·
-             legislative, plus the connectors that read a single source
-build-logic   convention plugins, as an included build
+app             assembly: wiring, security chain, error mapping. No domain logic.
+shared          value types. No Spring, no persistence, no HTTP.
+shared-testing  test harness: a migrated Postgres and a movable clock.
+platform        technical capability with no domain meaning: http · jobs · storage
+modules/        one bounded context each — identity, sources, ingestion (with the
+                connectors that read each source), corpus, legislative
+build-logic/    convention plugins, as an included build
 ```
+
+Nine Gradle projects, one per thing that could become a service. It was twenty, split
+`-api`/`-impl` and by technical layer, which meant extracting any one context would
+have meant taking nine projects with it.
 
 Each context publishes a contract in `pl.barometr.<context>.api` and keeps
 everything else — including all persistence — in `pl.barometr.<context>.internal`.

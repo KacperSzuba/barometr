@@ -21,33 +21,14 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/build-logic" />
-            <option value="$PROJECT_DIR$/modules" />
-            <option value="$PROJECT_DIR$/modules/connectors" />
-            <option value="$PROJECT_DIR$/modules/connectors/connector-rcl" />
-            <option value="$PROJECT_DIR$/modules/connectors/connector-sejm" />
             <option value="$PROJECT_DIR$/modules/corpus" />
-            <option value="$PROJECT_DIR$/modules/corpus/corpus-api" />
-            <option value="$PROJECT_DIR$/modules/corpus/corpus-impl" />
             <option value="$PROJECT_DIR$/modules/identity" />
-            <option value="$PROJECT_DIR$/modules/identity/identity-api" />
-            <option value="$PROJECT_DIR$/modules/identity/identity-impl" />
             <option value="$PROJECT_DIR$/modules/ingestion" />
-            <option value="$PROJECT_DIR$/modules/ingestion/ingestion-api" />
-            <option value="$PROJECT_DIR$/modules/ingestion/ingestion-impl" />
             <option value="$PROJECT_DIR$/modules/legislative" />
-            <option value="$PROJECT_DIR$/modules/legislative/legislative-api" />
-            <option value="$PROJECT_DIR$/modules/legislative/legislative-impl" />
             <option value="$PROJECT_DIR$/modules/sources" />
-            <option value="$PROJECT_DIR$/modules/sources/sources-api" />
-            <option value="$PROJECT_DIR$/modules/sources/sources-impl" />
             <option value="$PROJECT_DIR$/platform" />
-            <option value="$PROJECT_DIR$/platform/platform-http" />
-            <option value="$PROJECT_DIR$/platform/platform-jobs" />
-            <option value="$PROJECT_DIR$/platform/platform-persistence" />
-            <option value="$PROJECT_DIR$/platform/platform-storage" />
             <option value="$PROJECT_DIR$/shared" />
-            <option value="$PROJECT_DIR$/shared/shared-kernel" />
-            <option value="$PROJECT_DIR$/shared/shared-testing" />
+            <option value="$PROJECT_DIR$/shared-testing" />
           </set>
         </option>
         <option name="myGradleHome" value="" />

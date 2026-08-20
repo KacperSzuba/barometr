@@ -41,8 +41,8 @@ constraint, or seed data.
    idempotent guard, a real failure when the assumption is load-bearing.
 7. **Every changeset opens with a comment saying what the object is for and what
    breaks without it.** The existing migrations are the standard to keep:
-   [V2100__job_queue.sql](platform/platform-jobs/src/main/resources/db/migration/platform/V2100__job_queue.sql)
-   and [V4001__raw_document.sql](modules/ingestion/ingestion-impl/src/main/resources/db/migration/ingestion/V4001__raw_document.sql).
+   [V2100__job_queue.sql](platform/src/main/resources/db/migration/platform/V2100__job_queue.sql)
+   and [V4001__raw_document.sql](modules/ingestion/src/main/resources/db/migration/ingestion/V4001__raw_document.sql).
 8. **After any schema change, regenerate jOOQ** — the generated classes come from a
    container the migrations have just been applied to, so they cannot drift, but only
    if the task runs. See `jooq-persistence`.

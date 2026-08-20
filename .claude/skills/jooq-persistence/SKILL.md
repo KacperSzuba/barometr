@@ -34,7 +34,7 @@ description: Writing jOOQ repositories in barometr — DSLContext injection, map
    override per method where a write needs it.
 7. **Map records to domain types in one private function**, so the column-to-field
    mapping exists in a single place:
-   [JooqSourceRegistry.toDefinition](modules/sources/sources-impl/src/main/kotlin/pl/barometr/sources/internal/JooqSourceRegistry.kt)
+   [JooqSourceRegistry.toDefinition](modules/sources/src/main/kotlin/pl/barometr/sources/internal/JooqSourceRegistry.kt)
 8. **Return domain types, not records.** A `Record` leaving a repository takes the
    schema with it.
 9. **Idempotent insert is `onConflictDoNothing` plus a nullable return**, letting the
@@ -50,7 +50,7 @@ description: Writing jOOQ repositories in barometr — DSLContext injection, map
 11. **`returningResult` instead of a second query** when you need what you just wrote.
 12. **Claim queries use `FOR UPDATE … SKIP LOCKED` inside the update's subquery**, so
     N workers poll one table without contending and never see the same row twice:
-    [JooqJobQueue.claim](platform/platform-jobs/src/main/kotlin/pl/barometr/platform/internal/JooqJobQueue.kt)
+    [JooqJobQueue.claim](platform/src/main/kotlin/pl/barometr/platform/internal/JooqJobQueue.kt)
 13. **Timestamps come from an injected `Clock`**, converted once at the boundary
     (`OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)`), never
     `OffsetDateTime.now()` scattered through the statements (review B11).

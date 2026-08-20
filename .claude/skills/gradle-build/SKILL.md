@@ -23,9 +23,11 @@ description: Gradle build conventions for barometr — the version catalog as th
    (toolchain, compiler args, test logging),
    [barometr.spring-platform](build-logic/src/main/kotlin/barometr.spring-platform.gradle.kts)
    (BOMs, kotlin-spring, test deps),
-   [barometr.module](build-logic/src/main/kotlin/barometr.module.gradle.kts),
-   [barometr.jooq-codegen](build-logic/src/main/kotlin/barometr.jooq-codegen.gradle.kts).
-   A third module needing the same three lines means a fifth plugin, not a third copy.
+   [barometr.module](build-logic/src/main/kotlin/barometr.module.gradle.kts) (every
+   library module) and
+   [barometr.jooq-codegen](build-logic/src/main/kotlin/barometr.jooq-codegen.gradle.kts)
+   (the modules that own a schema). A third module needing the same three lines means
+   a fifth plugin, not a third copy.
 5. **`build-logic` is an included build, not `buildSrc`** — a change to a convention
    plugin then rebuilds only what depends on it, instead of invalidating everything.
 6. **`api` versus `implementation` is decided by signatures.** A type that appears in
@@ -37,15 +39,15 @@ description: Gradle build conventions for barometr — the version catalog as th
    `kotlin { jvmToolchain(21) }` there, Kotlin and javac silently target different
    versions.
 9. **Tasks must be configuration-cache safe.** Capture plain values at configuration
-   time; never touch `project` inside a task action. The pattern is in
-   `barometr.module`, where the module path is captured into a local before the task
-   block. Shared expensive resources are `BuildService`s —
+   time; never touch `project` inside a task action. Shared expensive resources are
+   `BuildService`s —
    [MigratedPostgresService](build-logic/src/main/kotlin/pl/barometr/build/MigratedPostgresService.kt)
    starts one Postgres per build for all codegen.
 10. **Codegen is generated from migrated migrations, never hand-written or checked
     in.** After changing the schema, regenerate — see `database-schema`.
-11. **Every module must contain code.** Five modules with no Kotlin exist today and
-    two of them still run codegen every build (review D20).
+11. **A module earns its existence.** It owns a schema, or code, or both — and a
+    context is one module, not an `-api`/`-impl` pair. Twenty projects became nine
+    when that rule was applied (review D20).
 12. **JVM memory settings in `gradle.properties` are load-bearing** — the defaults
     fail as `Could not read class .../Row12.class` in an unrelated module rather than
     as an `OutOfMemoryError`. Do not lower them without reproducing that.

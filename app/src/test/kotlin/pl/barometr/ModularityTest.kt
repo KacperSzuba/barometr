@@ -1,51 +1,44 @@
 package pl.barometr
 
+import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import org.junit.jupiter.api.Test
-import kotlin.test.assertTrue
 import org.springframework.modulith.core.ApplicationModules
+import kotlin.test.assertTrue
 
 /**
  * The architecture's own test suite.
  *
- * Gradle already refuses to compile a module that depends on another module's
- * implementation, which is the primary guard. These are the two things Gradle
- * cannot see: cycles between modules, and `app` — which legitimately sees every
- * implementation — reaching into their internals anyway.
+ * This is now the *only* thing enforcing module boundaries. The build used to fail
+ * when a module depended on another module's `-impl` project; consolidating each
+ * context into one module removed those projects, and with them the compile-time
+ * guard. What replaces it is here, and it runs in `check`.
+ *
+ * The trade was deliberate — see docs/backend-review.md (D-1) — but it does mean
+ * these tests are load-bearing rather than reassuring. A context added without a
+ * line in [CONTEXTS] is a context nobody is checking.
  */
 class ModularityTest {
 
     private val modules = ApplicationModules.of(BarometrApplication::class.java)
+
+    private val classes: JavaClasses = ClassFileImporter()
+        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+        .importPackages("pl.barometr")
 
     @Test
     fun `module boundaries and dependency directions hold`() {
         modules.verify()
     }
 
-    @Test
-    fun `nothing outside a module reaches into its internals`() {
-        val classes = ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("pl.barometr")
-
-        noClasses()
-            .that().resideOutsideOfPackage("pl.barometr.identity..")
-            .should().dependOnClassesThat().resideInAPackage("pl.barometr.identity.internal..")
-            .because(
-                "identity publishes its contract in `identity-api`; reaching past it couples " +
-                    "callers to storage and service internals that are free to change",
-            )
-            .check(classes)
-    }
-
     /**
      * That each context is recognised as a module at all.
      *
-     * `verify()` above checks the relationships between whatever modules Modulith
-     * found; it says nothing if a context was not found. A package that stops being
-     * a module — renamed, moved under another — would silently drop out of every
+     * `verify()` checks the relationships between whatever modules Modulith found;
+     * it says nothing if a context was not found. A package that stops being a
+     * module — renamed, or moved under another — would silently drop out of every
      * other check in this class.
      *
      * Replaces a test that printed the structure and asserted nothing. The structure
@@ -53,12 +46,55 @@ class ModularityTest {
      * better place for something nobody was reading in a build log.
      */
     @Test
-    fun `every domain context is an application module`() {
-        listOf("identity", "sources", "ingestion", "corpus", "legislative").forEach { context ->
+    fun `every context is an application module`() {
+        CONTEXTS.forEach { context ->
             assertTrue(
                 modules.getModuleByName(context).isPresent,
                 "no application module named '$context'",
             )
         }
+    }
+
+    /**
+     * The rule the whole layout rests on: a context publishes a contract, and
+     * everything else it owns is unreachable from outside.
+     *
+     * Checked for every context rather than for the one that happened to have a
+     * rule written for it. Since each context is now a single Gradle module, the
+     * compiler will happily let one reach into another's `internal` package; this
+     * is what says no.
+     */
+    @Test
+    fun `nothing outside a context reaches into its internals`() {
+        CONTEXTS.forEach { context ->
+            noClasses()
+                .that().resideOutsideOfPackage("pl.barometr.$context..")
+                .should().dependOnClassesThat().resideInAPackage("pl.barometr.$context.internal..")
+                .because(
+                    "$context publishes its contract in `pl.barometr.$context.api`; reaching " +
+                        "past it couples callers to storage and service internals that are " +
+                        "free to change",
+                )
+                .check(classes)
+        }
+    }
+
+    private companion object {
+        /**
+         * Every package under `pl.barometr` that owns internals of its own: the five
+         * bounded contexts, and the three technical capabilities that make up
+         * `platform`. `shared`, `connectors` and `testing` are absent because they
+         * have no internals to hide.
+         */
+        val CONTEXTS = listOf(
+            "identity",
+            "sources",
+            "ingestion",
+            "corpus",
+            "legislative",
+            "platform",
+            "http",
+            "storage",
+        )
     }
 }

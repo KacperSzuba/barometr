@@ -53,8 +53,9 @@ module. The `-api`/`-impl` pair buys compile-time boundary enforcement, which is
 real; it costs a doubled project count, a second file to touch for every contract
 change, and a build graph where five nodes are empty.
 
-**Decision.** One Gradle module per bounded context — a module is what could become
-a service, so everything that context needs to run travels with it:
+**Decision, applied.** One Gradle module per bounded context — a module is what could
+become a service, so everything that context needs to run travels with it. Twenty
+projects became nine:
 
 ```
 :app                     assembly only
@@ -71,6 +72,17 @@ Inside each module, `pl.barometr.<context>.api` is the published contract and
 `barometr.module` to Spring Modulith `@NamedInterface` plus ArchUnit rules that run
 in `check` — honestly weaker than a compile error, and the trade accepted knowingly:
 the boundary that matters is now the one a service extraction would follow.
+
+**What the move exposed.** `ApplicationModules.verify()` began failing the moment the
+Gradle split was gone, with more than a hundred violations — every cross-context use
+of a contract. Modulith treats a sub-package as internal unless a named interface
+says otherwise, and no `api` package had ever been declared as one. The old layout
+had been standing in for a declaration nobody made: Gradle refused the wrong
+dependency, so the fact that Modulith had no idea what was public went unnoticed. The
+fix is a three-line `package-info.java` per context — Java, because Kotlin has no
+package annotations — and `ModularityTest` now applies the internals rule to all
+eight packages that have internals rather than to the one that happened to have a
+rule written for it.
 
 ### D-2 · Flyway → Liquibase (formatted SQL, with contexts)
 
@@ -432,19 +444,19 @@ constants, in a codebase that wraps `ConnectorId`, `SourceId`, `JobType` and
 
 Each tranche leaves the build green and is reviewable on its own.
 
-**Status: tranche 4 is done, and the parts of tranche 6 that did not depend on the
-structural work.** `./gradlew check` passes. Tranches 1–3 (module consolidation,
-Liquibase, JPA removal) and 5 and 7 remain.
+**Status: tranches 1 and 4 are done, along with the parts of 6 and 7 that did not
+depend on the rest.** `./gradlew check` passes. Tranches 2 (Liquibase), 3 (JPA
+removal) and 5 (naming) remain.
 
 | # | Tranche | Contents | Findings |
 |---|---|---|---|
-| 1 | Structure | 20 projects → 7; delete the empty modules; `api`/`internal` packages; Modulith + ArchUnit replace `barometr.module` | D-1, D20 |
+| 1 ✅ | Structure | 20 projects → 9; connectors folded into `ingestion`, `platform/*` into `platform`; `package-info.java` per contract; Modulith + ArchUnit replace `barometr.module` | D-1, D20 |
 | 2 | Migrations | Liquibase formatted SQL; master changelog; seeds into contexts; one configuration for app, codegen and tests | D-2, D21, D22, D23 |
 | 3 | Persistence | identity onto jOOQ; drop `kotlin-jpa`, `starter-data-jpa`, `spring.jpa` | D-3 |
 | 4 ✅ | Correctness | `ConnectorDescriptor` deleted; modes from interfaces; shared `ConnectorRegistry`; sink-owned counters; grace window via the database; typed job payloads; typed cursor decoding; injected `Clock`; `DomainException` on request paths; `@PreAuthorize`; shared `RobotsGate`; shared connector exceptions; ShedLock wired | A1–A6, B6–B14, D26 |
 | 5 | Naming | one type per file; the rename table; bag files split | E27–E32 |
 | 6 ◐ | Tests | identity suite (24 tests) ✅; context smoke test ✅; `platform-jobs` on `shared-testing` ✅; `println` test replaced ✅; `shared-kernel` tests remain | C15–C19 |
-| 7 | Hygiene | `.gitignore` `app/.data`; rewrite `README.md`; first commit | D24, D25 |
+| 7 ✅ | Hygiene | `.gitignore` for `app/.data`; `README.md` rewritten; first commit made | D24, D25 |
 
 Tranche 4 depends on 1–3 only for where the files live, not for what it changes; if
 the structural work is deferred, 4 can run first against the current layout.

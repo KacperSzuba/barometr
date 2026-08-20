@@ -20,14 +20,14 @@ Every method belongs to exactly one layer and touches only that layer's vocabula
 
 1. **Decide the layer before writing the method.** A method that opens a run, calls a
    connector, saves a cursor and reports health is orchestration —
-   [ConnectorRunner.kt](modules/ingestion/ingestion-impl/src/main/kotlin/pl/barometr/ingestion/internal/ConnectorRunner.kt)
+   [ConnectorRunner.kt](modules/ingestion/src/main/kotlin/pl/barometr/ingestion/internal/ConnectorRunner.kt)
    reads as the process because every step is somebody else's job.
 2. **A client returns typed values.** Callers never see `JsonNode`, a status code or
    `path("number").asString()`.
-   [SejmApiClient.kt](modules/connectors/connector-sejm/src/main/kotlin/pl/barometr/connectors/sejm/SejmApiClient.kt)
+   [SejmApiClient.kt](modules/ingestion/src/main/kotlin/pl/barometr/connectors/sejm/SejmApiClient.kt)
    keeps all of that inside one file so the connector reads as a description of a walk.
 3. **A repository holds SQL and nothing else.**
-   [RawDocumentRepository.kt](modules/ingestion/ingestion-impl/src/main/kotlin/pl/barometr/ingestion/internal/RawDocumentRepository.kt)
+   [RawDocumentRepository.kt](modules/ingestion/src/main/kotlin/pl/barometr/ingestion/internal/RawDocumentRepository.kt)
    was split out precisely so the rest of ingestion is testable without a database.
 4. **Do not add a layer that would only be ceremony.** A context whose repository
    already implements its published port needs no service on top —
@@ -51,7 +51,7 @@ Every method belongs to exactly one layer and touches only that layer's vocabula
 ## Types
 
 9. **Make illegal states unrepresentable.** The model to copy is
-   [RobotsPolicy](platform/platform-http/src/main/kotlin/pl/barometr/http/SourceHttpClient.kt):
+   [RobotsPolicy](platform/src/main/kotlin/pl/barometr/http/SourceHttpClient.kt):
    a sealed type where the permissive case cannot be constructed without a written
    legal basis of real length. A boolean plus a comment would have allowed the
    dangerous state to exist quietly.
@@ -69,8 +69,8 @@ Every method belongs to exactly one layer and touches only that layer's vocabula
 
 13. **A comment explains why, and what breaks otherwise.** Not what the line does.
     The house style here is good and worth keeping: read
-    [V2100__job_queue.sql](platform/platform-jobs/src/main/resources/db/migration/platform/V2100__job_queue.sql)
-    or [JobWorker.kt](platform/platform-jobs/src/main/kotlin/pl/barometr/platform/internal/JobWorker.kt).
+    [V2100__job_queue.sql](platform/src/main/resources/db/migration/platform/V2100__job_queue.sql)
+    or [JobWorker.kt](platform/src/main/kotlin/pl/barometr/platform/internal/JobWorker.kt).
 14. **A comment must stay true.** In a codebase that argues its decisions in prose, a
     stale comment is a defect, not untidiness — V4001 still claims `blob_key` equals
     the hex hash when it has not for some time (A5). Changing code means re-reading

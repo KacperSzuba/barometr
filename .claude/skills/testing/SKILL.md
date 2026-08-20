@@ -34,13 +34,13 @@ description: Test conventions for barometr — Testcontainers on the production 
    migrated by the project's own migrations. H2 accepts `SKIP LOCKED` and ignores it,
    which is precisely the behaviour the queue test exists to prove.
 6. **Use the shared database helper**, never a private container:
-   [PostgresTestDatabase](shared/shared-testing/src/main/kotlin/pl/barometr/testing/PostgresTestDatabase.kt),
+   [PostgresTestDatabase](shared-testing/src/main/kotlin/pl/barometr/testing/PostgresTestDatabase.kt),
    via `testImplementation(project(":shared:shared-testing"))`. A module that starts
    its own container makes the build wait twice and leaves two setups to keep in step
    (review C18).
 7. **Prefer plain construction to `@SpringBootTest`.** Compose the object graph the
    way Spring composes it and test it with no context —
-   [RawDocumentArchiverTest](modules/ingestion/ingestion-impl/src/test/kotlin/pl/barometr/ingestion/internal/RawDocumentArchiverTest.kt)
+   [RawDocumentArchiverTest](modules/ingestion/src/test/kotlin/pl/barometr/ingestion/internal/RawDocumentArchiverTest.kt)
    builds repository, archiver and sink directly. Context tests are for wiring, and
    wiring is one test, not every test.
 8. **Hand-written fakes, not a mocking framework.** `RecordingSink`,
@@ -50,7 +50,7 @@ description: Test conventions for barometr — Testcontainers on the production 
 9. **Connector tests run against recorded responses** from the live source, so a
    *source* changing shape fails the build. A stub written by hand only ever confirms
    what the author already believed —
-   [SejmConnectorContractTest](modules/connectors/connector-sejm/src/test/kotlin/pl/barometr/connectors/sejm/SejmConnectorContractTest.kt).
+   [SejmConnectorContractTest](modules/ingestion/src/test/kotlin/pl/barometr/connectors/sejm/SejmConnectorContractTest.kt).
 10. **Time is controlled by an injected `Clock`**, not by sleeping and not by
     rewriting rows: `TestClock` in `shared-testing` moves on demand. Backoff, token
     expiry and the refresh grace window are all tested by advancing it (review B11).

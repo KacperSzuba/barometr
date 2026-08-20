@@ -70,15 +70,15 @@ delivers at-least-once semantics with nothing extra to operate.
 ## Patterns to copy
 
 - Queue semantics and the claim query:
-  [JooqJobQueue](platform/platform-jobs/src/main/kotlin/pl/barometr/platform/internal/JooqJobQueue.kt)
+  [JooqJobQueue](platform/src/main/kotlin/pl/barometr/platform/internal/JooqJobQueue.kt)
 - Worker, dispatch and the reaper:
-  [JobWorker](platform/platform-jobs/src/main/kotlin/pl/barometr/platform/internal/JobWorker.kt)
+  [JobWorker](platform/src/main/kotlin/pl/barometr/platform/internal/JobWorker.kt)
 - Due-based dispatch rather than self-chaining:
-  [IngestionScheduler](modules/ingestion/ingestion-impl/src/main/kotlin/pl/barometr/ingestion/internal/IngestionScheduler.kt)
+  [IngestionScheduler](modules/ingestion/src/main/kotlin/pl/barometr/ingestion/internal/IngestionScheduler.kt)
 - One owner for a job's type, dedup key and payload:
-  [IngestionRunQueue](modules/ingestion/ingestion-impl/src/main/kotlin/pl/barometr/ingestion/internal/IngestionRunQueue.kt)
+  [IngestionRunQueue](modules/ingestion/src/main/kotlin/pl/barometr/ingestion/internal/IngestionRunQueue.kt)
 - Enabling the lock:
-  [BackgroundWorkConfiguration](platform/platform-jobs/src/main/kotlin/pl/barometr/platform/BackgroundWorkConfiguration.kt)
+  [BackgroundWorkConfiguration](platform/src/main/kotlin/pl/barometr/platform/BackgroundWorkConfiguration.kt)
 
 ## Never
 

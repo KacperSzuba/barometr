@@ -58,7 +58,7 @@ outcomes connectors actually need — fetched, unchanged, refused, failed.
    catalog.
 3. **Never hand-roll retry, backoff or jitter.** `RetryTemplate` has all three, and a
    `Retry-After` header still has to be honoured explicitly — see
-   [RestClientSourceHttpClient.kt](platform/platform-http/src/main/kotlin/pl/barometr/http/internal/RestClientSourceHttpClient.kt).
+   [RestClientSourceHttpClient.kt](platform/src/main/kotlin/pl/barometr/http/internal/RestClientSourceHttpClient.kt).
 4. **Never hand-roll a parser for a specified format** — robots.txt, HTML, MIME,
    dates, URIs. Someone else has already handled the malformed cases you have not
    thought of yet.

@@ -63,7 +63,7 @@ description: HTTP API and security rules for barometr — controllers and DTOs, 
     input is already 256 bits of entropy and needs no work factor. Passwords use BCrypt.
 15. **Validate `aud` as well as `exp`, `nbf` and `iss`.** The default validator does
     not check audience, which is the check most often missed —
-    [JwtConfig](modules/identity/identity-impl/src/main/kotlin/pl/barometr/identity/internal/config/JwtConfig.kt)
+    [JwtConfig](modules/identity/src/main/kotlin/pl/barometr/identity/internal/config/JwtConfig.kt)
     adds it explicitly.
 16. **Nothing sensitive goes in a JWT claim.** The payload is base64, readable by
     anyone holding the token.

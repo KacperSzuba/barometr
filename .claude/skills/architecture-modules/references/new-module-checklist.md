@@ -13,8 +13,8 @@ If any answer is no, it is a package inside an existing context.
 
 ## 2 · Register it
 
-`settings.gradle.kts` — add under the right heading, with the one-line comment saying
-what it is for. Keep the existing section comments accurate.
+`settings.gradle.kts` — add the name to the `listOf(...)` of contexts, which maps it
+to `modules/<name>` and gives it the short project path `:<name>`.
 
 `build.gradle.kts` for the module:
 
@@ -26,12 +26,12 @@ plugins {
 jooqCodegen { schema = "<context>" }
 
 dependencies {
-    implementation(project(":shared"))
+    api(project(":shared"))
     implementation(project(":platform"))
-    // Other contexts: their published contract only.
+    // Other contexts, when this one's contract names their types.
     implementation(libs.springModulithStarterCore)
 
-    testImplementation(project(":shared:shared-testing"))
+    testImplementation(project(":shared-testing"))
 }
 ```
 
@@ -43,12 +43,16 @@ pl.barometr.<context>.internal   everything else, including all persistence
 pl.barometr.<context>.internal.jooq   generated, never edited
 ```
 
-Mark the published surface for Modulith:
+Mark the published surface for Modulith — `src/main/java/pl/barometr/<context>/api/package-info.java`:
 
-```kotlin
+```java
 @org.springframework.modulith.NamedInterface("api")
-package pl.barometr.<context>.api
+package pl.barometr.<context>.api;
 ```
+
+Java, because Kotlin has no package-level annotations. Without it Modulith treats the
+whole sub-package as internal, and every consumer of the contract is reported as a
+boundary violation while real violations go unnoticed.
 
 ## 4 · Schema
 
@@ -60,15 +64,11 @@ package pl.barometr.<context>.api
 
 ## 5 · Boundaries
 
-Add to [ModularityTest](app/src/test/kotlin/pl/barometr/ModularityTest.kt):
+Add the context's name to `CONTEXTS` in
+[ModularityTest](app/src/test/kotlin/pl/barometr/ModularityTest.kt). That one line
+puts it into both the "is it a module at all" check and the internals rule.
 
-```kotlin
-noClasses()
-    .that().resideOutsideOfPackage("pl.barometr.<context>..")
-    .should().dependOnClassesThat().resideInAPackage("pl.barometr.<context>.internal..")
-    .because("<context> publishes its contract in .api; reaching past it couples callers to internals")
-    .check(classes)
-```
+Nothing else enforces this: the build no longer has `-impl` projects to refuse.
 
 ## 6 · Wire it
 
@@ -89,9 +89,9 @@ intended — no more.
 ## Checklist
 
 - [ ] It owns data and decisions, and is not a layer
-- [ ] `settings.gradle.kts` entry with its comment
-- [ ] `api` / `internal` packages, `@NamedInterface` on `api`
+- [ ] Listed in `settings.gradle.kts`
+- [ ] `api` / `internal` packages, `package-info.java` naming the interface
 - [ ] Its own schema and changelog, no cross-schema FK
-- [ ] ArchUnit rule added
+- [ ] Added to `CONTEXTS` in `ModularityTest`
 - [ ] Wired into `:app`, and only there
 - [ ] Contains actual code — never an empty placeholder module

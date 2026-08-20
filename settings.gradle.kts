@@ -24,36 +24,39 @@ plugins {
 
 rootProject.name = "barometr"
 
-// ——— The single deployable ————————————————————————————————————————————————
+// ——— One module per bounded context ————————————————————————————————————————
+//
+// A module here is a service candidate: everything one context needs in order to
+// run travels with it, so lifting it out later is a move rather than an
+// untangling. That is the rule the earlier layout broke — twenty projects, split
+// `-api`/`-impl` and by technical layer, so extracting ingestion would have meant
+// taking nine of them and five of those were shared with everyone else.
+//
+// Inside a module, `pl.barometr.<context>.api` is the published contract and
+// `pl.barometr.<context>.internal` is everything else, including all persistence.
+// The boundary is enforced by Spring Modulith and ArchUnit in `ModularityTest`
+// rather than by the build — weaker than a compile error, and the trade is
+// deliberate: the boundary that matters now is the one a service extraction would
+// actually follow.
+
 include(":app")
 
-// ——— Shared code ——————————————————————————————————————————————————————————
-// Value types only. No logic, no Spring — anything richer belongs to a module.
-include(":shared:shared-kernel")
-include(":shared:shared-testing")
+// Value types. No Spring, no persistence, no HTTP.
+include(":shared")
 
-// ——— Platform ——————————————————————————————————————————————————————————————
-// Technical capability with no domain meaning. Modules depend on these; these
-// depend on no module.
-include(":platform:platform-persistence")
-include(":platform:platform-jobs")
-include(":platform:platform-storage")
-include(":platform:platform-http")
+// Test harness: one migrated Postgres and a movable clock, on the test classpath
+// of whatever needs them.
+include(":shared-testing")
 
-// ——— Domain modules ———————————————————————————————————————————————————————
-// Each module is a pair: `-api` publishes the contract, `-impl` keeps everything
-// else private. An `-impl` may depend on any `-api` and never on another `-impl`;
-// `barometr.module` turns a violation into a build failure.
-include(":modules:identity:identity-api")
-include(":modules:identity:identity-impl")
-include(":modules:sources:sources-api")
-include(":modules:sources:sources-impl")
-include(":modules:ingestion:ingestion-api")
-// Connectors are leaves: each depends on the ingestion SPI and on nothing else.
-include(":modules:connectors:connector-sejm")
-include(":modules:connectors:connector-rcl")
-include(":modules:ingestion:ingestion-impl")
-include(":modules:corpus:corpus-api")
-include(":modules:corpus:corpus-impl")
-include(":modules:legislative:legislative-api")
-include(":modules:legislative:legislative-impl")
+// Technical capability with no domain meaning: HTTP to the outside world, the job
+// queue, object storage, and the extensions every schema rests on. Depends on no
+// context; every context may depend on it.
+include(":platform")
+
+// ——— Bounded contexts —————————————————————————————————————————————————————
+// Directories stay grouped under `modules/`; the project paths are short because
+// a module is a top-level thing.
+listOf("identity", "sources", "ingestion", "corpus", "legislative").forEach { context ->
+    include(":$context")
+    project(":$context").projectDir = file("modules/$context")
+}

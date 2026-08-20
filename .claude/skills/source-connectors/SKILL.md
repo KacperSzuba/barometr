@@ -22,7 +22,7 @@ RawDocumentSink     hashing, storage, dedup, the event             shared ingest
 
 The split is what makes a connector readable as a description of a walk rather than as
 a parser — see
-[SejmConnector](modules/connectors/connector-sejm/src/main/kotlin/pl/barometr/connectors/sejm/SejmConnector.kt).
+[SejmConnector](modules/ingestion/src/main/kotlin/pl/barometr/connectors/sejm/SejmConnector.kt).
 
 ## Rules
 

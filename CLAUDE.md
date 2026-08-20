@@ -14,8 +14,8 @@ that covers what you are touching before writing code**, and run
 done.
 
 The reasoning behind them, including every known defect and the refactoring roadmap,
-is in [docs/backend-review.md](docs/backend-review.md). Work in progress: consolidating
-Gradle modules, moving Flyway → Liquibase, removing JPA from `identity`.
+is in [docs/backend-review.md](docs/backend-review.md). Work in progress: moving
+Flyway → Liquibase, and removing JPA from `identity`.
 
 ## Non-negotiables
 
@@ -26,7 +26,9 @@ Gradle modules, moving Flyway → Liquibase, removing JPA from `identity`.
    cost correctness once.
 3. **A context's `internal` package is invisible to other contexts.** Cross-boundary
    traffic is a value type over a published port or an application event — never an
-   entity, a record or a row.
+   entity, a record or a row. Nothing but `ModularityTest` enforces this, so it is
+   load-bearing: a new context needs a line in its `CONTEXTS` list and a
+   `package-info.java` naming its `api`.
 4. **jOOQ is the persistence model.** No new `@Entity`, no `spring-boot-starter-data-jpa`.
 5. **The database holds the invariants.** `CHECK` constraints, unique indexes for
    idempotency, no foreign keys across schemas.

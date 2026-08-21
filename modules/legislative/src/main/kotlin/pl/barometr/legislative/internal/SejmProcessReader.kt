@@ -39,6 +39,7 @@ class SejmProcessReader(private val json: ObjectMapper) {
             isDraft = body.path("documentTypeEnum").asString() in DRAFT_TYPES,
             eli = body.path("ELI").asString()?.let(Eli::parseOrNull),
             rclNumber = body.path("rclNum").asString()?.takeIf { it.isNotBlank() },
+            startedOn = body.dateOf("processStartDate"),
             closedOn = closedOn,
             // A verdict only once the register has closed the process. `passed` on an
             // open process is the answer to a question nobody asked yet.

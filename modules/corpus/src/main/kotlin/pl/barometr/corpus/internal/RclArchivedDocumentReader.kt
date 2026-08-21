@@ -2,6 +2,7 @@ package pl.barometr.corpus.internal
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.ingestion.api.ExternalId
 import pl.barometr.sources.api.ConnectorId
@@ -9,19 +10,22 @@ import pl.barometr.sources.api.ConnectorId
 /**
  * Reads RPL's archived pages.
  *
- * Address only. RPL publishes no API, so its payloads are whole HTML pages, and the
- * title on a draft's card is reachable only through the selectors the connector
- * keeps in configuration. Re-implementing that parse here would put the site's
- * layout in two places and make a layout change break in two — so a draft gets its
- * identity and its version chain now, which is what the archive needs, and its title
- * when RPL's structural extraction is written.
+ * The kind comes from the address, as everywhere; the title comes from the page,
+ * through the port the connector publishes for exactly this. RPL has no API, so its
+ * payloads are whole HTML pages and reading one needs the selectors that describe the
+ * site — re-implementing that here would put its layout in two modules and break it in
+ * two the next time it is redesigned.
+ *
+ * Only a draft's card carries a title. A change register or a stage catalog is a page
+ * about a draft rather than the draft itself, and inventing a title for it would put
+ * something in the corpus that nobody wrote.
  *
  * The version chain is the point regardless: a draft's page is re-fetched every six
  * hours, and content addressing turns that into a new version exactly when the
  * ministry actually changed something.
  */
 @Component
-class RclArchivedDocumentReader : ArchivedDocumentReader {
+class RclArchivedDocumentReader(private val pages: RclPageReader) : ArchivedDocumentReader {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -39,7 +43,10 @@ class RclArchivedDocumentReader : ArchivedDocumentReader {
             }
         }
 
-        return DocumentDescriptor(kind, title = null, publishedAt = null)
+        // A card names itself; the pages beneath it do not.
+        val title = if (kind == PROJECT_KIND) pages.readProjectCard(payload)?.title?.takeIf { it.isNotBlank() } else null
+
+        return DocumentDescriptor(kind, title = title, publishedAt = null)
     }
 
     private operator fun Regex.contains(value: String): Boolean = matches(value)

@@ -1,5 +1,6 @@
 package pl.barometr.connectors.rcl
 
+import pl.barometr.connectors.rcl.api.RclStage
 import org.slf4j.LoggerFactory
 import pl.barometr.ingestion.api.AuditableConnector
 import pl.barometr.ingestion.api.BackfillConnector

@@ -15,7 +15,8 @@ import java.time.ZoneOffset
  *
  * A draft has no natural key of its own — it is `UD383` in RPL and `term10/print/424`
  * in the Sejm, months apart — so finding one goes through [DraftIdentifierRepository]
- * and this holds only what a draft *is*.
+ * and this holds only what a draft *is*, in the vocabulary of [DraftFromRegister]
+ * that both registers translate into.
  */
 @Repository
 class DraftRepository(
@@ -23,17 +24,18 @@ class DraftRepository(
     private val clock: Clock,
 ) {
 
-    fun insertDraft(record: SejmProcessRecord): DraftId {
+    fun insertDraft(draft: DraftFromRegister): DraftId {
         val id = Ids.next()
 
         dsl.insertInto(DRAFT)
             .set(DRAFT.ID, id)
-            .set(DRAFT.TITLE, record.title)
-            .set(DRAFT.TITLE_NORMALISED, ActTitles.normalise(record.title))
-            .set(DRAFT.INITIATOR, record.initiator.wireName)
-            .set(DRAFT.TERM, record.term)
-            .set(DRAFT.CLOSED_ON, record.closedOn)
-            .set(DRAFT.OUTCOME, record.outcome?.wireName)
+            .set(DRAFT.TITLE, draft.title)
+            .set(DRAFT.TITLE_NORMALISED, ActTitles.normalise(draft.title))
+            .set(DRAFT.INITIATOR, draft.initiator.wireName)
+            .set(DRAFT.TERM, draft.term)
+            .set(DRAFT.STARTED_ON, draft.startedOn)
+            .set(DRAFT.CLOSED_ON, draft.closedOn)
+            .set(DRAFT.OUTCOME, draft.outcome?.wireName)
             .set(DRAFT.CREATED_AT, now())
             .set(DRAFT.UPDATED_AT, now())
             .execute()
@@ -48,13 +50,14 @@ class DraftRepository(
      * which is append-only precisely so this row can be overwritten without losing
      * anything.
      */
-    fun restateDraft(id: DraftId, record: SejmProcessRecord) {
+    fun restateDraft(id: DraftId, draft: DraftFromRegister) {
         dsl.update(DRAFT)
-            .set(DRAFT.TITLE, record.title)
-            .set(DRAFT.TITLE_NORMALISED, ActTitles.normalise(record.title))
-            .set(DRAFT.INITIATOR, record.initiator.wireName)
-            .set(DRAFT.CLOSED_ON, record.closedOn)
-            .set(DRAFT.OUTCOME, record.outcome?.wireName)
+            .set(DRAFT.TITLE, draft.title)
+            .set(DRAFT.TITLE_NORMALISED, ActTitles.normalise(draft.title))
+            .set(DRAFT.INITIATOR, draft.initiator.wireName)
+            .set(DRAFT.STARTED_ON, draft.startedOn)
+            .set(DRAFT.CLOSED_ON, draft.closedOn)
+            .set(DRAFT.OUTCOME, draft.outcome?.wireName)
             .set(DRAFT.UPDATED_AT, now())
             .where(DRAFT.ID.eq(id.value))
             .execute()

@@ -22,6 +22,8 @@ data class SejmProcessRecord(
     val eli: Eli?,
     /** The Council of Ministers' number for the same draft in RPL, e.g. `RM-0610-102-23`. */
     val rclNumber: String?,
+    /** `processStartDate` — for a citizens' bill, often years before the term began. */
+    val startedOn: LocalDate?,
     val closedOn: LocalDate?,
     val outcome: DraftOutcome?,
     val stages: List<SejmProcessStage>,

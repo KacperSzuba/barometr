@@ -1,6 +1,8 @@
 package pl.barometr.corpus.internal
 
 import org.junit.jupiter.api.Test
+import pl.barometr.connectors.rcl.api.RclPageReader
+import pl.barometr.connectors.rcl.api.RclProjectCard
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.ingestion.api.ExternalId
 import tools.jackson.databind.json.JsonMapper
@@ -22,7 +24,7 @@ class ArchivedDocumentReaderTest {
     private val json = JsonMapper.builder().addModule(kotlinModule()).build()
     private val sejm = SejmArchivedDocumentReader(json)
     private val isap = IsapArchivedDocumentReader(json)
-    private val rcl = RclArchivedDocumentReader()
+    private val rcl = RclArchivedDocumentReader(StubRclPages)
 
     @Test
     fun `a Sejm print is titled and dated by the document it carries`() {
@@ -114,9 +116,22 @@ class ArchivedDocumentReaderTest {
     }
 
     /**
-     * RPL pages are addressed, not read: the title lives behind the connector's
-     * configured selectors, and a second parse of the same HTML here would put the
-     * site's layout in two places.
+     * A card names itself, through the port the connector publishes; the pages beneath
+     * it are about a draft rather than being one, and inventing a title for them would
+     * put something in the corpus nobody wrote.
+     */
+    @Test
+    fun `only a draft's own card carries a title`() {
+        val card = rcl.describe(ExternalId("projekt/ustawa/12409051"), ByteArray(0))
+        val register = rcl.describe(ExternalId("projekt/ustawa/12409051/rejestr"), ByteArray(0))
+
+        assertEquals("Projekt ustawy o czymś", card.title)
+        assertNull(register.title)
+    }
+
+    /**
+     * RPL pages are classified by address, because the address is what distinguishes a
+     * card from the change register and the stage catalogs beneath it.
      */
     @Test
     fun `RPL pages are classified by address alone`() {
@@ -129,7 +144,22 @@ class ArchivedDocumentReaderTest {
             DocumentKind("rcl-catalog-change-register"),
             page("projekt/ustawa/12409051/katalog/13196866/rejestr").kind,
         )
-        assertNull(page("projekt/ustawa/12409051").title)
+    }
+
+    /**
+     * The port stands in for the connector's parser, which is the point of it being a
+     * port: this context needs a title out of a page, not a description of RPL's
+     * markup.
+     */
+    private object StubRclPages : RclPageReader {
+        override fun readProjectCard(page: ByteArray) = RclProjectCard(
+            projectId = "12409051",
+            title = "Projekt ustawy o czymś",
+            metadata = emptyMap(),
+            programmeOfWorkUrl = null,
+            createdOn = null,
+            stages = emptyList(),
+        )
     }
 
     private fun fixture(name: String): ByteArray =

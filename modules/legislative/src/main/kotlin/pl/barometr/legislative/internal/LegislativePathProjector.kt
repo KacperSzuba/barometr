@@ -62,16 +62,17 @@ class LegislativePathProjector(
 
     private fun record(process: SejmProcessRecord, recorded: DocumentVersionRecorded) {
         val address = SejmPrintAddress.of(process.term, process.printNumber)
+        val draft = draftOf(process)
         val draftId = identifiers.draftFor(DraftIdentifierScheme.SEJM_PRINT, address)
-            ?: introduce(process, address)
+            ?: introduce(process, draft, address)
 
-        drafts.restateDraft(draftId, process)
+        drafts.restateDraft(draftId, draft)
 
         // The Council of Ministers' number for the same draft in RPL. Recorded now,
         // long before RPL is readable, because it is the only place the two registers
         // name each other and it costs nothing to keep.
         process.rclNumber?.let {
-            identifiers.pointAtDraft(DraftIdentifierScheme.RCL, it, draftId, MatchMethod.EXACT, confidence = 1.0)
+            identifiers.pointAtDraft(DraftIdentifierScheme.COUNCIL_OF_MINISTERS, it, draftId, MatchMethod.EXACT, confidence = 1.0)
         }
 
         // Only once the act exists here. A process states its ELI at publication, which
@@ -97,8 +98,17 @@ class LegislativePathProjector(
      * deliveries both find nothing and both create a draft, and the second one's
      * transaction fails on the claim and is redelivered against the first one's row.
      */
-    private fun introduce(process: SejmProcessRecord, address: String): DraftId {
-        val draftId = drafts.insertDraft(process)
+    private fun draftOf(process: SejmProcessRecord) = DraftFromRegister(
+        title = process.title,
+        initiator = process.initiator,
+        term = process.term,
+        startedOn = process.startedOn,
+        closedOn = process.closedOn,
+        outcome = process.outcome,
+    )
+
+    private fun introduce(process: SejmProcessRecord, draft: DraftFromRegister, address: String): DraftId {
+        val draftId = drafts.insertDraft(draft)
         identifiers.claimForDraft(DraftIdentifierScheme.SEJM_PRINT, address, draftId)
 
         if (process.initiator == DraftInitiator.UNKNOWN) {

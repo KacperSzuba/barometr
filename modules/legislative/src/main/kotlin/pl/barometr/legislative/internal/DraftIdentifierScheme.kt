@@ -11,6 +11,18 @@ package pl.barometr.legislative.internal
 enum class DraftIdentifierScheme(val wireName: String) {
     SEJM_PRINT("druk_sejmowy"),
 
-    /** The Council of Ministers' number, as the Sejm's register states it. */
-    RCL("rcl_id"),
+    /**
+     * The Council of Ministers' number — `RM-0610-102-23` — which is what the Sejm's
+     * register prints when it points back at RPL, and what RPL's own resolver takes.
+     */
+    COUNCIL_OF_MINISTERS("rcl_rm"),
+
+    /** RPL's project id, which is what its URLs are built from and the archive keys on. */
+    RCL_PROJECT("rcl_projekt"),
+
+    /**
+     * The ministry's number in its programme of work — `UD383` — which is what a
+     * person quoting the draft actually says.
+     */
+    PROGRAMME_OF_WORK("wykaz_prac"),
 }

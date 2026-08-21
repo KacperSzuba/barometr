@@ -1,4 +1,4 @@
-package pl.barometr.connectors.rcl
+package pl.barometr.connectors.rcl.api
 
 /**
  * How far a draft has got with one stage, as RPL itself renders it.

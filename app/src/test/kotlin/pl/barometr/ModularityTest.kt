@@ -83,8 +83,15 @@ class ModularityTest {
         /**
          * Every package under `pl.barometr` that owns internals of its own: the five
          * bounded contexts, and the three technical capabilities that make up
-         * `platform`. `shared`, `connectors` and `testing` are absent because they
-         * have no internals to hide.
+         * `platform`. `shared` and `testing` are absent because they have no internals
+         * to hide.
+         *
+         * `connectors` is absent for a different reason. It does now publish one
+         * contract — `connectors.rcl.api`, the page model two other contexts read RPL's
+         * archived HTML through — but its own packages are `sejm`, `rcl` and `support`
+         * rather than an `internal`, so the rule below has nothing to match. What
+         * protects it is Spring Modulith: with a named interface declared, everything
+         * else in that module is internal to it, and `verify()` says so.
          */
         val CONTEXTS = listOf(
             "identity",

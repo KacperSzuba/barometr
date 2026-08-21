@@ -9,3 +9,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/corpus/0001-corpus.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/corpus/0002-drop-conflated-sittings.sql
+      relativeToChangelogFile: false

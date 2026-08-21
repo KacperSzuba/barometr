@@ -46,10 +46,23 @@ class SejmApiClient(
 
     fun members(term: Int): List<SejmEntity> = entities("/sejm/term$term/MP", "id")
 
+    /**
+     * Every sitting, numbered or not. `number: 0` is the API's placeholder for a
+     * sitting it has not numbered — the National Assembly, a ceremonial assembly, a
+     * sitting still only planned — so it is read as the absence it is rather than as
+     * a number eleven sittings share.
+     */
     fun proceedings(term: Int): List<SejmProceeding> =
-        readArray("/sejm/term$term/proceedings").mapNotNull { node ->
-            val number = node.path("number").takeIf { it.isInt }?.asInt() ?: return@mapNotNull null
-            SejmProceeding(number, SejmEntity(number.toString(), node))
+        readArray("/sejm/term$term/proceedings").map { node ->
+            val number = node.path("number").takeIf { it.isInt }?.asInt()?.takeIf { it > 0 }
+            val firstDate = node.path("dates").firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                ?.let(LocalDate::parse)
+
+            SejmProceeding(
+                number = number,
+                firstDate = firstDate,
+                entity = SejmEntity(number?.toString() ?: firstDate.toString(), node),
+            )
         }
 
     fun votings(term: Int, proceeding: Int): List<SejmEntity> =

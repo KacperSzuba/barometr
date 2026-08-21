@@ -1,6 +1,7 @@
 package pl.barometr.connectors.sejm
 
 import pl.barometr.ingestion.api.ExternalId
+import java.time.LocalDate
 
 /**
  * How a Sejm entity is addressed in our archive.
@@ -19,6 +20,22 @@ object SejmExternalIds {
     fun member(term: Int, id: String): ExternalId = ExternalId("term$term/mp/$id")
 
     fun proceeding(term: Int, number: Int): ExternalId = ExternalId("term$term/proceeding/$number")
+
+    /**
+     * A sitting the API has not numbered, addressed by the first day it sits.
+     *
+     * Flat rather than `term10/proceeding/date/2025-08-06`, and the reason is the
+     * completeness audit: it counts documents *directly* under
+     * `term{n}/proceeding/`, which is how a sitting's votings are kept out of the
+     * count of sittings. A second slash here would hide every unnumbered sitting from
+     * a total the source states as including them, and a healthy archive would report
+     * a permanent fifteen-percent gap.
+     *
+     * A date cannot be mistaken for a number, so the two shapes share one prefix
+     * without ambiguity.
+     */
+    fun proceedingOn(term: Int, firstDate: LocalDate): ExternalId =
+        ExternalId("term$term/proceeding/$firstDate")
 
     fun voting(term: Int, proceeding: Int, votingNumber: String): ExternalId =
         ExternalId("term$term/proceeding/$proceeding/voting/$votingNumber")

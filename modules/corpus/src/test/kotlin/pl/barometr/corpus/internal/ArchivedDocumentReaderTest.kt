@@ -60,6 +60,18 @@ class ArchivedDocumentReaderTest {
         assertEquals(Instant.parse("2023-11-13T00:00:00Z"), sitting.publishedAt)
     }
 
+    /**
+     * A sitting the Sejm never numbered is addressed by the first day it sits, so the
+     * corpus has to recognise two shapes under one prefix. Missing this leaves eleven
+     * sittings a term classified as unknown and matched to nothing.
+     */
+    @Test
+    fun `a sitting addressed by its date is still a sitting`() {
+        val assembly = sejm.describe(ExternalId("term10/proceeding/2025-08-06"), fixture("sejm/proceeding.json"))
+
+        assertEquals(DocumentKind("proceeding"), assembly.kind)
+    }
+
     @Test
     fun `an address no shape recognises is recorded as unknown rather than dropped`() {
         val odd = sejm.describe(ExternalId("term10/interpellation/7"), fixture("sejm/print.json"))

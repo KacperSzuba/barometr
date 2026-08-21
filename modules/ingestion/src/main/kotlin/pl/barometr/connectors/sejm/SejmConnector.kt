@@ -196,7 +196,8 @@ class SejmConnector(
     private class ProceedingChunk(val lastProceeding: Int?, val isComplete: Boolean)
 
     /**
-     * Sittings after [after], at most [limit] of them, each followed by its votings.
+     * Numbered sittings after [after], at most [limit] of them, each followed by its
+     * votings — and every unnumbered sitting, which pagination cannot carry.
      * Reports how far it got and whether the term is finished.
      */
     private fun readProceedings(
@@ -205,20 +206,60 @@ class SejmConnector(
         after: Int?,
         limit: Int?,
     ): ProceedingChunk {
-        val pending = api.proceedings(term)
-            .filter { after == null || it.number > after }
-            .sortedBy { it.number }
+        val sittings = api.proceedings(term)
+        readUnnumberedSittings(term, sittings, sink)
+
+        val pending = sittings
+            .mapNotNull { sitting -> sitting.number?.let { number -> number to sitting } }
+            .filter { (number, _) -> after == null || number > after }
+            .sortedBy { (number, _) -> number }
 
         val batch = if (limit != null) pending.take(limit) else pending
         var lastProceeding = after
 
-        batch.forEach { proceeding ->
-            store(SejmExternalIds.proceeding(term, proceeding.number), proceeding.entity, sink)
-            readVotings(term, proceeding.number, sink)
-            lastProceeding = proceeding.number
+        batch.forEach { (number, sitting) ->
+            store(SejmExternalIds.proceeding(term, number), sitting.entity, sink)
+            readVotings(term, number, sink)
+            lastProceeding = number
         }
 
         return ProceedingChunk(lastProceeding, isComplete = batch.size >= pending.size)
+    }
+
+    /**
+     * Sittings the API has not numbered, read whole on every pass and deliberately
+     * never paginated.
+     *
+     * They cannot be. The cursor resumes on a sitting number and these have none, so
+     * a chunk ending inside the group would leave the rest of it behind for good —
+     * which is exactly what happened while all eleven of them shared the number zero.
+     * Re-reading them costs nothing: they arrive inside the list already fetched, they
+     * have no votings to look up, and content addressing makes a repeat a no-op at the
+     * sink. That is what separates them from the term's registers, which are thousands
+     * of documents and are read once per partition.
+     */
+    private fun readUnnumberedSittings(
+        term: Int,
+        sittings: List<SejmProceeding>,
+        sink: RawDocumentSink,
+    ) {
+        sittings.filter { it.number == null }.forEach { sitting ->
+            val firstDate = sitting.firstDate
+            if (firstDate == null) {
+                // Neither a number nor a date leaves nothing to address it by, and an
+                // address invented here would collide with the next such sitting.
+                sink.recordSchemaWarning(
+                    SchemaWarning(
+                        "/sejm/term$term/proceedings[].dates",
+                        SchemaWarning.Kind.MISSING_FIELD,
+                        "a sitting with neither a number nor a date cannot be addressed",
+                    ),
+                )
+                return@forEach
+            }
+
+            store(SejmExternalIds.proceedingOn(term, firstDate), sitting.entity, sink)
+        }
     }
 
     /** Votings hang off a sitting, so they cannot be listed in bulk. */

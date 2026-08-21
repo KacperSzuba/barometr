@@ -92,7 +92,9 @@ class SejmArchivedDocumentReader(private val json: ObjectMapper) : ArchivedDocum
         val PRINT = Regex("term\\d+/print/.+")
         val CLUB = Regex("term\\d+/club/.+")
         val MEMBER = Regex("term\\d+/mp/.+")
-        val PROCEEDING = Regex("term\\d+/proceeding/\\d+")
+        // Two shapes, because a sitting the API never numbered is addressed by the
+        // first day it sits: `term10/proceeding/42` and `term10/proceeding/2025-08-06`.
+        val PROCEEDING = Regex("term\\d+/proceeding/(\\d+|\\d{4}-\\d{2}-\\d{2})")
         val VOTING = Regex("term\\d+/proceeding/\\d+/voting/.+")
 
         val PRINT_KIND = DocumentKind("print")

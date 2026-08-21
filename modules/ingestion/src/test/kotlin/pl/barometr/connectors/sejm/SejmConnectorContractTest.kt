@@ -53,8 +53,9 @@ class SejmConnectorContractTest {
 
         connectorOf(http).readChangesSince(cursor = null, sink = sink)
 
-        // 5 prints + 2 clubs + 3 MPs + 2 proceedings + 2 x 3 votings
-        assertEquals(18, sink.accepted.size)
+        // 5 prints + 2 clubs + 3 MPs + 3 sittings + 2 x 3 votings. The third sitting is
+        // the National Assembly, which the API leaves unnumbered.
+        assertEquals(19, sink.accepted.size)
 
         // Per-entity granularity is the whole design: with one document per
         // collection, a single amended print would re-store all 3205 of them.
@@ -63,6 +64,44 @@ class SejmConnectorContractTest {
         assertTrue(sink.externalIds.any { it.startsWith("term10/mp/") })
         assertTrue(sink.externalIds.contains("term10/proceeding/1"))
         assertTrue(sink.externalIds.any { it.matches(Regex("term10/proceeding/\\d+/voting/\\d+")) })
+    }
+
+    /**
+     * Eleven of term 10's sittings arrive with `number: 0` — the National Assembly,
+     * ceremonial assemblies, every sitting still only planned. Addressed by that zero
+     * they were one document with eleven versions, and a backfill chunk that ended
+     * inside the group lost the rest of it. The first day each of them sits is unique,
+     * and is what a person calls it by.
+     */
+    @Test
+    fun `a sitting the API never numbered is addressed by its first day`() {
+        val http = FixtureHttpClient()
+        val sink = RecordingSink()
+
+        connectorOf(http).readChangesSince(cursor = null, sink = sink)
+
+        assertTrue(sink.externalIds.contains("term10/proceeding/2025-08-06"))
+        assertTrue(sink.externalIds.none { it == "term10/proceeding/0" })
+        // Votings hang off a sitting number, so there are none to ask for — and the
+        // API answers `/votings/0` with an empty list eleven times over if you do.
+        assertTrue(http.requestedPaths.none { it.endsWith("/votings/0") })
+    }
+
+    /**
+     * The one sitting this connector cannot archive: no number and no date leaves
+     * nothing to address it by, and an address invented here would collide with the
+     * next such sitting. Recorded as a gap in the run rather than guessed at.
+     */
+    @Test
+    fun `a sitting with neither a number nor a date is recorded as a gap`() {
+        val sink = RecordingSink()
+
+        connectorOf(FixtureHttpClient(rewrite = ::stripDatesFromUnnumbered))
+            .readChangesSince(cursor = null, sink = sink)
+
+        assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.MISSING_FIELD })
+        assertEquals(18, sink.accepted.size, "everything else still arrived")
+        assertTrue(sink.externalIds.none { it.startsWith("term10/proceeding/2025") })
     }
 
     @Test
@@ -109,7 +148,7 @@ class SejmConnectorContractTest {
         connector.readChangesSince(null, straight)
 
         val reordered = RecordingSink()
-        connectorOf(FixtureHttpClient(reverseKeys = true)).readChangesSince(null, reordered)
+        connectorOf(FixtureHttpClient(rewrite = ::reverseKeys)).readChangesSince(null, reordered)
 
         val byId = { sink: RecordingSink -> sink.accepted.associate { it.externalId.value to String(it.payload) } }
         assertEquals(byId(straight), byId(reordered))
@@ -127,8 +166,8 @@ class SejmConnectorContractTest {
         val result = connectorOf(http).readChangesSince(null, sink)
 
         assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.ACCESS_DENIED })
-        // Prints, clubs, MPs and proceedings still arrived; only votings are missing.
-        assertEquals(12, sink.accepted.size)
+        // Prints, clubs, MPs and sittings still arrived; only votings are missing.
+        assertEquals(13, sink.accepted.size)
         assertTrue(sink.externalIds.none { it.contains("/voting/") })
     }
 
@@ -182,7 +221,7 @@ class SejmConnectorContractTest {
         val result = connectorOf(http)
             .readPartitionChunk(BackfillPartition("term10", "Kadencja 10"), cursor = null, sink = sink)
 
-        assertEquals(18, sink.accepted.size)
+        assertEquals(19, sink.accepted.size)
         assertTrue(result.exhausted)
         assertEquals("true", result.nextCursor!![SejmConnector.CURSOR_REGISTERS_DONE])
         assertEquals("2", result.nextCursor!![SejmConnector.CURSOR_LAST_PROCEEDING])
@@ -216,6 +255,10 @@ class SejmConnectorContractTest {
         // Proceeding 1 was already processed; only 2 and its votings are read.
         assertTrue(sink.externalIds.none { it == "term10/proceeding/1" })
         assertTrue(sink.externalIds.contains("term10/proceeding/2"))
+        // The unnumbered sitting comes back with every chunk, because no cursor of
+        // numbers can say whether it has been read. Re-storing it is a no-op at the
+        // sink; losing it would not be.
+        assertTrue(sink.externalIds.contains("term10/proceeding/2025-08-06"))
     }
 
     /**
@@ -258,10 +301,36 @@ class SejmConnectorContractTest {
         }
     }
 
+    /** Re-emits every object with its keys in the opposite order. */
+    private fun reverseKeys(body: ByteArray): ByteArray {
+        fun flip(node: Any?): Any? = when (node) {
+            is Map<*, *> -> node.entries.reversed().associate { it.key to flip(it.value) }
+            is List<*> -> node.map(::flip)
+            else -> node
+        }
+        return json.writeValueAsBytes(flip(json.readValue(body, Any::class.java)))
+    }
+
+    /**
+     * Takes the dates off the unnumbered sitting, leaving it with nothing to be
+     * addressed by — a shape the API has never produced, and the only one this
+     * connector cannot archive.
+     */
+    private fun stripDatesFromUnnumbered(body: ByteArray): ByteArray {
+        val decoded = json.readValue(body, Any::class.java)
+        if (decoded !is List<*> || decoded.none { it is Map<*, *> && it["number"] == 0 }) return body
+
+        return json.writeValueAsBytes(
+            decoded.map { sitting ->
+                if (sitting is Map<*, *> && sitting["number"] == 0) sitting.minus("dates") else sitting
+            },
+        )
+    }
+
     /** Serves the recorded responses, and counts what was asked for. */
     private class FixtureHttpClient(
-        private val reverseKeys: Boolean = false,
         private val refusePathPattern: Regex? = null,
+        private val rewrite: (ByteArray) -> ByteArray = { it },
     ) : SourceHttpClient {
         val requestedPaths = mutableListOf<String>()
 
@@ -288,22 +357,11 @@ class SejmConnectorContractTest {
             }.use { it.readBytes() }
 
             return HttpOutcome.Fetched(
-                body = if (reverseKeys) reorder(body) else body,
+                body = rewrite(body),
                 contentType = "application/json",
                 etag = null,
                 lastModified = null,
             )
-        }
-
-        /** Re-emits every object with its keys in the opposite order. */
-        private fun reorder(body: ByteArray): ByteArray {
-            val mapper = JsonMapper.builder().build()
-            fun flip(node: Any?): Any? = when (node) {
-                is Map<*, *> -> node.entries.reversed().associate { it.key to flip(it.value) }
-                is List<*> -> node.map(::flip)
-                else -> node
-            }
-            return mapper.writeValueAsBytes(flip(mapper.readValue(body, Any::class.java)))
         }
     }
 

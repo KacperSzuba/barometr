@@ -1,6 +1,7 @@
 package pl.barometr.connectors.sejm
 
 import org.slf4j.LoggerFactory
+import pl.barometr.connectors.support.CanonicalJsonPayload
 import pl.barometr.ingestion.api.AuditableConnector
 import pl.barometr.ingestion.api.BackfillConnector
 import pl.barometr.ingestion.api.BackfillPartition
@@ -233,7 +234,7 @@ class SejmConnector(
         sink.archive(
             RawPayload(
                 externalId = externalId,
-                payload = payloads.bytesOf(entity),
+                payload = payloads.bytesOf(entity.body),
                 kind = PayloadKind.JSON,
             ),
         )

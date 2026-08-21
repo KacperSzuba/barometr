@@ -2,6 +2,7 @@ package pl.barometr.connectors.sejm
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import pl.barometr.connectors.support.CanonicalJsonPayload
 import pl.barometr.http.HttpPolicy
 import pl.barometr.http.SourceHttpClientFactory
 import tools.jackson.databind.ObjectMapper

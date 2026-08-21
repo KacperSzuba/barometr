@@ -1,6 +1,7 @@
 package pl.barometr.connectors.sejm
 
 import org.junit.jupiter.api.Test
+import pl.barometr.connectors.support.CanonicalJsonPayload
 import pl.barometr.http.HttpFetch
 import pl.barometr.http.HttpOutcome
 import pl.barometr.http.RefusalReason

@@ -31,6 +31,23 @@ class SourceRegistrySeedTest {
     }
 
     /**
+     * ISAP closes the path the other two open, and is seeded enabled for a reason
+     * that is a fact rather than a judgement: journals of law are published for
+     * everyone by statute, through the Chancellery's own API.
+     */
+    @Test
+    fun `the ISAP source is seeded enabled with its legal basis`() {
+        val isap = assertNotNull(dsl.selectFrom(SOURCE).where(SOURCE.CONNECTOR_ID.eq("isap")).fetchOne())
+
+        assertTrue(isap.enabled!!)
+        assertTrue(isap.legalBasis!!.contains("ogłaszaniu aktów normatywnych"))
+        // The ELI prefix belongs to the registry row, not to the client: the Sejm API
+        // is served from the same host, and splitting the path between configuration
+        // and code is how two connectors end up disagreeing about where a source is.
+        assertEquals("https://api.sejm.gov.pl/eli", isap.baseUrl)
+    }
+
+    /**
      * RCL is seeded so that its pace and identity are registry data, and left off
      * because reading a site whose robots.txt disallows everything is a decision
      * for a person, not for a migration.

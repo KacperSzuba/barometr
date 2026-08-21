@@ -37,8 +37,6 @@ genuinely needs it:
 - All HTTP through `SourceHttpClientFactory.create(HttpPolicy(...))`.
 - Implement `IncrementalConnector`, `BackfillConnector`, `AuditableConnector` as the
   source actually supports them — the interfaces are the declaration of what it can do.
-- `descriptor()` states the pace and the cadence, and those values must be the ones
-  actually used.
 - Cursor keys as constants on the connector; advance only after the work completes.
 - Backfill in bounded chunks, partitions newest-first.
 - One document per entity; canonicalise JSON before it is hashed.
@@ -72,8 +70,9 @@ Contract tests against **recorded** responses in `src/test/resources/fixtures/<i
 
 ## 6 · Wire it
 
-- `app/build.gradle.kts` — add the project.
-- Confirm at startup: `Connectors registered: [...]` lists it.
+- Nothing to add to the build: connectors live inside `:ingestion`, and
+  `ConnectorRegistry` indexes whatever `Connector` beans exist.
+- Add the id to `ApplicationContextTest`, which is what proves the bean was built.
 
 ## Checklist
 

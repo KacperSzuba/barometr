@@ -98,7 +98,7 @@ a parser — see
 ## Verify
 
 ```bash
-./gradlew :modules:connectors:<connector>:test
+./gradlew :ingestion:test --tests '*<Source>ConnectorContractTest*'
 ```
 
 Contract tests must cover: a first run with no cursor, an unchanged source, a resumed

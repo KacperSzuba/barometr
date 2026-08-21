@@ -31,7 +31,7 @@ class ApplicationContextTest {
     @Test
     fun `every connector and job handler is registered`() {
         val connectors = context.getBeansOfType(Connector::class.java).values.map { it.id.value }
-        assertTrue(connectors.containsAll(listOf("sejm", "rcl")), "registered: $connectors")
+        assertTrue(connectors.containsAll(listOf("sejm", "rcl", "isap")), "registered: $connectors")
 
         val handlers = context.getBeansOfType(JobHandler::class.java).values
         assertEquals(

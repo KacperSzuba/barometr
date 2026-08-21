@@ -76,6 +76,7 @@ class LegislativePathProjectorTest {
             identifiers = DraftIdentifierRepository(dsl, clock),
             transitions = StageTransitionRepository(dsl, clock),
             acts = actIdentifiers,
+            events = RecordingEventPublisher(),
             meters = meters,
             clock = clock,
         )
@@ -233,5 +234,14 @@ class LegislativePathProjectorTest {
             versionNo = 1,
             occurredAt = clock.instant(),
         )
+    }
+
+    /** Records what the projector announced; nothing here asserts on it yet. */
+    private class RecordingEventPublisher : org.springframework.context.ApplicationEventPublisher {
+        val published = mutableListOf<Any>()
+
+        override fun publishEvent(event: Any) {
+            published += event
+        }
     }
 }

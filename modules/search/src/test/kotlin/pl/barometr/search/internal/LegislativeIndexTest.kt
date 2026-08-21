@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import pl.barometr.testing.ElasticsearchTestNode
 import java.net.URI
+import java.time.Clock
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -25,11 +26,17 @@ import kotlin.test.assertTrue
  */
 class LegislativeIndexTest {
 
-    private val maintenance = LegislativeIndexMaintenance(client)
+    private val maintenance = LegislativeIndexMaintenance(client, Clock.systemUTC())
+
+    /**
+     * Its own index, deliberately not the alias. What is under test here is the
+     * analyser, and borrowing the live alias would make this class depend on whether
+     * the rebuild test had run first.
+     */
+    private val index: String by lazy { maintenance.createIndex() }
 
     @Test
     fun `every form of the three words a legislative title is built from folds together`() {
-        givenTheIndex()
 
         // The stemmer alone reads "ustawy" as a verb, "zmiana" as another, and splits
         // "projekcie" off from "projekt". Left uncorrected, a search for a bill about
@@ -49,7 +56,6 @@ class LegislativeIndexTest {
      */
     @Test
     fun `words the stemmer handles are left to it`() {
-        givenTheIndex()
 
         assertEquals(analyse("uchwała"), analyse("uchwały"))
         assertEquals(analyse("przepis"), analyse("przepisów"))
@@ -60,7 +66,6 @@ class LegislativeIndexTest {
     /** The specification's own acceptance query, run against the index it describes. */
     @Test
     fun `a query in one case finds a title written in another`() {
-        givenTheIndex()
         index("1", "Ustawa z dnia 17 lipca 2026 r. o cenach energii elektrycznej")
         index("2", "Rządowy projekt ustawy o zmianie ustawy o podatku dochodowym")
 
@@ -73,32 +78,27 @@ class LegislativeIndexTest {
 
     @Test
     fun `Polish stopwords are dropped rather than searched for`() {
-        givenTheIndex()
 
         assertTrue(analyse("o w z na").isEmpty(), "prepositions carry no meaning to match on")
     }
 
     // ——— Harness ————————————————————————————————————————————————————————————
 
-    private fun givenTheIndex() {
-        if (!maintenance.indexExists()) maintenance.createIndex()
-    }
-
     private fun analyse(text: String): List<String> =
         client.indices().analyze { request ->
-            request.index(LegislativeIndex.CURRENT).analyzer(POLISH_LEGAL).text(text)
+            request.index(index).analyzer(POLISH_LEGAL).text(text)
         }.tokens().map { it.token() }
 
     private fun index(id: String, title: String) {
         client.index { request ->
-            request.index(LegislativeIndex.CURRENT).id(id).document(mapOf("title" to title)).refresh(Refresh.True)
+            request.index(index).id(id).document(mapOf("title" to title)).refresh(Refresh.True)
         }
     }
 
     private fun search(query: String): List<String> {
         val match = MatchQuery.of { it.field("title").query(query) }._toQuery()
 
-        return client.search({ request -> request.index(LegislativeIndex.ALIAS).query(match) }, Map::class.java)
+        return client.search({ request -> request.index(index).query(match) }, Map::class.java)
             .hits().hits().mapNotNull { it.id() }
     }
 

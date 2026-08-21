@@ -2,12 +2,15 @@ package pl.barometr.legislative.internal
 
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Service
 import pl.barometr.corpus.api.DocumentVersionRecorded
+import pl.barometr.legislative.api.ActRecorded
 import pl.barometr.sources.api.ConnectorId
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.BlobStore
+import java.time.Clock
 
 /**
  * Turns a published act into the identity every other source is matched against.
@@ -30,7 +33,9 @@ class EliActProjector(
     private val acts: ActRepository,
     private val identifiers: ActIdentifierRepository,
     private val references: ActReferenceRepository,
+    private val events: ApplicationEventPublisher,
     private val meters: MeterRegistry,
+    private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -67,6 +72,10 @@ class EliActProjector(
 
         references.replaceReferencesFrom(act.eli, act.references, recorded.versionId)
         recordUnmappedLabels(act)
+
+        // Announced whether or not anything changed: the register restates an act when
+        // its references move, and a search index has no way to tell that from here.
+        events.publishEvent(ActRecorded(actId, clock.instant()))
 
         log.debug("Projected act {} with {} references", act.eli, act.references.size)
     }

@@ -2,6 +2,7 @@ package pl.barometr.legislative.internal
 
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Service
 import pl.barometr.connectors.rcl.api.RclPageReader
@@ -12,6 +13,7 @@ import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionRecorded
 import pl.barometr.storage.BlobBucket
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.api.DraftRecorded
 import pl.barometr.storage.BlobStore
 import java.time.Clock
 import java.time.ZoneOffset
@@ -46,6 +48,7 @@ class RclCardProjector(
     private val drafts: DraftRepository,
     private val identifiers: DraftIdentifierRepository,
     private val transitions: StageTransitionRepository,
+    private val events: ApplicationEventPublisher,
     private val meters: MeterRegistry,
     private val clock: Clock,
 ) {
@@ -100,6 +103,7 @@ class RclCardProjector(
             )
         }
 
+        events.publishEvent(DraftRecorded(draftId, clock.instant()))
         log.debug("Recorded government draft {} from RPL", card.projectId)
     }
 

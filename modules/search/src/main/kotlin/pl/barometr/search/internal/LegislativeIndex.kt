@@ -1,5 +1,7 @@
 package pl.barometr.search.internal
 
+import java.time.Instant
+
 /**
  * The index everything searchable is written to, and the analyser that makes it work
  * in Polish.
@@ -37,11 +39,17 @@ package pl.barometr.search.internal
  */
 object LegislativeIndex {
 
-    /** What readers query. Never an index name, always the alias. */
+    /** What readers query, and what incremental writes go through. Never an index name. */
     const val ALIAS = "legislative"
 
-    /** The concrete index, versioned by its mapping rather than by a date. */
-    const val CURRENT = "legislative-v1"
+    /**
+     * Concrete indices are named for the moment they were built, so a rebuild is a new
+     * index beside the live one and the switch is a single atomic alias update. The
+     * prefix is what lets the old ones be found and dropped afterwards.
+     */
+    const val PREFIX = "legislative-"
 
     const val DEFINITION = "/search/legislative-index.json"
+
+    fun nameFor(builtAt: Instant): String = "$PREFIX${builtAt.toEpochMilli()}"
 }

@@ -2,11 +2,13 @@ package pl.barometr.legislative.internal
 
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Service
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionRecorded
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.api.DraftRecorded
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.BlobStore
 import java.time.Clock
@@ -32,6 +34,7 @@ class LegislativePathProjector(
     private val identifiers: DraftIdentifierRepository,
     private val transitions: StageTransitionRepository,
     private val acts: ActIdentifierRepository,
+    private val events: ApplicationEventPublisher,
     private val meters: MeterRegistry,
     private val clock: Clock,
 ) {
@@ -85,6 +88,8 @@ class LegislativePathProjector(
         val facts = StageTimeline.of(process.stages)
         val recordedFacts = transitions.recordFacts(draftId, facts, recorded.versionId, clock.instant())
         countUnmappedStages(facts)
+
+        events.publishEvent(DraftRecorded(draftId, clock.instant()))
 
         if (recordedFacts > 0) {
             log.debug("Recorded {} new stages of draft {}", recordedFacts, address)

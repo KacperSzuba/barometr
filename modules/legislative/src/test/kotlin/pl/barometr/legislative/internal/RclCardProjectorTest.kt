@@ -65,6 +65,7 @@ class RclCardProjectorTest {
             drafts = DraftRepository(dsl, clock),
             identifiers = DraftIdentifierRepository(dsl, clock),
             transitions = StageTransitionRepository(dsl, clock),
+            events = RecordingEventPublisher(),
             meters = SimpleMeterRegistry(),
             clock = clock,
         )
@@ -183,5 +184,14 @@ class RclCardProjectorTest {
                 RclStage("13196868", 3, "Opiniowanie", RclStageState.NOT_STARTED, null, isVisitable = false),
             ),
         )
+    }
+
+    /** Records what the projector announced; nothing here asserts on it yet. */
+    private class RecordingEventPublisher : org.springframework.context.ApplicationEventPublisher {
+        val published = mutableListOf<Any>()
+
+        override fun publishEvent(event: Any) {
+            published += event
+        }
     }
 }

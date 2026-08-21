@@ -9,6 +9,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import pl.barometr.testing.PostgresTestDatabase
 
@@ -44,6 +45,17 @@ class OperatorEndpointAccessTest {
             .andExpect(status().isForbidden)
     }
 
+    /**
+     * Rebuilding the search index cannot lose anything — the index holds only what is
+     * derived — but it walks every act and draft there is and writes them all, which is
+     * somebody's afternoon of I/O for the asking.
+     */
+    @Test
+    @WithMockUser(roles = ["USER"])
+    fun `an ordinary account cannot rebuild the search index`() {
+        mockMvc.perform(post("$SEARCH_INDEX/rebuild")).andExpect(status().isForbidden)
+    }
+
     @Test
     fun `an anonymous caller is refused before authorization is even considered`() {
         mockMvc.perform(get(ACT_MATCHES)).andExpect(status().isUnauthorized)
@@ -58,6 +70,7 @@ class OperatorEndpointAccessTest {
     companion object {
         private const val ACT_MATCHES = "/api/v1/legislative/act-matches"
         private const val INGESTION = "/api/v1/ingestion"
+        private const val SEARCH_INDEX = "/api/v1/search/index"
 
         @JvmStatic
         @DynamicPropertySource

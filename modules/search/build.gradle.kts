@@ -13,6 +13,9 @@ dependencies {
     implementation(libs.springBootStarter)
     implementation(libs.springBootStarterElasticsearch)
     implementation(libs.springBootStarterWeb)
+    // Rebuilding the index is an operator endpoint; the chain that authenticates it is
+    // the application's, so only the annotations are needed here.
+    implementation(libs.springSecurityCore)
     implementation(libs.jacksonModuleKotlin)
     implementation(libs.springModulithStarterCore)
     implementation(libs.springModulithEventsApi)

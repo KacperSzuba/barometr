@@ -23,9 +23,6 @@ value class PkdCode(val value: String) {
         require(value.matches(PATTERN)) { "Not a PKD code: '$value'" }
     }
 
-    /** Division, group, class or subclass — how specific this code is. */
-    val level: Int get() = value.count { it == '.' } + 1
-
     /** True when [other] falls inside this code, including when they are the same. */
     fun covers(other: PkdCode): Boolean =
         other.value == value || other.value.startsWith("$value.")

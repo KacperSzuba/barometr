@@ -37,13 +37,6 @@ class PkdCodeTest {
         assertFalse(subclass.covers(PkdCode("41.20")))
     }
 
-    @Test
-    fun `the level is how specific the code is`() {
-        assertEquals(1, PkdCode("62").level)
-        assertEquals(2, PkdCode("62.01").level)
-        assertEquals(3, PkdCode("62.01.Z").level)
-    }
-
     /**
      * A section is a letter standing for a range of divisions, and which divisions it
      * covers is not a fact this system holds. Accepting `J` would mean matching

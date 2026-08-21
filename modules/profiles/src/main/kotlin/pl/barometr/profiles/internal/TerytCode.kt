@@ -18,23 +18,11 @@ value class TerytCode(val value: String) {
         require(value.matches(PATTERN)) { "Not a TERYT code: '$value'" }
     }
 
-    val level: Level
-        get() = when (value.length) {
-            VOIVODESHIP_DIGITS -> Level.VOIVODESHIP
-            COUNTY_DIGITS -> Level.COUNTY
-            else -> Level.MUNICIPALITY
-        }
-
     fun covers(other: TerytCode): Boolean = other.value.startsWith(value)
 
     override fun toString(): String = value
 
-    enum class Level { VOIVODESHIP, COUNTY, MUNICIPALITY }
-
     companion object {
-        private const val VOIVODESHIP_DIGITS = 2
-        private const val COUNTY_DIGITS = 4
-
         /** Two digits, four, or seven — the three levels TERYT actually addresses. */
         private val PATTERN = Regex("\\d{2}|\\d{4}|\\d{7}")
 

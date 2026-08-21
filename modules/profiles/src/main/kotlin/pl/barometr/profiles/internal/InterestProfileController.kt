@@ -30,7 +30,10 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/v1/profiles")
-class InterestProfileController(private val profiles: InterestProfiles) {
+class InterestProfileController(
+    private val profiles: InterestProfiles,
+    private val preview: ProfileMatchPreview,
+) {
 
     @GetMapping
     fun list(caller: Principal): List<ProfileResponse> =
@@ -86,6 +89,43 @@ class InterestProfileController(private val profiles: InterestProfiles) {
         @PathVariable id: UUID,
         @PathVariable version: Int,
     ): ProfileResponse = describe(profiles.readVersion(ownerOf(caller), ProfileId(id), version))
+
+    /**
+     * What this profile would catch if it fired now — the answer somebody needs while
+     * they are still deciding what to put in it.
+     *
+     * Costs a query per exact address and one search per phrase, which is why it is a
+     * route of its own rather than a field on the profile: reading a profile to render
+     * a list of them must not run a dozen searches.
+     */
+    @GetMapping("/{id}/matches")
+    fun matches(caller: Principal, @PathVariable id: UUID): PreviewResponse {
+        val found = preview.preview(ownerOf(caller), ProfileId(id))
+
+        return PreviewResponse(
+            version = found.version,
+            matches = found.matches.map {
+                MatchPayload(
+                    kind = it.kind,
+                    id = it.id,
+                    title = it.title,
+                    eli = it.eli,
+                    matchedBy = InterestPayload(
+                        it.interest.kind.wireName,
+                        it.interest.value,
+                        it.interest.excluded,
+                    ),
+                )
+            },
+            silent = found.silent.map { InterestPayload(it.kind.wireName, it.value, it.excluded) },
+            dormant = found.dormant.map {
+                DormantPayload(
+                    InterestPayload(it.kind.wireName, it.value, it.excluded),
+                    NO_SUBJECT_TAGS,
+                )
+            },
+        )
+    }
 
     private fun describe(profile: InterestProfile) = ProfileResponse(
         id = profile.id.value,
@@ -145,6 +185,25 @@ class InterestProfileController(private val profiles: InterestProfiles) {
 
     data class VersionResponse(val version: Int, val createdAt: String)
 
+    data class MatchPayload(
+        val kind: String,
+        val id: String,
+        val title: String,
+        val eli: String?,
+        val matchedBy: InterestPayload,
+    )
+
+    /** An interest that is kept and cannot yet match, with a code saying why. */
+    data class DormantPayload(val interest: InterestPayload, val reason: String)
+
+    data class PreviewResponse(
+        val version: Int,
+        val matches: List<MatchPayload>,
+        /** Matchable, and matching nothing today. */
+        val silent: List<InterestPayload>,
+        val dormant: List<DormantPayload>,
+    )
+
     private companion object {
         // The two length bounds match the `CHECK` constraints they will otherwise hit
         // as a 500 instead of a 400.
@@ -156,5 +215,13 @@ class InterestProfileController(private val profiles: InterestProfiles) {
         // is a subscription to everything, which is the same as a subscription to
         // nothing once somebody stops reading it.
         const val MAX_INTERESTS = 200
+
+        /**
+         * Why an industry or a place matches nothing yet: an act's subject is not
+         * recorded until the impact analysis that assigns it exists. A code rather than
+         * a sentence, because the sentence belongs to whichever language the reader
+         * chose.
+         */
+        const val NO_SUBJECT_TAGS = "no_subject_tags"
     }
 }

@@ -135,6 +135,33 @@ class InterestProfileEndpointTest {
     }
 
     /**
+     * The preview, through the assembled application — which is the only place that
+     * shows an industry code coming back as dormant rather than as a match nobody
+     * found. No keyword here, so nothing asks the index: a preview of exact addresses
+     * needs only the catalog, and this test would otherwise need a running node.
+     */
+    @Test
+    @WithMockUser(username = EWA, roles = ["USER"])
+    fun `the preview separates what matches nothing from what cannot match yet`() {
+        val id = create(
+            """
+            {"name":"Budowlanka","interests":[
+              {"kind":"pkd","value":"41.20.Z"},
+              {"kind":"act","value":"DU/2024/1222"}
+            ]}
+            """.trimIndent(),
+        )
+
+        mockMvc.perform(get("$PROFILES/$id/matches"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.matches.length()").value(0))
+            // The archive in this test holds no acts, so a correct address finds nothing.
+            .andExpect(jsonPath("$.silent[0].value").value("DU/2024/1222"))
+            .andExpect(jsonPath("$.dormant[0].interest.value").value("41.20.Z"))
+            .andExpect(jsonPath("$.dormant[0].reason").value("no_subject_tags"))
+    }
+
+    /**
      * The test this class exists for. The second account holds a valid token and the
      * identifier of the first one's profile, which is everything an attacker would
      * have.

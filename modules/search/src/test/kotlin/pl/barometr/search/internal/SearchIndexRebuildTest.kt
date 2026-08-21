@@ -142,6 +142,8 @@ class SearchIndexRebuildTest {
 
         override fun actById(id: ActId) = acts.firstOrNull { it.id == id }
 
+        override fun actByEli(eli: Eli) = acts.firstOrNull { it.eli == eli }
+
         override fun draftById(id: DraftId) = drafts.firstOrNull { it.id == id }
 
         override fun actsAfter(after: ActId?, limit: Int) =

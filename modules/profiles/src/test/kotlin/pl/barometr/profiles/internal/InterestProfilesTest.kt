@@ -82,6 +82,28 @@ class InterestProfilesTest {
     }
 
     @Test
+    fun `an industry inside one already chosen is not kept twice`() {
+        val profile = profiles.create(ewa, "IT", listOf(pkd("62"), pkd("62.01.Z")))
+
+        assertEquals(listOf("62"), profile.interests.map { it.value })
+    }
+
+    /**
+     * "That industry, except this corner of it" — collapsing the pair would say the
+     * opposite of what was asked.
+     */
+    @Test
+    fun `an exclusion inside an industry that was chosen survives`() {
+        val profile = profiles.create(
+            ewa,
+            "IT",
+            listOf(pkd("62"), Interest(InterestKind.PKD, "62.01.Z", excluded = true)),
+        )
+
+        assertEquals(2, profile.interests.size)
+    }
+
+    @Test
     fun `an exclusion is stored as a choice, not as an absence`() {
         val profile = profiles.create(
             ewa,

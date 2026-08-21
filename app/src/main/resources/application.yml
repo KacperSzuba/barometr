@@ -15,6 +15,12 @@ spring:
     change-log: classpath:db/changelog/master.yaml
   modulith:
     events:
+      # A publication left incomplete means a listener never ran, and in this system
+      # that is a document archived but never derived — invisible, because nothing
+      # failed. Every listener is idempotent by construction (content hashes, upserts
+      # on natural keys, unique indexes), so redelivering costs nothing and the
+      # alternative is derived data quietly missing until somebody counts it.
+      republish-outstanding-events-on-restart: true
       jdbc:
         # The register lives in `platform`, beside the other technical tables, and is
         # created by a migration like everything else — `schema-initialization` stays

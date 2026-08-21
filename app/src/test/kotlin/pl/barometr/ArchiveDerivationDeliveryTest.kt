@@ -4,109 +4,109 @@ import org.jooq.impl.DSL
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.springframework.transaction.support.TransactionTemplate
+import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.ingestion.api.ExternalId
 import pl.barometr.ingestion.api.PayloadKind
-import pl.barometr.ingestion.api.RawDocumentIngested
-import pl.barometr.shared.ContentHash
+import pl.barometr.ingestion.api.RawPayload
+import pl.barometr.ingestion.internal.RawDocumentArchiver
 import pl.barometr.shared.Ids
-import pl.barometr.sources.api.SourceId
+import pl.barometr.sources.api.ConnectorId
+import pl.barometr.sources.api.SourceRegistry
 import pl.barometr.testing.PostgresTestDatabase
 import java.time.Duration
-import java.time.Instant
 import java.time.OffsetDateTime
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 /**
- * That an event published by one context actually reaches the next one, through the
- * register rather than in spite of it.
+ * That archiving a document really does derive one, in the assembled application.
  *
- * This is the seam the whole derivation chain hangs from and the one nothing else
- * checks: the module tests compose the listener by hand and call it directly, which
- * says nothing about whether Spring Modulith can write the publication, serialise the
- * event, deliver it and mark it complete. Any of those failing leaves an application
- * that ingests happily and derives nothing — the quietest possible failure.
+ * This is the seam every derived fact in the system hangs from, and the one nothing
+ * else can see. The module tests compose each step by hand and call it directly, which
+ * says nothing about whether the steps are connected: whether Spring Modulith can
+ * write the publication, serialise the event, deliver it and mark it complete — and,
+ * the part that actually broke, whether the event is published inside a transaction at
+ * all. An `@ApplicationModuleListener` runs after commit, so published outside a
+ * transaction it is recorded and then never delivered. The application ingested eight
+ * thousand documents, registered eight thousand publications, derived nothing, and
+ * logged nothing about it.
  *
- * The event names a source that does not exist, so the listener takes its "nothing to
- * derive" path. What is under test is the delivery, not what the listener concludes.
+ * It drives the archiver rather than publishing the event itself, which is exactly the
+ * difference that matters: an earlier version of this test published inside a
+ * transaction of its own and passed against code that had none. Reaching into
+ * ingestion's internals is the price — a connector receives its sink from the runtime,
+ * so there is no published way in — and the alternative, driving a real connector
+ * against a live source, is not a test.
  */
 @SpringBootTest
 class ArchiveDerivationDeliveryTest {
 
     @Autowired
-    private lateinit var events: ApplicationEventPublisher
+    private lateinit var archiver: RawDocumentArchiver
 
     @Autowired
-    private lateinit var transactions: TransactionTemplate
+    private lateinit var sources: SourceRegistry
 
-    /**
-     * Read straight from the register's own table rather than through Modulith's
-     * repository: what is being tested is that a row is written and completed, and
-     * asking the library whether it thinks it wrote one would be asking the subject.
-     * The table has no generated code here — it belongs to Modulith, not to a
-     * context — so its columns are named rather than typed.
-     */
     private val dsl = PostgresTestDatabase.dsl()
 
     @Test
-    fun `an ingested document is delivered to its listener and the publication completed`() {
-        val externalId = ExternalId("term10/print/${Ids.next()}")
-
-        // Published inside a transaction because the listener runs after commit:
-        // outside one, Modulith records nothing and delivers nothing.
-        transactions.executeWithoutResult {
-            events.publishEvent(
-                RawDocumentIngested(
-                    rawDocumentId = Ids.next(),
-                    sourceId = SourceId(Ids.next()),
-                    externalId = externalId,
-                    contentHash = ContentHash.of("a payload".toByteArray()),
-                    kind = PayloadKind.JSON,
-                    occurredAt = Instant.parse("2026-08-21T10:00:00Z"),
-                ),
-            )
-        }
-
-        assertEquals(1, publicationsFor(externalId), "the publication was never registered")
-        assertEquals(
-            1,
-            awaitCompletedPublication(externalId),
-            "the publication was registered but never completed, so the listener never finished",
+    fun `an archived payload becomes a document without anything else being called`() {
+        val sejm = assertNotNull(
+            sources.byConnector(ConnectorId("sejm")),
+            "the Sejm source is registry data, seeded by a migration",
         )
-    }
+        val address = ExternalId("term10/print/${Ids.next()}")
 
-    private fun publicationsFor(externalId: ExternalId): Int =
-        dsl.fetchCount(PUBLICATIONS, carrying(externalId))
+        archiver.archive(
+            sourceId = sejm.id,
+            runId = null,
+            payload = RawPayload(
+                externalId = address,
+                payload = """{"number":"9999","title":"Ustawa probna","documentDate":"2026-08-12"}"""
+                    .toByteArray(),
+                kind = PayloadKind.JSON,
+            ),
+        )
+
+        val document = assertNotNull(
+            awaitDocument(address),
+            "the payload was archived but never derived: the event was published, " +
+                "and either no transaction committed it or nothing delivered it",
+        )
+        assertEquals(DocumentKind("print").value, document)
+    }
 
     /**
-     * Polled rather than awaited on a latch: delivery is asynchronous and the only
-     * thing that can be observed from outside is the row it leaves behind.
+     * Polled rather than awaited on a latch: delivery is asynchronous, and the only
+     * thing observable from outside is the row it leaves behind.
      */
-    private fun awaitCompletedPublication(externalId: ExternalId): Int {
+    private fun awaitDocument(address: ExternalId): String? {
         val deadline = System.nanoTime() + WAIT.toNanos()
-        var completed = 0
+        var kind: String? = null
 
-        while (System.nanoTime() < deadline && completed == 0) {
-            completed = dsl.fetchCount(PUBLICATIONS, carrying(externalId).and(COMPLETION_DATE.isNotNull))
-            if (completed == 0) Thread.sleep(POLL.toMillis())
+        while (System.nanoTime() < deadline && kind == null) {
+            kind = dsl.select(KIND)
+                .from(DOCUMENTS)
+                .where(EXTERNAL_ID.eq(address.value))
+                .fetchOne(KIND)
+            if (kind == null) Thread.sleep(POLL.toMillis())
         }
 
-        return completed
+        return kind
     }
 
-    /** The stored form is JSON; the address is the one field certain to be in it. */
-    private fun carrying(externalId: ExternalId) =
-        SERIALIZED_EVENT.like("%" + externalId.value + "%")
-
     companion object {
-        private val PUBLICATIONS = DSL.table(DSL.name("platform", "event_publication"))
-        private val SERIALIZED_EVENT = DSL.field(DSL.name("serialized_event"), String::class.java)
-        private val COMPLETION_DATE = DSL.field(DSL.name("completion_date"), OffsetDateTime::class.java)
+        /**
+         * Named rather than typed: corpus owns this table and generates no code for
+         * anyone else, which is the boundary working as intended.
+         */
+        private val DOCUMENTS = DSL.table(DSL.name("corpus", "document"))
+        private val EXTERNAL_ID = DSL.field(DSL.name("external_id"), String::class.java)
+        private val KIND = DSL.field(DSL.name("kind"), String::class.java)
 
-        private val WAIT: Duration = Duration.ofSeconds(10)
+        private val WAIT: Duration = Duration.ofSeconds(20)
         private val POLL: Duration = Duration.ofMillis(50)
 
         @JvmStatic

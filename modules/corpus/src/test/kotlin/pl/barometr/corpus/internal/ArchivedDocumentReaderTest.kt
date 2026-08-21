@@ -72,6 +72,21 @@ class ArchivedDocumentReaderTest {
         assertEquals(DocumentKind("proceeding"), assembly.kind)
     }
 
+    /**
+     * A process is the passage of a draft — the same subject as its print, seen as a
+     * history. Everything the stage model is built from arrives under this kind.
+     */
+    @Test
+    fun `a legislative process is dated by the day it started`() {
+        val passage = sejm.describe(ExternalId("term10/process/31"), fixture("sejm/process.json"))
+
+        assertEquals(DocumentKind("process"), passage.kind)
+        assertEquals("Obywatelski projekt ustawy o zmianie ustawy", passage.title?.take(43))
+        // `processStartDate`, which for a citizens' bill precedes the term itself —
+        // this one began while signatures were still being collected.
+        assertEquals(Instant.parse("2023-03-23T00:00:00Z"), passage.publishedAt)
+    }
+
     @Test
     fun `an address no shape recognises is recorded as unknown rather than dropped`() {
         val odd = sejm.describe(ExternalId("term10/interpellation/7"), fixture("sejm/print.json"))

@@ -18,6 +18,7 @@ import pl.barometr.ingestion.api.SchemaWarning
 import pl.barometr.sources.api.ConnectorId
 import pl.barometr.sources.api.IngestionMode
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Sejm of the Republic of Poland — the project's first and most important source.
@@ -42,6 +43,10 @@ class SejmConnector(
      * enough that dispatcher polling is not the bottleneck.
      */
     private val proceedingsPerChunk: Int = DEFAULT_PROCEEDINGS_PER_CHUNK,
+    /** Index entries per request. The processes index is the one paged endpoint here. */
+    private val processIndexPageSize: Int = DEFAULT_PROCESS_INDEX_PAGE_SIZE,
+    /** Processes one backfill chunk fetches in full, each of them a request. */
+    private val processesPerChunk: Int = DEFAULT_PROCESSES_PER_CHUNK,
 ) : IncrementalConnector, BackfillConnector, AuditableConnector {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -53,15 +58,22 @@ class SejmConnector(
     override fun readChangesSince(cursor: Cursor?, sink: RawDocumentSink): FetchResult {
         val term = api.currentTerm() ?: return reportMissingTerms(sink)
 
-        if (isUnchangedSince(term, cursor)) {
-            log.debug("Term {} unchanged since {}", term.number, term.printsLastChangedAt)
-            return FetchResult(nextCursor = cursor, sourceUnchanged = true)
-        }
+        // Walked on every pass, before the cheap check and regardless of what it says.
+        // Nothing in the term summary reports on processes, and a bill leaving
+        // committee for its second reading files no print — so `prints.lastChanged`
+        // sits still while the thing a user is watching moves. The index itself is
+        // cheap; only a process that moved is fetched in full.
+        val processes = readChangedProcesses(term.number, sink, since = processesChangedThrough(cursor))
 
-        readTermRegisters(term.number, sink)
-        // The current term is read whole: it is one term rather than a decade of
-        // them, and splitting it would only delay today's documents.
-        readProceedings(term.number, sink, after = null, limit = null)
+        val printsUnchanged = isUnchangedSince(term, cursor)
+        if (printsUnchanged) {
+            log.debug("Term {} prints unchanged since {}", term.number, term.printsLastChangedAt)
+        } else {
+            readTermRegisters(term.number, sink)
+            // The current term is read whole: it is one term rather than a decade of
+            // them, and splitting it would only delay today's documents.
+            readProceedings(term.number, sink, after = null, limit = null)
+        }
 
         return FetchResult(
             // Advanced only after a completed pass; moving it earlier would skip
@@ -71,10 +83,17 @@ class SejmConnector(
                 buildMap {
                     put(CURSOR_TERM, term.number.toString())
                     term.printsLastChangedAt?.let { put(CURSOR_PRINTS_LAST_CHANGED, it) }
+                    (processes.latestChange ?: processesChangedThrough(cursor))?.let {
+                        put(CURSOR_PROCESSES_CHANGED_THROUGH, it.toString())
+                    }
                 },
             ),
+            sourceUnchanged = printsUnchanged && processes.moved == 0,
         )
     }
+
+    private fun processesChangedThrough(cursor: Cursor?): LocalDateTime? =
+        cursor?.get(CURSOR_PROCESSES_CHANGED_THROUGH)?.let(LocalDateTime::parse)
 
     /**
      * The one small response that decides whether the large ones are worth
@@ -128,6 +147,17 @@ class SejmConnector(
             limit = proceedingsPerChunk,
         )
 
+        // Processes resume on an index offset rather than on a number: the index is
+        // ordered by the term's own reckoning, and a process number is not a position
+        // in it.
+        val processes = readProcessChunk(
+            term = term,
+            sink = sink,
+            offset = cursor?.get(CURSOR_PROCESS_OFFSET)?.toIntOrNull() ?: 0,
+            limit = processesPerChunk,
+        )
+        val finished = chunk.isComplete && processes.isComplete
+
         return FetchResult(
             nextCursor = Cursor(
                 IngestionMode.BACKFILL,
@@ -135,10 +165,11 @@ class SejmConnector(
                     put(CURSOR_TERM, term.toString())
                     put(CURSOR_REGISTERS_DONE, "true")
                     chunk.lastProceeding?.let { put(CURSOR_LAST_PROCEEDING, it.toString()) }
-                    if (chunk.isComplete) put(Cursor.PARTITION_DONE, "true")
+                    put(CURSOR_PROCESS_OFFSET, processes.nextOffset.toString())
+                    if (finished) put(Cursor.PARTITION_DONE, "true")
                 },
             ),
-            exhausted = chunk.isComplete,
+            exhausted = finished,
         )
     }
 
@@ -175,7 +206,28 @@ class SejmConnector(
                 declaredCount = api.proceedings(term).size,
                 isAuthoritative = false,
             ),
+            DeclaredVolume(
+                partition = partition.key,
+                kind = "process",
+                externalIdPrefix = SejmExternalIds.processPrefix(term),
+                declaredCount = countProcesses(term),
+                // Counted from the very index the backfill walks, so it proves the walk
+                // finished and nothing more. The API publishes no independent total for
+                // processes, and inventing one would make the report reassuring rather
+                // than true.
+                isAuthoritative = false,
+            ),
         )
+    }
+
+    private fun countProcesses(term: Int): Int {
+        var offset = 0
+
+        while (true) {
+            val page = api.processes(term, offset, processIndexPageSize)
+            offset += page.size
+            if (page.size < processIndexPageSize) return offset
+        }
     }
 
     // ——— Reading ————————————————————————————————————————————————————————————
@@ -262,6 +314,61 @@ class SejmConnector(
         }
     }
 
+    private class ProcessPass(val moved: Int, val latestChange: LocalDateTime?)
+
+    private class ProcessChunk(val nextOffset: Int, val isComplete: Boolean)
+
+    /**
+     * Every index page, and in full only the processes that moved.
+     *
+     * The two halves are what makes a quarter-hourly poll affordable on a collection
+     * of well over a thousand: the index costs three requests whatever happens, and a
+     * process is fetched only when its own stamp is newer than the last pass. A
+     * process whose stamp cannot be read is fetched — the cheap check failing should
+     * cost a request, never a document.
+     */
+    private fun readChangedProcesses(term: Int, sink: RawDocumentSink, since: LocalDateTime?): ProcessPass {
+        var offset = 0
+        var moved = 0
+        var latestChange = since
+
+        while (true) {
+            val page = api.processes(term, offset, processIndexPageSize)
+            val changed = page.filter { since == null || it.changedAt == null || it.changedAt.isAfter(since) }
+            changed.forEach { storeProcess(term, it, sink) }
+
+            moved += changed.size
+            latestChange = maxOfNullable(latestChange, page.mapNotNull { it.changedAt }.maxOrNull())
+            offset += page.size
+
+            // A short page is the end of the index; an empty one ends the walk whatever
+            // else is true, because asking again for the same offset is how a poll
+            // turns into a loop.
+            if (page.size < processIndexPageSize) return ProcessPass(moved, latestChange)
+        }
+    }
+
+    /** One page of the index, every process on it read in full. */
+    private fun readProcessChunk(term: Int, sink: RawDocumentSink, offset: Int, limit: Int): ProcessChunk {
+        val page = api.processes(term, offset, limit)
+        page.forEach { storeProcess(term, it, sink) }
+
+        return ProcessChunk(nextOffset = offset + page.size, isComplete = page.size < limit)
+    }
+
+    /**
+     * A refusal on one process is a gap, like a refused voting: the run keeps going and
+     * the next pass tries again, because the index that named it was readable.
+     */
+    private fun storeProcess(term: Int, summary: SejmProcessSummary, sink: RawDocumentSink) {
+        collectDenials(sink) {
+            store(SejmExternalIds.process(term, summary.number), api.process(term, summary.number), sink)
+        }
+    }
+
+    private fun maxOfNullable(left: LocalDateTime?, right: LocalDateTime?): LocalDateTime? =
+        listOfNotNull(left, right).maxOrNull()
+
     /** Votings hang off a sitting, so they cannot be listed in bulk. */
     private fun readVotings(term: Int, proceeding: Int, sink: RawDocumentSink) {
         collectDenials(sink) {
@@ -307,9 +414,23 @@ class SejmConnector(
         val ID = ConnectorId("sejm")
         const val DEFAULT_PROCEEDINGS_PER_CHUNK = 10
 
+        /**
+         * The index honours `limit`, and a term holds well over a thousand processes.
+         * Five hundred keeps a poll of the whole index to three requests.
+         */
+        const val DEFAULT_PROCESS_INDEX_PAGE_SIZE = 500
+
+        /**
+         * A backfill chunk fetches this many processes in full, one request each, so
+         * an interruption costs about a minute of crawling rather than an hour.
+         */
+        const val DEFAULT_PROCESSES_PER_CHUNK = 100
+
         const val CURSOR_TERM = "term"
         const val CURSOR_PRINTS_LAST_CHANGED = "prints.lastChanged"
         const val CURSOR_REGISTERS_DONE = "registersDone"
         const val CURSOR_LAST_PROCEEDING = "lastProceeding"
+        const val CURSOR_PROCESSES_CHANGED_THROUGH = "processes.changedThrough"
+        const val CURSOR_PROCESS_OFFSET = "processOffset"
     }
 }

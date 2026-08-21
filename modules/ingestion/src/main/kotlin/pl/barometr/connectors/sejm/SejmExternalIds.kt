@@ -37,6 +37,15 @@ object SejmExternalIds {
     fun proceedingOn(term: Int, firstDate: LocalDate): ExternalId =
         ExternalId("term$term/proceeding/$firstDate")
 
+    /**
+     * A legislative process — the passage of one draft, with its stages.
+     *
+     * Addressed by the print number it carries, which is also how the Sejm refers to
+     * it, so `term10/print/424` and `term10/process/424` are the same draft seen as a
+     * document and as a passage.
+     */
+    fun process(term: Int, number: String): ExternalId = ExternalId("term$term/process/$number")
+
     fun voting(term: Int, proceeding: Int, votingNumber: String): ExternalId =
         ExternalId("term$term/proceeding/$proceeding/voting/$votingNumber")
 
@@ -46,4 +55,6 @@ object SejmExternalIds {
     fun printPrefix(term: Int): String = "term$term/print/"
 
     fun proceedingPrefix(term: Int): String = "term$term/proceeding/"
+
+    fun processPrefix(term: Int): String = "term$term/process/"
 }

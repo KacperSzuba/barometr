@@ -16,4 +16,6 @@ data class SejmProperties(
     val baseUrl: URI = URI.create("https://api.sejm.gov.pl"),
     val requestsPerSecond: Double = 2.0,
     val proceedingsPerChunk: Int = SejmConnector.DEFAULT_PROCEEDINGS_PER_CHUNK,
+    val processIndexPageSize: Int = SejmConnector.DEFAULT_PROCESS_INDEX_PAGE_SIZE,
+    val processesPerChunk: Int = SejmConnector.DEFAULT_PROCESSES_PER_CHUNK,
 )

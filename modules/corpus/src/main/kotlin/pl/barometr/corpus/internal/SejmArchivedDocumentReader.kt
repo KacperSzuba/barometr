@@ -33,6 +33,9 @@ class SejmArchivedDocumentReader(private val json: ObjectMapper) : ArchivedDocum
             in PRINT -> DocumentDescriptor(PRINT_KIND, body.text("title"), body.day("documentDate"))
             in VOTING -> DocumentDescriptor(VOTING_KIND, body.text("description"), body.moment("date"))
             in PROCEEDING -> DocumentDescriptor(PROCEEDING_KIND, body.text("title"), body.firstDay("dates"))
+            // A process is the passage of one draft: the same subject as its print,
+            // seen as a history rather than as a document.
+            in PROCESS -> DocumentDescriptor(PROCESS_KIND, body.text("title"), body.day("processStartDate"))
             in CLUB -> DocumentDescriptor(CLUB_KIND, body.text("name"), null)
             in MEMBER -> DocumentDescriptor(MEMBER_KIND, body.text("firstLastName"), null)
             else -> unrecognised(id)
@@ -96,11 +99,13 @@ class SejmArchivedDocumentReader(private val json: ObjectMapper) : ArchivedDocum
         // first day it sits: `term10/proceeding/42` and `term10/proceeding/2025-08-06`.
         val PROCEEDING = Regex("term\\d+/proceeding/(\\d+|\\d{4}-\\d{2}-\\d{2})")
         val VOTING = Regex("term\\d+/proceeding/\\d+/voting/.+")
+        val PROCESS = Regex("term\\d+/process/.+")
 
         val PRINT_KIND = DocumentKind("print")
         val CLUB_KIND = DocumentKind("club")
         val MEMBER_KIND = DocumentKind("mp")
         val PROCEEDING_KIND = DocumentKind("proceeding")
         val VOTING_KIND = DocumentKind("voting")
+        val PROCESS_KIND = DocumentKind("process")
     }
 }

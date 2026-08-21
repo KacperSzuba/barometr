@@ -67,6 +67,9 @@ top-level thing.
    Spring Modulith writes the publication to `event_publication` and retries it, so
    it is the outbox. `RawDocumentIngested` is the model: ingestion knows nothing
    about extraction, indexing or alerting, and they all hang off it.
+   Two conditions come with it, and both have already failed once: the publisher must
+   be **inside a transaction** (see `spring-boot`, rule 16), and every listener must be
+   **idempotent**, because outstanding publications are redelivered on restart.
 9. **Prefer a published port when the caller does need an answer.** A read port
    (`UserLookup`, `SourceRegistry`) is an interface in `api`, implemented in
    `internal`. The implementing class is never referenced by name outside its context.

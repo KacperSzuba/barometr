@@ -66,6 +66,14 @@ the errors most likely to be introduced from habit:
     stolen token family and then throwing is the case that justifies it.
 15. **Never open a transaction around a network call.** A connector fetch inside a
     transaction holds a pooled connection for the length of somebody else's server.
+16. **Publishing an event that an `@ApplicationModuleListener` consumes requires a
+    transaction.** That listener runs *after commit*, so with no transaction open the
+    publication is written to the register and never delivered — nothing throws,
+    nothing logs, and everything downstream of it silently stops. `RawDocumentArchiver`
+    is `@Transactional` for this reason and no other: eight thousand documents were
+    archived, eight thousand publications recorded, and not one of them handled.
+    A test that publishes the event itself cannot catch this — it brings its own
+    transaction. Drive the real producer.
 
 ## Runtime
 

@@ -26,7 +26,7 @@ pgvector = "0.1.6"
 # comes from the Boot BOM — but the Polish analyser is published per server release and
 # refuses to install into another one, so this number is the one both must agree on.
 elasticsearchServer = "9.5.1"
-archunit = "1.4.2"
+archunit = "1.5.0"
 kotlinxCoroutines = "1.10.2"
 
 [libraries]

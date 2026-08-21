@@ -4,7 +4,8 @@ import org.springframework.stereotype.Service
 import pl.barometr.identity.api.UserId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
-import pl.barometr.search.api.TitleMatch
+import pl.barometr.legislative.api.LegislativeKind
+import pl.barometr.profiles.api.ProfileId
 import pl.barometr.search.api.TitleSearch
 import pl.barometr.shared.Eli
 import java.util.UUID
@@ -62,7 +63,7 @@ class ProfileMatchPreview(
                 InterestKind.KEYWORD ->
                     titles.titlesMatching(interest.value, PER_KEYWORD).map { it.kind to it.id }
 
-                InterestKind.DRAFT -> listOf(TitleMatch.DRAFT to interest.value)
+                InterestKind.DRAFT -> listOf(LegislativeKind.DRAFT to interest.value)
 
                 // An act is refused by address above; the other two are partitioned out
                 // as dormant before anything gets here.
@@ -74,11 +75,11 @@ class ProfileMatchPreview(
 
     private fun matchesFor(interest: Interest): List<ProfileMatch> = when (interest.kind) {
         InterestKind.ACT -> catalog.actByEli(Eli(interest.value))
-            ?.let { listOf(ProfileMatch(interest, TitleMatch.ACT, it.id.value.toString(), it.title, it.eli.value)) }
+            ?.let { listOf(ProfileMatch(interest, LegislativeKind.ACT, it.id.value.toString(), it.title, it.eli.value)) }
             .orEmpty()
 
         InterestKind.DRAFT -> catalog.draftById(DraftId(UUID.fromString(interest.value)))
-            ?.let { listOf(ProfileMatch(interest, TitleMatch.DRAFT, it.id.value.toString(), it.title, null)) }
+            ?.let { listOf(ProfileMatch(interest, LegislativeKind.DRAFT, it.id.value.toString(), it.title, null)) }
             .orEmpty()
 
         InterestKind.KEYWORD -> titles.titlesMatching(interest.value, PER_KEYWORD)

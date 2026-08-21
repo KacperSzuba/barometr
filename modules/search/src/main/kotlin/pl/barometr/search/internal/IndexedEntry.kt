@@ -1,6 +1,6 @@
 package pl.barometr.search.internal
 
-import pl.barometr.search.api.TitleMatch
+import pl.barometr.legislative.api.LegislativeKind
 
 /**
  * One searchable thing, in the shape the index mapping describes.
@@ -31,8 +31,8 @@ data class IndexedEntry(
     companion object {
         private const val PREFIX_SEPARATOR = ':'
 
-        const val ACT = TitleMatch.ACT
-        const val DRAFT = TitleMatch.DRAFT
+        const val ACT = LegislativeKind.ACT
+        const val DRAFT = LegislativeKind.DRAFT
 
         /**
          * Prefixed by kind, so an act and a draft can never collide on a shared index

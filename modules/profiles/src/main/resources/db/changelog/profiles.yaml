@@ -9,3 +9,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/profiles/0001-interest-profile.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/profiles/0002-keyword-stems.sql
+      relativeToChangelogFile: false

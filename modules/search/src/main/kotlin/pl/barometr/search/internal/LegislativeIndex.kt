@@ -49,6 +49,13 @@ object LegislativeIndex {
      */
     const val PREFIX = "legislative-"
 
+    /**
+     * The analyser the title field is read with, named here because two things ask for
+     * it by name — the mapping in the definition below, and anything stemming text the
+     * way this index stems it.
+     */
+    const val ANALYZER = "polish_legal"
+
     const val DEFINITION = "/search/legislative-index.json"
 
     fun nameFor(builtAt: Instant): String = "$PREFIX${builtAt.toEpochMilli()}"

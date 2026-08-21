@@ -1,4 +1,4 @@
-package pl.barometr.profiles.internal
+package pl.barometr.profiles.api
 
 import java.util.UUID
 

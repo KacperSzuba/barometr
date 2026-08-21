@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.util.UUID
+import pl.barometr.profiles.api.ProfileId
 
 /**
  * A subscriber's own profiles.

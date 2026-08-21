@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":legislative"))
     implementation(project(":search"))
     implementation(project(":profiles"))
+    implementation(project(":alerts"))
 
     implementation(libs.springBootStarterWeb)
     implementation(libs.springBootStarterSecurity)

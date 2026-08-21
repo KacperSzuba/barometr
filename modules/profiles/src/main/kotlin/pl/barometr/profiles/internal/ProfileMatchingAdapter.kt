@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.api.UserId
 import pl.barometr.legislative.api.LegislativeKind
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.InterestedProfile
 import pl.barometr.profiles.api.LegislativeItem
 import pl.barometr.profiles.api.MatchedInterest
@@ -78,9 +79,13 @@ class ProfileMatchingAdapter(
                     profile = ProfileId(it[INTEREST_PROFILE.ID]!!),
                     owner = UserId(it[INTEREST_PROFILE.OWNER_ID]!!),
                     version = it[INTEREST_PROFILE.CURRENT_VERSION]!!,
-                    matchedBy = MatchedInterest(it[PROFILE_INTEREST.KIND]!!, it[PROFILE_INTEREST.VALUE]!!),
+                    matchedBy = MatchedInterest(kindOf(it[PROFILE_INTEREST.KIND]!!), it[PROFILE_INTEREST.VALUE]!!),
                 )
             }
+
+    /** A stored kind this enum does not know would mean the two drifted apart. */
+    private fun kindOf(stored: String): InterestKind =
+        InterestKind.of(stored) ?: error("stored kind '$stored'")
 
     private fun caughtBy(item: LegislativeItem, titleStems: List<String>): Condition =
         DSL.or(

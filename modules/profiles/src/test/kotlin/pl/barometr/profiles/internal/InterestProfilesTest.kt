@@ -3,6 +3,7 @@ package pl.barometr.profiles.internal
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.api.UserId
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock

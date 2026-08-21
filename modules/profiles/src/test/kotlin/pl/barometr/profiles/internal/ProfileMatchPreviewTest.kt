@@ -8,6 +8,7 @@ import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.PublishedAct
 import pl.barometr.legislative.api.TrackedDraft
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.search.api.TitleMatch
 import pl.barometr.search.api.TitleSearch

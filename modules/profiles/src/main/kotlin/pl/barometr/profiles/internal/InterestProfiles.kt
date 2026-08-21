@@ -2,6 +2,7 @@ package pl.barometr.profiles.internal
 
 import org.springframework.stereotype.Service
 import pl.barometr.identity.api.UserId
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 
 /**

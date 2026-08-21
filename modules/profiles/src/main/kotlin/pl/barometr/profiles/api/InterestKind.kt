@@ -1,8 +1,13 @@
-package pl.barometr.profiles.internal
+package pl.barometr.profiles.api
 
 /**
  * What sort of thing a subscriber chose, matching the `CHECK` on
  * `profile_interest.kind`.
+ *
+ * Published, because whatever tells somebody about a match has to say what caught it —
+ * and choosing between two reasons, or rendering one, means comparing against this
+ * vocabulary. A caller spelling `"keyword"` for itself is one typo from a rule that
+ * silently orders nothing.
  *
  * Closed, because every kind needs a matching rule written for it and a kind nobody
  * has written one for would silently match nothing — which looks exactly like a quiet

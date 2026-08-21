@@ -1,6 +1,7 @@
 package pl.barometr.profiles.internal
 
 import pl.barometr.identity.api.UserId
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 
 /**

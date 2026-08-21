@@ -3,6 +3,7 @@ package pl.barometr.profiles.internal
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.internal.jooq.tables.references.PROFILE_INTEREST
 
 /**

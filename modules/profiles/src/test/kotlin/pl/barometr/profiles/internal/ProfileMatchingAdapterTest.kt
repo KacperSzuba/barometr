@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.api.UserId
 import pl.barometr.legislative.api.LegislativeKind
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.LegislativeItem
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.search.api.TextAnalysis
@@ -51,7 +52,7 @@ class ProfileMatchingAdapterTest {
         assertEquals(profile.id, interested.profile)
         assertEquals(ewa, interested.owner)
         assertEquals(1, interested.version)
-        assertEquals("act", interested.matchedBy.kind)
+        assertEquals(InterestKind.ACT, interested.matchedBy.kind)
     }
 
     @Test
@@ -89,7 +90,7 @@ class ProfileMatchingAdapterTest {
 
         val interested = matching.profilesInterestedIn(act("DU/2024/1222", "Ustawa Prawo budowlanego")).single()
 
-        assertEquals("keyword", interested.matchedBy.kind)
+        assertEquals(InterestKind.KEYWORD, interested.matchedBy.kind)
         assertEquals("prawo budowlane", interested.matchedBy.value)
     }
 

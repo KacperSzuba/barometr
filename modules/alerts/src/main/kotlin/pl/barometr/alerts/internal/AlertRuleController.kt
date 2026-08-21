@@ -1,0 +1,91 @@
+package pl.barometr.alerts.internal
+
+import jakarta.validation.Valid
+import jakarta.validation.constraints.Size
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
+import pl.barometr.profiles.api.ProfileId
+import java.security.Principal
+import java.util.UUID
+
+/**
+ * Standing instructions: which of my profiles are worth waking me for.
+ *
+ * Authenticated, and every route reads the owner from the token. A rule names a
+ * profile by identifier, so the one thing this must never do is take the caller's word
+ * that the profile is theirs — [AlertRules] asks the profiles context instead.
+ */
+@RestController
+@RequestMapping("/api/v1/alerts/rules")
+class AlertRuleController(private val rules: AlertRules) {
+
+    @GetMapping
+    fun list(caller: Principal): List<RuleResponse> =
+        rules.ownedBy(readerOf(caller)).map(::describe)
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun create(caller: Principal, @Valid @RequestBody request: RuleRequest): RuleResponse =
+        describe(rules.create(readerOf(caller), ProfileId(request.profileId), request.stages))
+
+    /**
+     * States the whole rule, like the interests do: the stages sent are the stages
+     * watched, so narrowing is expressed by sending fewer.
+     */
+    @PutMapping("/{id}")
+    fun update(
+        caller: Principal,
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: RuleUpdate,
+    ): RuleResponse =
+        describe(rules.update(readerOf(caller), AlertRuleId(id), request.enabled, request.stages))
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun delete(caller: Principal, @PathVariable id: UUID) {
+        rules.delete(readerOf(caller), AlertRuleId(id))
+    }
+
+    private fun describe(rule: AlertRule) = RuleResponse(
+        id = rule.id.value,
+        profileId = rule.profile.value,
+        enabled = rule.enabled,
+        stages = rule.stages,
+    )
+
+    data class RuleRequest(
+        val profileId: UUID,
+        /** Empty means every stage — somebody who has not narrowed has not asked to hear less. */
+        @field:Size(max = MAX_STAGES)
+        val stages: Set<String> = emptySet(),
+    )
+
+    data class RuleUpdate(
+        val enabled: Boolean = true,
+        @field:Size(max = MAX_STAGES)
+        val stages: Set<String> = emptySet(),
+    )
+
+    data class RuleResponse(
+        val id: UUID,
+        val profileId: UUID,
+        val enabled: Boolean,
+        val stages: Set<String>,
+    )
+
+    private companion object {
+        /**
+         * More stages than the path has. Naming them all is the same as naming none,
+         * and a set this size is a client sending something it did not mean.
+         */
+        const val MAX_STAGES = 40
+    }
+}

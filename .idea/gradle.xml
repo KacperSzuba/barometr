@@ -21,6 +21,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/build-logic" />
+            <option value="$PROJECT_DIR$/modules/alerts" />
             <option value="$PROJECT_DIR$/modules/corpus" />
             <option value="$PROJECT_DIR$/modules/identity" />
             <option value="$PROJECT_DIR$/modules/ingestion" />

@@ -1,5 +1,6 @@
 package pl.barometr.profiles.internal
 
+import pl.barometr.profiles.api.InterestKind
 /**
  * One thing a subscriber said about what they want.
  *

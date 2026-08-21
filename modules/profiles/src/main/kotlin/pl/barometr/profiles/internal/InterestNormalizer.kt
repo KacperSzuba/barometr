@@ -1,6 +1,7 @@
 package pl.barometr.profiles.internal
 
 import org.springframework.stereotype.Component
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.shared.Eli
 import java.util.UUID
 

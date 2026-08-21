@@ -5,6 +5,7 @@ import org.jooq.Record
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.api.UserId
+import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.profiles.internal.jooq.tables.references.PROFILE_INTEREST

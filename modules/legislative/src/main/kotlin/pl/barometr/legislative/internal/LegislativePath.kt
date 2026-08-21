@@ -16,35 +16,44 @@ package pl.barometr.legislative.internal
  */
 object LegislativePath {
 
-    private val ALLOWED: Map<LegislativeStage, Set<LegislativeStage>> = mapOf(
-        LegislativeStage.SUBMITTED_TO_SEJM to setOf(LegislativeStage.REFERRED_TO_FIRST_READING),
-        LegislativeStage.REFERRED_TO_FIRST_READING to setOf(LegislativeStage.FIRST_READING),
-        LegislativeStage.FIRST_READING to setOf(
-            LegislativeStage.COMMITTEE_WORK,
-            LegislativeStage.SECOND_READING,
-        ),
-        LegislativeStage.COMMITTEE_WORK to setOf(
-            LegislativeStage.SECOND_READING,
-            LegislativeStage.THIRD_READING,
-        ),
+    /**
+     * Where the process is heading from each stage — one answer, not a set.
+     *
+     * This is what "what happens next" means on a card, and it is deliberately the
+     * step the process *aims* at rather than the most frequent one. After a second
+     * reading with amendments a bill usually goes back to committee first, but where
+     * it is going is the third reading, and telling a reader the detour is the
+     * destination would be precise about the wrong thing.
+     */
+    private val EXPECTED: Map<LegislativeStage, LegislativeStage> = mapOf(
+        LegislativeStage.SUBMITTED_TO_SEJM to LegislativeStage.REFERRED_TO_FIRST_READING,
+        LegislativeStage.REFERRED_TO_FIRST_READING to LegislativeStage.FIRST_READING,
+        LegislativeStage.FIRST_READING to LegislativeStage.COMMITTEE_WORK,
+        LegislativeStage.COMMITTEE_WORK to LegislativeStage.SECOND_READING,
+        LegislativeStage.SECOND_READING to LegislativeStage.THIRD_READING,
+        LegislativeStage.THIRD_READING to LegislativeStage.SENATE_POSITION,
+        LegislativeStage.SENATE_POSITION to LegislativeStage.SENT_TO_PRESIDENT,
+        LegislativeStage.SENT_TO_PRESIDENT to LegislativeStage.PRESIDENT_SIGNED,
+    )
+
+    /**
+     * The further steps the process makes that are not where it is heading — a return
+     * to committee, a referral to the Tribunal. Kept apart from [EXPECTED] rather than
+     * repeating it: what the model allows is these *and* the step it expects.
+     */
+    private val ALSO_ALLOWED: Map<LegislativeStage, Set<LegislativeStage>> = mapOf(
+        LegislativeStage.FIRST_READING to setOf(LegislativeStage.SECOND_READING),
+        LegislativeStage.COMMITTEE_WORK to setOf(LegislativeStage.THIRD_READING),
         // The routine return: amendments at second reading send it back to committee
         // for a report, and it comes out to a third reading the same afternoon.
-        LegislativeStage.SECOND_READING to setOf(
-            LegislativeStage.COMMITTEE_WORK,
-            LegislativeStage.THIRD_READING,
-        ),
-        LegislativeStage.THIRD_READING to setOf(LegislativeStage.SENATE_POSITION),
+        LegislativeStage.SECOND_READING to setOf(LegislativeStage.COMMITTEE_WORK),
         // The Senate's amendments go back to the Sejm to be voted on, so a further
         // committee sitting after the Senate is ordinary too.
         LegislativeStage.SENATE_POSITION to setOf(
-            LegislativeStage.SENT_TO_PRESIDENT,
             LegislativeStage.COMMITTEE_WORK,
             LegislativeStage.THIRD_READING,
         ),
-        LegislativeStage.SENT_TO_PRESIDENT to setOf(
-            LegislativeStage.PRESIDENT_SIGNED,
-            LegislativeStage.PRESIDENT_TO_TRIBUNAL,
-        ),
+        LegislativeStage.SENT_TO_PRESIDENT to setOf(LegislativeStage.PRESIDENT_TO_TRIBUNAL),
         LegislativeStage.PRESIDENT_TO_TRIBUNAL to setOf(LegislativeStage.PRESIDENT_SIGNED),
     )
 
@@ -58,6 +67,9 @@ object LegislativePath {
     fun allows(from: LegislativeStage, to: LegislativeStage): Boolean = when {
         from == LegislativeStage.UNKNOWN || to == LegislativeStage.UNKNOWN -> true
         from == to -> true
-        else -> ALLOWED[from].orEmpty().contains(to)
+        else -> EXPECTED[from] == to || ALSO_ALLOWED[from].orEmpty().contains(to)
     }
+
+    /** Where the process is heading, or null at a stage it does not lead out of. */
+    fun expectedAfter(stage: LegislativeStage): LegislativeStage? = EXPECTED[stage]
 }

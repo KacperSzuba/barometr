@@ -1,9 +1,12 @@
 package pl.barometr.legislative.internal
 
 import org.jooq.DSLContext
+import org.jooq.Record
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
 import pl.barometr.shared.Ids
 import java.time.Clock
@@ -72,6 +75,44 @@ class DraftRepository(
             .and(DRAFT.ACT_ID.isNull)
             .execute()
     }
+
+    /**
+     * A draft with the one hard date in the picture: the day the act it became starts
+     * applying, joined from the act rather than copied onto the draft, so it cannot go
+     * stale against the register that states it.
+     */
+    @Transactional(readOnly = true)
+    fun summaryOf(id: DraftId): DraftSummary? =
+        summaries().where(DRAFT.ID.eq(id.value)).fetchOne(::toSummary)
+
+    /** Every draft, oldest first, for the read model to be rebuilt from. */
+    @Transactional(readOnly = true)
+    fun allSummaries(): List<DraftSummary> = summaries().orderBy(DRAFT.CREATED_AT).fetch(::toSummary)
+
+    private fun summaries() = dsl.select(
+        DRAFT.ID,
+        DRAFT.TITLE,
+        DRAFT.INITIATOR,
+        DRAFT.TERM,
+        DRAFT.STARTED_ON,
+        DRAFT.CLOSED_ON,
+        DRAFT.OUTCOME,
+        ACT.IN_FORCE_FROM,
+    )
+        .from(DRAFT)
+        .leftJoin(ACT).on(ACT.ID.eq(DRAFT.ACT_ID))
+
+    private fun toSummary(record: Record) = DraftSummary(
+        id = DraftId(record[DRAFT.ID]!!),
+        title = record[DRAFT.TITLE]!!,
+        initiator = DraftInitiator.entries.firstOrNull { it.wireName == record[DRAFT.INITIATOR] }
+            ?: DraftInitiator.UNKNOWN,
+        term = record[DRAFT.TERM],
+        startedOn = record[DRAFT.STARTED_ON],
+        closedOn = record[DRAFT.CLOSED_ON],
+        outcome = DraftOutcome.entries.firstOrNull { it.wireName == record[DRAFT.OUTCOME] },
+        inForceFrom = record[ACT.IN_FORCE_FROM],
+    )
 
     private fun now() = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
 }

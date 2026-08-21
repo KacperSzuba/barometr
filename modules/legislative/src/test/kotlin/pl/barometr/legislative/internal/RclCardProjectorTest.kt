@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
+import pl.barometr.connectors.rcl.api.RclStage
+import pl.barometr.connectors.rcl.api.RclStageState
 import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionId
@@ -25,6 +27,7 @@ import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.nio.file.Path
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -61,7 +64,9 @@ class RclCardProjectorTest {
             pages = StubRclPages,
             drafts = DraftRepository(dsl, clock),
             identifiers = DraftIdentifierRepository(dsl, clock),
+            transitions = StageTransitionRepository(dsl, clock),
             meters = SimpleMeterRegistry(),
+            clock = clock,
         )
     }
 
@@ -97,16 +102,29 @@ class RclCardProjectorTest {
     }
 
     /**
-     * The limit of what a card can honestly support. It lists eight stages with a
-     * state each and, on the few that have moved, a last-modified stamp — which is not
-     * the day a stage began. `stage_transition` answers what the status was on a given
-     * day, and answering it from that stamp would be this system inventing a date.
+     * The limit of what a card can honestly support, and the one thing inside it.
+     *
+     * A card lists eight stages with a state each and, on the few that have moved, a
+     * last-modified stamp — which is not the day a stage began, so no per-stage
+     * timeline can come from it. What it does state is the day the draft entered the
+     * process, and that single dated fact is recorded coarsely, with RPL's own word
+     * for where the draft is beside it.
      */
     @Test
-    fun `no timeline is recorded, because the card carries no stage dates`() {
+    fun `entering the process is dated, the stages inside it are not`() {
         projector.projectGovernmentDraft(archivedCard())
 
-        assertEquals(0, dsl.fetchCount(STAGE_TRANSITION))
+        val recorded = assertNotNull(dsl.selectFrom(STAGE_TRANSITION).fetchOne())
+        assertEquals(LegislativeStage.GOVERNMENT_PROCESS.wireName, recorded.stage)
+        // Compared as an instant: the driver hands the column back in the JVM's own
+        // offset, and two renderings of one moment are not equal as OffsetDateTime.
+        assertEquals(
+            LocalDate.parse("2026-04-09").atStartOfDay(ZoneOffset.UTC).toInstant(),
+            recorded.validFrom?.toInstant(),
+        )
+        assertNull(recorded.validTo, "a card never says a draft has left")
+        assertEquals("Konsultacje publiczne", recorded.sourceLabel, "RPL's own word for where it is")
+        assertEquals(1, dsl.fetchCount(STAGE_TRANSITION), "no per-stage timeline is invented")
     }
 
     @Test
@@ -116,6 +134,7 @@ class RclCardProjectorTest {
 
         assertEquals(1, dsl.fetchCount(DRAFT))
         assertEquals(2, dsl.fetchCount(DRAFT_IDENTIFIER))
+        assertEquals(1, dsl.fetchCount(STAGE_TRANSITION), "the same dated fact is not appended twice")
     }
 
     @Test
@@ -158,7 +177,11 @@ class RclCardProjectorTest {
             ),
             programmeOfWorkUrl = null,
             createdOn = LocalDate.parse("2026-04-09"),
-            stages = emptyList(),
+            stages = listOf(
+                RclStage("13196859", 1, "Uzgodnienia", RclStageState.DONE, null, isVisitable = true),
+                RclStage("13196866", 2, "Konsultacje publiczne", RclStageState.CURRENT, null, isVisitable = true),
+                RclStage("13196868", 3, "Opiniowanie", RclStageState.NOT_STARTED, null, isVisitable = false),
+            ),
         )
     }
 }

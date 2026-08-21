@@ -16,6 +16,17 @@ package pl.barometr.legislative.internal
 enum class LegislativeStage(val wireName: String) {
 
     // ——— Rządowy proces legislacyjny, z RPL ————————————————————————————————
+    /**
+     * In the government's process, stage unknown — the coarse fact an RPL card can
+     * actually support.
+     *
+     * A card is a checklist: stages with a state each and, on the few that have moved,
+     * a last-modified stamp. That stamp is not the day a stage began, so the finer
+     * stages below wait for the change registers, which time events to the minute.
+     * What the card does state is the day the draft entered the process, and saying
+     * that much is far better than leaving a draft with no position in time at all.
+     */
+    GOVERNMENT_PROCESS("proces_rzadowy"),
     PROGRAMME_OF_WORK("wykaz_prac"),
     INTER_MINISTERIAL_AGREEMENT("uzgodnienia"),
     PUBLIC_CONSULTATION("konsultacje_publiczne"),

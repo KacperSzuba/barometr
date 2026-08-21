@@ -65,6 +65,30 @@ class StageTransitionRepository(
         ).execute().count { it > 0 }
     }
 
+    /**
+     * A draft's history, oldest first.
+     *
+     * Every fact ever recorded, including the ones a later reading corrected — telling
+     * them apart is `known_at`'s job, and a caller asking "where is it now" wants the
+     * newest statement about the newest stage, which ordering by period and then by
+     * the register's own ordinal already gives.
+     */
+    @Transactional(readOnly = true)
+    fun historyOf(draftId: DraftId): List<RecordedStage> =
+        dsl.selectFrom(STAGE_TRANSITION)
+            .where(STAGE_TRANSITION.DRAFT_ID.eq(draftId.value))
+            .orderBy(STAGE_TRANSITION.VALID_FROM, STAGE_TRANSITION.ORDINAL, STAGE_TRANSITION.KNOWN_AT)
+            .fetch { record ->
+                RecordedStage(
+                    stage = LegislativeStage.of(record.stage!!) ?: LegislativeStage.UNKNOWN,
+                    since = record.validFrom!!.toInstant(),
+                    until = record.validTo?.toInstant(),
+                    ordinal = record.ordinal!!,
+                    sourceLabel = record.sourceLabel,
+                    isException = record.isException!!,
+                )
+            }
+
     /** `[from, until)`, with an open end while the draft is still there. */
     private fun periodOf(fact: StageFact): OffsetDateTimeRange = OffsetDateTimeRange.offsetDateTimeRange(
         OffsetDateTime.ofInstant(fact.from, ZoneOffset.UTC),

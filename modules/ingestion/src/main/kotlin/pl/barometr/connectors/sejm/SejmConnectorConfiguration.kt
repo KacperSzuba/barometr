@@ -32,5 +32,7 @@ class SejmConnectorConfiguration {
         api = api,
         payloads = CanonicalJsonPayload(objectMapper),
         proceedingsPerChunk = properties.proceedingsPerChunk,
+        processIndexPageSize = properties.processIndexPageSize,
+        processesPerChunk = properties.processesPerChunk,
     )
 }

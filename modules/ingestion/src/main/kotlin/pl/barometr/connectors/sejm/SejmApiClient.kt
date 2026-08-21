@@ -9,6 +9,8 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.net.URI
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeParseException
 
 /**
  * Typed access to the Sejm API.
@@ -65,6 +67,26 @@ class SejmApiClient(
             )
         }
 
+    /**
+     * One page of the index of legislative processes.
+     *
+     * Paged, unlike everything else this API serves: `limit` and `offset` are honoured
+     * here, and a term holds well over a thousand processes. The index carries no
+     * stages, so it is navigation — what to fetch, and whether it is worth fetching.
+     */
+    fun processes(term: Int, offset: Int, limit: Int): List<SejmProcessSummary> =
+        readArray("/sejm/term$term/processes?limit=$limit&offset=$offset").mapNotNull { node ->
+            val number = node.path("number").asString()?.takeIf { it.isNotBlank() }
+                ?: node.path("number").takeIf { it.isInt }?.asInt()?.toString()
+                ?: return@mapNotNull null
+
+            SejmProcessSummary(number, node.optionalTimestamp("changeDate"))
+        }
+
+    /** One process, with the stages the index leaves out. */
+    fun process(term: Int, number: String): SejmEntity =
+        SejmEntity(number, json.readTree(read("/sejm/term$term/processes/$number")))
+
     fun votings(term: Int, proceeding: Int): List<SejmEntity> =
         entities("/sejm/term$term/votings/$proceeding", "votingNumber")
 
@@ -95,6 +117,20 @@ class SejmApiClient(
 
     private fun JsonNode.requireInt(field: String): Int =
         path(field).takeIf { it.isInt }?.asInt() ?: error("Missing integer field '$field'")
+
+    /**
+     * Null rather than an exception: a stamp we cannot read costs the check that
+     * decides whether a process is worth re-fetching, which then falls back to
+     * fetching it — correct, only more expensive.
+     */
+    private fun JsonNode.optionalTimestamp(field: String): LocalDateTime? =
+        path(field).asString()?.takeIf { it.isNotBlank() }?.let { stamp ->
+            try {
+                LocalDateTime.parse(stamp)
+            } catch (malformed: DateTimeParseException) {
+                null
+            }
+        }
 
     private fun JsonNode.optionalDate(field: String): LocalDate? =
         path(field).asString()?.takeIf { it.isNotBlank() }?.let(LocalDate::parse)

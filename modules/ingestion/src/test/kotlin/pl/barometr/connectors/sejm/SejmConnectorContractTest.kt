@@ -21,6 +21,7 @@ import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -40,10 +41,12 @@ class SejmConnectorContractTest {
     private fun connectorOf(
         http: SourceHttpClient,
         proceedingsPerChunk: Int = SejmConnector.DEFAULT_PROCEEDINGS_PER_CHUNK,
+        processesPerChunk: Int = SejmConnector.DEFAULT_PROCESSES_PER_CHUNK,
     ) = SejmConnector(
         api = SejmApiClient(http, BASE_URL, json),
         payloads = CanonicalJsonPayload(json),
         proceedingsPerChunk = proceedingsPerChunk,
+        processesPerChunk = processesPerChunk,
     )
 
     @Test
@@ -53,9 +56,9 @@ class SejmConnectorContractTest {
 
         connectorOf(http).readChangesSince(cursor = null, sink = sink)
 
-        // 5 prints + 2 clubs + 3 MPs + 3 sittings + 2 x 3 votings. The third sitting is
-        // the National Assembly, which the API leaves unnumbered.
-        assertEquals(19, sink.accepted.size)
+        // 5 prints + 2 clubs + 3 MPs + 3 sittings + 2 x 3 votings + 3 processes. The
+        // third sitting is the National Assembly, which the API leaves unnumbered.
+        assertEquals(22, sink.accepted.size)
 
         // Per-entity granularity is the whole design: with one document per
         // collection, a single amended print would re-store all 3205 of them.
@@ -100,7 +103,7 @@ class SejmConnectorContractTest {
             .readChangesSince(cursor = null, sink = sink)
 
         assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.MISSING_FIELD })
-        assertEquals(18, sink.accepted.size, "everything else still arrived")
+        assertEquals(21, sink.accepted.size, "everything else still arrived")
         assertTrue(sink.externalIds.none { it.startsWith("term10/proceeding/2025") })
     }
 
@@ -115,23 +118,76 @@ class SejmConnectorContractTest {
     }
 
     /**
-     * The behaviour that makes a fifteen-minute cycle affordable. This API has no
-     * ETag and ignores `limit`, so without the cheap check every poll would pull
+     * The behaviour that makes a fifteen-minute cycle affordable. The prints endpoint
+     * has no ETag and ignores `limit`, so without this check every poll would pull
      * thousands of records to discover that nothing moved.
+     *
+     * A quiet term costs two requests, not one: the term summary, and the index of
+     * processes. It reports on prints and on nothing else, so the index is the only
+     * way to learn that a bill moved — see the test below.
      */
     @Test
-    fun `an unchanged term costs exactly one request`() {
+    fun `a term where nothing moved costs the summary and the index`() {
+        val http = FixtureHttpClient()
+        val sink = RecordingSink()
+
+        val result = connectorOf(http).readChangesSince(quietCursor(), sink)
+
+        assertEquals(0, sink.accepted.size)
+        assertTrue(result.sourceUnchanged)
+        assertEquals(listOf("/sejm/term", "/sejm/term10/processes"), http.requestedPaths)
+    }
+
+    /**
+     * The reason processes are walked whatever the term summary says.
+     *
+     * A bill leaving committee for its second reading files no print, so
+     * `prints.lastChanged` does not move — and the passage of a bill is the thing a
+     * user came to watch. Checking only the prints stamp would have left every stage
+     * after the first unarchived until somebody happened to file a document.
+     */
+    @Test
+    fun `a process that moved is read even when the prints have not`() {
         val http = FixtureHttpClient()
         val sink = RecordingSink()
         val cursor = Cursor(
             IngestionMode.INCREMENTAL,
-            mapOf(SejmConnector.CURSOR_PRINTS_LAST_CHANGED to "2026-08-17T14:38:12"),
+            mapOf(
+                SejmConnector.CURSOR_PRINTS_LAST_CHANGED to PRINTS_LAST_CHANGED,
+                SejmConnector.CURSOR_PROCESSES_CHANGED_THROUGH to "2023-12-01T00:00:00",
+            ),
         )
 
         val result = connectorOf(http).readChangesSince(cursor, sink)
 
-        assertEquals(0, sink.accepted.size)
-        assertEquals(listOf("/sejm/term"), http.requestedPaths)
+        // Two of the three recorded processes carry a newer stamp; the third does not
+        // and is never fetched.
+        assertEquals(listOf("term10/process/31", "term10/process/27"), sink.externalIds)
+        assertTrue(http.requestedPaths.none { it.endsWith("/processes/3") })
+        assertFalse(result.sourceUnchanged, "a moved process is a change, whatever the prints say")
+    }
+
+    @Test
+    fun `the cursor records the newest process the index has seen`() {
+        val result = connectorOf(FixtureHttpClient()).readChangesSince(null, RecordingSink())
+
+        assertEquals(
+            NEWEST_PROCESS_CHANGE,
+            result.nextCursor?.get(SejmConnector.CURSOR_PROCESSES_CHANGED_THROUGH),
+        )
+    }
+
+    @Test
+    fun `a refused process is recorded and the rest of the pass continues`() {
+        val http = FixtureHttpClient(refusePathPattern = Regex("/sejm/term10/processes/31"))
+        val sink = RecordingSink()
+
+        connectorOf(http).readChangesSince(quietCursor(), RecordingSink())
+        connectorOf(http).readChangesSince(null, sink)
+
+        assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.ACCESS_DENIED })
+        assertTrue(sink.externalIds.contains("term10/process/27"))
+        assertTrue(sink.externalIds.none { it == "term10/process/31" })
     }
 
     /**
@@ -166,8 +222,9 @@ class SejmConnectorContractTest {
         val result = connectorOf(http).readChangesSince(null, sink)
 
         assertTrue(sink.warnings.any { it.kind == SchemaWarning.Kind.ACCESS_DENIED })
-        // Prints, clubs, MPs and sittings still arrived; only votings are missing.
-        assertEquals(13, sink.accepted.size)
+        // Prints, clubs, MPs, sittings and processes still arrived; only votings are
+        // missing.
+        assertEquals(16, sink.accepted.size)
         assertTrue(sink.externalIds.none { it.contains("/voting/") })
     }
 
@@ -221,7 +278,7 @@ class SejmConnectorContractTest {
         val result = connectorOf(http)
             .readPartitionChunk(BackfillPartition("term10", "Kadencja 10"), cursor = null, sink = sink)
 
-        assertEquals(19, sink.accepted.size)
+        assertEquals(22, sink.accepted.size)
         assertTrue(result.exhausted)
         assertEquals("true", result.nextCursor!![SejmConnector.CURSOR_REGISTERS_DONE])
         assertEquals("2", result.nextCursor!![SejmConnector.CURSOR_LAST_PROCEEDING])
@@ -293,6 +350,32 @@ class SejmConnectorContractTest {
         assertEquals("true", second.nextCursor!![Cursor.PARTITION_DONE])
     }
 
+    /**
+     * Processes resume on an index offset, because a process number is not a position
+     * in the index — the term's own ordering is, and only the offset can express where
+     * a chunk stopped.
+     */
+    @Test
+    fun `a partition resumes its processes from the index offset`() {
+        val connector = connectorOf(FixtureHttpClient(), processesPerChunk = 2)
+        val partition = BackfillPartition("term10", "Kadencja 10")
+
+        val first = RecordingSink()
+        val firstChunk = connector.readPartitionChunk(partition, cursor = null, sink = first)
+        val resumeFrom = assertNotNull(firstChunk.nextCursor)
+
+        assertEquals(listOf("term10/process/31", "term10/process/27"), first.processIds)
+        assertEquals("2", resumeFrom[SejmConnector.CURSOR_PROCESS_OFFSET])
+        assertFalse(firstChunk.exhausted, "one process is still unread")
+
+        val second = RecordingSink()
+        val secondChunk = connector.readPartitionChunk(partition, resumeFrom, second)
+
+        assertEquals(listOf("term10/process/3"), second.processIds)
+        assertEquals("3", assertNotNull(secondChunk.nextCursor)[SejmConnector.CURSOR_PROCESS_OFFSET])
+        assertTrue(secondChunk.exhausted)
+    }
+
     @Test
     fun `a malformed partition key is rejected`() {
         assertFailsWith<IllegalStateException> {
@@ -349,19 +432,39 @@ class SejmConnectorContractTest {
                 path == "/sejm/term10/MP" -> "term10-mp.json"
                 path == "/sejm/term10/proceedings" -> "term10-proceedings.json"
                 path.matches(Regex("/sejm/term10/votings/\\d+")) -> "term10-votings-1.json"
+                path == "/sejm/term10/processes" -> return served(indexPage(read("term10-processes.json"), request.url.query))
+                path.matches(Regex("/sejm/term10/processes/\\d+")) ->
+                    "term10-process-${path.substringAfterLast('/')}.json"
                 else -> return HttpOutcome.Failed(404, "no fixture for $path")
             }
 
-            val body = requireNotNull(javaClass.getResourceAsStream("/fixtures/sejm/$fixture")) {
+            return served(read(fixture))
+        }
+
+        private fun read(fixture: String): ByteArray =
+            requireNotNull(javaClass.getResourceAsStream("/fixtures/sejm/$fixture")) {
                 "Missing fixture $fixture"
             }.use { it.readBytes() }
 
-            return HttpOutcome.Fetched(
-                body = rewrite(body),
-                contentType = "application/json",
-                etag = null,
-                lastModified = null,
-            )
+        private fun served(body: ByteArray) = HttpOutcome.Fetched(
+            body = rewrite(body),
+            contentType = "application/json",
+            etag = null,
+            lastModified = null,
+        )
+
+        /** Slices the recorded index the way the API slices it. */
+        private fun indexPage(body: ByteArray, query: String?): ByteArray {
+            val parameters = query.orEmpty().split('&')
+                .mapNotNull { it.split('=').takeIf { parts -> parts.size == 2 } }
+                .associate { (name, value) -> name to value }
+            val offset = parameters["offset"]?.toInt() ?: 0
+            val limit = parameters["limit"]?.toInt() ?: Int.MAX_VALUE
+
+            val mapper = JsonMapper.builder().build()
+            val recorded = mapper.readValue(body, List::class.java)
+
+            return mapper.writeValueAsBytes(recorded.drop(offset).take(limit))
         }
     }
 
@@ -370,6 +473,8 @@ class SejmConnectorContractTest {
         val warnings = mutableListOf<SchemaWarning>()
 
         val externalIds: List<String> get() = accepted.map { it.externalId.value }
+
+        val processIds: List<String> get() = externalIds.filter { it.contains("/process/") }
 
         override fun archive(payload: RawPayload): SinkOutcome {
             accepted += payload
@@ -381,7 +486,21 @@ class SejmConnectorContractTest {
         }
     }
 
+    /** Prints and processes both already read: the state of a poll with nothing to do. */
+    private fun quietCursor() = Cursor(
+        IngestionMode.INCREMENTAL,
+        mapOf(
+            SejmConnector.CURSOR_PRINTS_LAST_CHANGED to PRINTS_LAST_CHANGED,
+            SejmConnector.CURSOR_PROCESSES_CHANGED_THROUGH to NEWEST_PROCESS_CHANGE,
+        ),
+    )
+
     private companion object {
         val BASE_URL: URI = URI.create("https://api.sejm.gov.pl")
+
+        const val PRINTS_LAST_CHANGED = "2026-08-17T14:38:12"
+
+        /** The newest of the three recorded processes: druk 27, still in progress. */
+        const val NEWEST_PROCESS_CHANGE = "2024-02-08T19:29:18"
     }
 }

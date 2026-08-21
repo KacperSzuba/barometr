@@ -1,5 +1,6 @@
 package pl.barometr.connectors.rcl
 
+import pl.barometr.connectors.rcl.api.RclStageState
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.Test
@@ -100,6 +101,36 @@ class RclPageParsingTest {
      * The cross-link out of RCL and into the government's programme of work — the
      * join that lets a draft here be matched to its `UD`/`RD` entry on gov.pl.
      */
+    /**
+     * The three fields anything deriving from a card actually needs, and the two that
+     * had to be typed for it: RPL prints the term in roman numerals and the creation
+     * date day-first, and neither is how the rest of the system counts or parses.
+     */
+    @Test
+    fun `a card states when the draft began, in which term, and under which number`() {
+        val card = assertNotNull(cards.readProjectCard(fixture("project-ustawa-12409051.html")))
+
+        assertEquals(LocalDate.parse("2026-04-09"), card.createdOn)
+        assertEquals(10, card.termNumber)
+        assertEquals("UD383", card.registerNumber)
+    }
+
+    /**
+     * The port the other contexts read archived pages through — the same parser and
+     * the same selectors, from bytes rather than from a parsed document.
+     */
+    @Test
+    fun `the published reader sees exactly what the parser sees`() {
+        val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/rcl/project-ustawa-12409051.html"))
+            .use { it.readBytes() }
+
+        val throughPort = assertNotNull(JsoupRclPageReader(cards).readProjectCard(bytes))
+
+        assertEquals(cards.readProjectCard(fixture("project-ustawa-12409051.html"))?.title, throughPort.title)
+        assertEquals("12409051", throughPort.projectId)
+        assertTrue(throughPort.title.isNotBlank())
+    }
+
     @Test
     fun `captures the deep link to the programme of work`() {
         val card = assertNotNull(cards.readProjectCard(fixture("project-ustawa-12409051.html")))

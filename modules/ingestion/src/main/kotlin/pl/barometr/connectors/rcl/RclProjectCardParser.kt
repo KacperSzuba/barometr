@@ -1,5 +1,8 @@
 package pl.barometr.connectors.rcl
 
+import pl.barometr.connectors.rcl.api.RclStageState
+import pl.barometr.connectors.rcl.api.RclStage
+import pl.barometr.connectors.rcl.api.RclProjectCard
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.time.LocalDate
@@ -25,6 +28,7 @@ class RclProjectCardParser(
             title = page.selectFirst(selectors.title)?.text().orEmpty().trim(),
             metadata = metadata.values,
             programmeOfWorkUrl = metadata.links[RclProjectCard.REGISTER_NUMBER],
+            createdOn = RclDateFormats.readDate(metadata.values[RclProjectCard.CREATED_AT]),
             stages = page.select(selectors.stageItem).mapNotNull(::readStage),
         )
     }

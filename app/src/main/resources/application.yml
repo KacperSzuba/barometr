@@ -13,6 +13,16 @@ spring:
     # schema is built on, so the order is a consequence of the dependency graph
     # rather than of a filename convention.
     change-log: classpath:db/changelog/master.yaml
+  elasticsearch:
+    # The search index, which is derived and rebuildable from Postgres at any time.
+    # Nothing that cannot be reconstructed depends on it: with the node down the
+    # application still archives, derives and answers everything except search.
+    #
+    # Its health contributor is left enabled, so a node that is down says so. Worth
+    # revisiting when there is a deployment: a liveness probe reading the default
+    # health group would restart an application that is ingesting perfectly well.
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+
   modulith:
     events:
       # A publication left incomplete means a listener never ran, and in this system

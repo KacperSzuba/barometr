@@ -23,6 +23,9 @@ dependencies {
     // the application's, so only the annotations are needed here.
     implementation(libs.springBootStarterWeb)
     implementation(libs.springSecurityCore)
+    // The status read model is rebuilt on a schedule, and once across the deployment
+    // rather than once per instance.
+    implementation(libs.shedlockSpring)
     // MeterRegistry: how much of the archive is pinned to an act is a number worth
     // watching, not a query someone remembers to run.
     implementation(libs.springBootStarterActuator)

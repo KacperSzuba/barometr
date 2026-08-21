@@ -1,0 +1,82 @@
+package pl.barometr.legislative.internal
+
+/**
+ * Which stage may follow which — the process model, stated once.
+ *
+ * Loosely on purpose. A bill going back to committee between its second and third
+ * readings is not an anomaly, it is most Thursdays, and a model that called it one
+ * would mark half the archive exceptional and make the flag worth nothing. So the
+ * edges below include the returns the process really makes, and what stays
+ * exceptional is a jump the process does not make at all — which is the only kind
+ * worth a reader's attention.
+ *
+ * Nothing is ever rejected for failing this. An unexpected transition is recorded
+ * with `is_exception`, because reality is the thing being described and a schema that
+ * argues with it loses data.
+ */
+object LegislativePath {
+
+    /**
+     * Where the process is heading from each stage — one answer, not a set.
+     *
+     * This is what "what happens next" means on a card, and it is deliberately the
+     * step the process *aims* at rather than the most frequent one. After a second
+     * reading with amendments a bill usually goes back to committee first, but where
+     * it is going is the third reading, and telling a reader the detour is the
+     * destination would be precise about the wrong thing.
+     */
+    private val EXPECTED: Map<LegislativeStage, LegislativeStage> = mapOf(
+        LegislativeStage.SUBMITTED_TO_SEJM to LegislativeStage.REFERRED_TO_FIRST_READING,
+        LegislativeStage.REFERRED_TO_FIRST_READING to LegislativeStage.FIRST_READING,
+        LegislativeStage.FIRST_READING to LegislativeStage.COMMITTEE_WORK,
+        LegislativeStage.COMMITTEE_WORK to LegislativeStage.SECOND_READING,
+        LegislativeStage.SECOND_READING to LegislativeStage.THIRD_READING,
+        LegislativeStage.THIRD_READING to LegislativeStage.SENATE_POSITION,
+        LegislativeStage.SENATE_POSITION to LegislativeStage.SENT_TO_PRESIDENT,
+        LegislativeStage.SENATE_POSITION_CONSIDERED to LegislativeStage.SENT_TO_PRESIDENT,
+        LegislativeStage.SENT_TO_PRESIDENT to LegislativeStage.PRESIDENT_SIGNED,
+        // A veto goes back to the Sejm, which votes on overriding it.
+        LegislativeStage.PRESIDENT_VETO to LegislativeStage.THIRD_READING,
+    )
+
+    /**
+     * The further steps the process makes that are not where it is heading — a return
+     * to committee, a referral to the Tribunal. Kept apart from [EXPECTED] rather than
+     * repeating it: what the model allows is these *and* the step it expects.
+     */
+    private val ALSO_ALLOWED: Map<LegislativeStage, Set<LegislativeStage>> = mapOf(
+        LegislativeStage.FIRST_READING to setOf(LegislativeStage.SECOND_READING),
+        LegislativeStage.COMMITTEE_WORK to setOf(LegislativeStage.THIRD_READING),
+        // The routine return: amendments at second reading send it back to committee
+        // for a report, and it comes out to a third reading the same afternoon.
+        LegislativeStage.SECOND_READING to setOf(LegislativeStage.COMMITTEE_WORK),
+        // The Senate's amendments go back to the Sejm to be voted on, so a further
+        // committee sitting after the Senate is ordinary too.
+        LegislativeStage.SENATE_POSITION to setOf(
+            LegislativeStage.COMMITTEE_WORK,
+            LegislativeStage.THIRD_READING,
+            LegislativeStage.SENATE_POSITION_CONSIDERED,
+        ),
+        LegislativeStage.SENT_TO_PRESIDENT to setOf(
+            LegislativeStage.PRESIDENT_TO_TRIBUNAL,
+            LegislativeStage.PRESIDENT_VETO,
+        ),
+        LegislativeStage.PRESIDENT_TO_TRIBUNAL to setOf(LegislativeStage.PRESIDENT_SIGNED),
+    )
+
+    /**
+     * True when the model expects this step.
+     *
+     * A step into or out of [LegislativeStage.UNKNOWN] is never called exceptional:
+     * the model has nothing to say about a stage it could not read, and flagging it
+     * would report our own gap as the source's irregularity.
+     */
+    fun allows(from: LegislativeStage, to: LegislativeStage): Boolean = when {
+        from == LegislativeStage.UNKNOWN || to == LegislativeStage.UNKNOWN -> true
+        from == to -> true
+        else -> EXPECTED[from] == to || ALSO_ALLOWED[from].orEmpty().contains(to)
+    }
+
+    /** Where the process is heading, or null at a stage it does not lead out of. */
+    fun expectedAfter(stage: LegislativeStage): LegislativeStage? = EXPECTED[stage]
+}

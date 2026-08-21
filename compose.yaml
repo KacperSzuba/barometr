@@ -23,5 +23,27 @@ services:
       timeout: 5s
       retries: 10
 
+  elasticsearch:
+    # Built rather than pulled: the Polish analyser is a plugin Elastic distributes
+    # separately, and without it a search for an inflected form finds nothing. See
+    # infra/elasticsearch/Dockerfile.
+    build: infra/elasticsearch
+    environment:
+      # One node, and no security: this is a derived index on a developer's machine,
+      # rebuildable from Postgres at any time, and never the source of truth for
+      # anything. Production runs it behind the same network boundary as the database.
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      # Elasticsearch defaults to half the host's memory, which on a laptop running
+      # a database and a JVM is more than it needs for an index this size.
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   postgres-data:

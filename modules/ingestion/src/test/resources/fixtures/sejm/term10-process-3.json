@@ -1,0 +1,60 @@
+{
+  "ELI": "MP/2023/1264",
+  "UE": "NO",
+  "address": "WMP20230001264",
+  "changeDate": "2023-11-21T15:00:34",
+  "closureDate": "2023-11-13",
+  "displayAddress": "M.P. 2023 poz. 1264",
+  "documentDate": "2023-11-13",
+  "documentType": "lista kandydatów",
+  "legislativeCommittee": false,
+  "links": [
+    {
+      "href": "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WMP20230001264",
+      "rel": "isap"
+    },
+    {
+      "href": "https://eli.gov.pl/eli/MP/2023/1264/ogl",
+      "rel": "eli"
+    },
+    {
+      "href": "https://api.sejm.gov.pl/eli/acts/MP/2023/1264",
+      "rel": "eli-api"
+    }
+  ],
+  "number": "3",
+  "passed": true,
+  "principleOfSubsidiarity": false,
+  "processStartDate": "2023-11-13",
+  "shortenProcedure": false,
+  "stages": [
+    {
+      "date": "2023-11-13",
+      "stageName": "Projekt wpłynął do Sejmu",
+      "printNumber": "3",
+      "stageType": "Start"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-13",
+          "stageName": "Skierowanie",
+          "committeeCode": "Sejm",
+          "stageType": "Referral",
+          "type": "NORMAL"
+        }
+      ],
+      "date": "2023-11-13",
+      "stageName": "Skierowano do I czytania na posiedzeniu Sejmu",
+      "stageType": "ReadingReferral"
+    },
+    {
+      "stageName": "Rozpatrywanie na forum Sejmu"
+    }
+  ],
+  "term": 10,
+  "title": "Kandydat na stanowisko Wicemarszałka Sejmu RP - poseł Krzysztof Bosak",
+  "titleFinal": "w sprawie wyboru wicemarszałka Sejmu",
+  "urgencyStatus": "NORMAL",
+  "webGeneratedDate": "2023-11-21T15:00:45"
+}

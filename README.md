@@ -9,7 +9,7 @@ convention plugins in an included build.
 ## Running it
 
 ```bash
-docker compose up -d          # Postgres with pgvector, on 5432
+docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on 9200
 ./gradlew :app:bootRun        # local profile, no further setup needed
 ```
 
@@ -23,7 +23,9 @@ than sign tokens with a known key.
 ```
 
 Tests run against the same Postgres image production uses, migrated by the project's
-own changelog. Docker must be running.
+own changelog, and against an Elasticsearch node built from `infra/elasticsearch` —
+the analyser is the thing under test, so a stub of it would prove nothing. Docker must
+be running, and the first search test builds the image once.
 
 The schema is managed by Liquibase; the manifest is
 `platform/src/main/resources/db/changelog/master.yaml`. A database created before the
@@ -38,11 +40,13 @@ shared          value types. No Spring, no persistence, no HTTP.
 shared-testing  test harness: a migrated Postgres and a movable clock.
 platform        technical capability with no domain meaning: http · jobs · storage
 modules/        one bounded context each — identity, sources, ingestion (with the
-                connectors that read each source), corpus, legislative
+                connectors that read each source), corpus, legislative, search
+infra/          the Elasticsearch image, which is built rather than pulled: the
+                Polish analyser ships as a plugin Elastic distributes separately
 build-logic/    convention plugins, as an included build
 ```
 
-Nine Gradle projects, one per thing that could become a service. It was twenty, split
+Ten Gradle projects, one per thing that could become a service. It was twenty, split
 `-api`/`-impl` and by technical layer, which meant extracting any one context would
 have meant taking nine projects with it.
 

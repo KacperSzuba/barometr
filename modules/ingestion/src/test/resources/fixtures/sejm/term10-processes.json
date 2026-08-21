@@ -1,0 +1,89 @@
+[
+  {
+    "ELI": "DU/2023/2730",
+    "UE": "NO",
+    "address": "WDU20230002730",
+    "changeDate": "2023-12-20T12:39:18",
+    "closureDate": "2023-11-29",
+    "comments": "Obywatelski projekt ustawy został wniesiony w IX kadencji Sejmu (druk nr 3171). Na podstawie art. 4. ust. 3 ustawy o wykonywaniu inicjatywy ustawodawczej przez obywateli - projekt ustawy, w stosunku do którego postępowanie ustawodawcze nie zostało zakończone w trakcie kadencji Sejmu, w której został wniesiony, jest rozpatrywany przez Sejm następnej kadencji.",
+    "description": "projekt dotyczy dodania przepisu przewidującego obligatoryjne przygotowanie, wdrożenie i finansowanie przez Ministra Zdrowia programu polityki zdrowotnej leczenia niepłodności obejmującego procedury medyczne wspomaganej prokreacji, w tym zapłodnienie pozaustrojowe",
+    "displayAddress": "Dz.U. 2023 poz. 2730",
+    "documentDate": "2023-11-20",
+    "documentType": "projekt ustawy",
+    "documentTypeEnum": "BILL",
+    "links": [
+      {
+        "href": "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20230002730",
+        "rel": "isap"
+      },
+      {
+        "href": "https://eli.gov.pl/eli/DU/2023/2730/ogl",
+        "rel": "eli"
+      },
+      {
+        "href": "https://api.sejm.gov.pl/eli/acts/DU/2023/2730",
+        "rel": "eli-api"
+      }
+    ],
+    "number": "31",
+    "passed": true,
+    "processStartDate": "2023-03-23",
+    "shortenProcedure": false,
+    "term": 10,
+    "title": "Obywatelski projekt ustawy o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych",
+    "titleFinal": "o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych",
+    "urgencyStatus": "NORMAL",
+    "webGeneratedDate": "2023-12-20T12:39:32"
+  },
+  {
+    "UE": "NO",
+    "changeDate": "2024-02-08T19:29:18",
+    "comments": "Obywatelski projekt ustawy został wniesiony w IX kadencji Sejmu (druk nr 1692). Na podstawie art. 4. ust. 3 ustawy o wykonywaniu inicjatywy ustawodawczej przez obywateli - projekt ustawy, w stosunku do którego postępowanie ustawodawcze nie zostało zakończone w trakcie kadencji Sejmu, w której został wniesiony, jest rozpatrywany przez Sejm następnej kadencji.",
+    "description": "projekt dotyczy wprowadzenia do polskiego systemu prawnego emerytury przysługującej wyłącznie z tytułu osiągniętego okresu ubezpieczenia tj. emerytury stażowej, dla osób urodzonych po 31 grudnia 1948 r., czyli osób objętych nowym systemem emerytalnym, które osiągnęły okres składkowy i nieskładkowy wynoszący 35 lat dla kobiet i 40 lat dla mężczyzn",
+    "documentDate": "2023-11-20",
+    "documentType": "projekt ustawy",
+    "documentTypeEnum": "BILL",
+    "links": [],
+    "number": "27",
+    "passed": false,
+    "processStartDate": "2021-09-30",
+    "shortenProcedure": false,
+    "term": 10,
+    "title": "Obywatelski projekt ustawy o zmianie ustawy o emeryturach i rentach z Funduszu Ubezpieczeń Społecznych oraz o zmianie niektórych ustaw",
+    "urgencyStatus": "NORMAL",
+    "webGeneratedDate": "2024-07-11T11:15:21"
+  },
+  {
+    "ELI": "MP/2023/1264",
+    "UE": "NO",
+    "address": "WMP20230001264",
+    "changeDate": "2023-11-21T15:00:34",
+    "closureDate": "2023-11-13",
+    "displayAddress": "M.P. 2023 poz. 1264",
+    "documentDate": "2023-11-13",
+    "documentType": "lista kandydatów",
+    "links": [
+      {
+        "href": "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WMP20230001264",
+        "rel": "isap"
+      },
+      {
+        "href": "https://eli.gov.pl/eli/MP/2023/1264/ogl",
+        "rel": "eli"
+      },
+      {
+        "href": "https://api.sejm.gov.pl/eli/acts/MP/2023/1264",
+        "rel": "eli-api"
+      }
+    ],
+    "number": "3",
+    "passed": true,
+    "processStartDate": "2023-11-13",
+    "shortenProcedure": false,
+    "term": 10,
+    "title": "Kandydat na stanowisko Wicemarszałka Sejmu RP - poseł Krzysztof Bosak",
+    "titleFinal": "w sprawie wyboru wicemarszałka Sejmu",
+    "urgencyStatus": "NORMAL",
+    "webGeneratedDate": "2023-11-21T15:00:45"
+  }
+]

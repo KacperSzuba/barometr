@@ -3,6 +3,7 @@ package pl.barometr.connectors.rcl
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.http.HttpPolicy
 import pl.barometr.http.SourceHttpClientFactory
 
@@ -26,6 +27,14 @@ class RclConnectorConfiguration {
             ),
         ),
     )
+
+    /**
+     * The one thing this connector publishes. Everything deriving from RPL's archived
+     * pages goes through it, so the selectors have one home rather than three.
+     */
+    @Bean
+    fun rclPageReader(properties: RclProperties): RclPageReader =
+        JsoupRclPageReader(RclProjectCardParser(properties.selectors.projectCard))
 
     @Bean
     fun rclConnector(

@@ -13,6 +13,7 @@ dependencies {
     implementation(project(":corpus"))
     implementation(project(":legislative"))
     implementation(project(":search"))
+    implementation(project(":profiles"))
 
     implementation(libs.springBootStarterWeb)
     implementation(libs.springBootStarterSecurity)

@@ -25,6 +25,7 @@
             <option value="$PROJECT_DIR$/modules/identity" />
             <option value="$PROJECT_DIR$/modules/ingestion" />
             <option value="$PROJECT_DIR$/modules/legislative" />
+            <option value="$PROJECT_DIR$/modules/profiles" />
             <option value="$PROJECT_DIR$/modules/search" />
             <option value="$PROJECT_DIR$/modules/sources" />
             <option value="$PROJECT_DIR$/platform" />

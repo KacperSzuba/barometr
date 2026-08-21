@@ -1,5 +1,7 @@
 package pl.barometr.search.internal
 
+import pl.barometr.legislative.api.LegislativeKind
+
 /**
  * One searchable thing, in the shape the index mapping describes.
  *
@@ -27,13 +29,18 @@ data class IndexedEntry(
     val indexedAt: String,
 ) {
     companion object {
-        const val ACT = "act"
-        const val DRAFT = "draft"
+        private const val PREFIX_SEPARATOR = ':'
+
+        const val ACT = LegislativeKind.ACT
+        const val DRAFT = LegislativeKind.DRAFT
 
         /**
          * Prefixed by kind, so an act and a draft can never collide on a shared index
          * and so a document's id says what it is without opening it.
          */
-        fun idOf(kind: String, id: Any): String = "$kind:$id"
+        fun idOf(kind: String, id: Any): String = "$kind$PREFIX_SEPARATOR$id"
+
+        /** The entity's own identifier, without the prefix this index added. */
+        fun idIn(indexId: String): String = indexId.substringAfter(PREFIX_SEPARATOR)
     }
 }

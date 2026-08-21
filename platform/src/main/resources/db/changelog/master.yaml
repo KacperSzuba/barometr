@@ -45,3 +45,11 @@ databaseChangeLog:
       file: db/changelog/legislative.yaml
       relativeToChangelogFile: false
       errorIfMissing: false
+  - include:
+      file: db/changelog/profiles.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
+      file: db/changelog/alerts.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false

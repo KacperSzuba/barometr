@@ -1,0 +1,8 @@
+# Everything alerts has done to the database, in the order it did it.
+#
+# Listed one by one rather than with `includeAll`: the order is the point, and a
+# directory listing is a worse place to state it than a file somebody reads.
+databaseChangeLog:
+  - include:
+      file: db/changelog/alerts/0001-rules-and-notifications.sql
+      relativeToChangelogFile: false

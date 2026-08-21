@@ -33,6 +33,9 @@ class LegislativeCatalogAdapter(private val dsl: DSLContext) : LegislativeCatalo
     override fun actById(id: ActId): PublishedAct? =
         acts().where(PUBLISHED).and(ACT.ID.eq(id.value)).fetchOne(::toAct)
 
+    override fun actByEli(eli: Eli): PublishedAct? =
+        acts().where(PUBLISHED).and(ACT.ELI.eq(eli.value)).fetchOne(::toAct)
+
     override fun actsAfter(after: ActId?, limit: Int): List<PublishedAct> =
         acts()
             .where(PUBLISHED)

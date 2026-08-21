@@ -1,5 +1,7 @@
 package pl.barometr.legislative.api
 
+import pl.barometr.shared.Eli
+
 /**
  * Read port over acts and drafts. Nothing outside legislative touches its tables.
  *
@@ -12,6 +14,13 @@ package pl.barometr.legislative.api
 interface LegislativeCatalog {
 
     fun actById(id: ActId): PublishedAct?
+
+    /**
+     * The act at that address, which is how everything outside this context names one:
+     * an ELI is what a person quotes and what another register cites, while [ActId] is
+     * ours and means nothing to them.
+     */
+    fun actByEli(eli: Eli): PublishedAct?
 
     fun draftById(id: DraftId): TrackedDraft?
 

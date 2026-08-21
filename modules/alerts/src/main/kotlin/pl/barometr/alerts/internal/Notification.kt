@@ -1,0 +1,27 @@
+package pl.barometr.alerts.internal
+
+import pl.barometr.identity.api.UserId
+import pl.barometr.profiles.api.MatchedInterest
+import pl.barometr.profiles.api.ProfileId
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * One thing one person was told, and everything needed to say why.
+ *
+ * The profile *version* is part of it rather than a pointer to the profile as it
+ * stands: somebody who edits their profile twice this week must still be able to see
+ * what caught Monday's act.
+ */
+data class Notification(
+    val id: UUID,
+    val owner: UserId,
+    val profile: ProfileId,
+    val profileVersion: Int,
+    val subjectKind: String,
+    val subjectId: String,
+    val title: String,
+    val matchedBy: MatchedInterest,
+    val createdAt: Instant,
+    val readAt: Instant?,
+)

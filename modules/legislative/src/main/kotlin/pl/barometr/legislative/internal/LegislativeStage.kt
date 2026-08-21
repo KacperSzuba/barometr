@@ -42,7 +42,11 @@ enum class LegislativeStage(val wireName: String) {
     SECOND_READING("ii_czytanie"),
     THIRD_READING("iii_czytanie"),
     SENATE_POSITION("stanowisko_senatu"),
+    /** The Sejm voting on the Senate's amendments — a stage of its own, and dated. */
+    SENATE_POSITION_CONSIDERED("rozpatrzenie_stanowiska_senatu"),
     SENT_TO_PRESIDENT("przekazany_prezydentowi"),
+    /** Refused and sent back to the Sejm, which may vote it through again. */
+    PRESIDENT_VETO("weto_prezydenta"),
     PRESIDENT_SIGNED("podpisany_przez_prezydenta"),
     PRESIDENT_TO_TRIBUNAL("skierowany_do_trybunalu"),
 

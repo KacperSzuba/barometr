@@ -13,4 +13,22 @@ package pl.barometr.legislative.internal
 enum class DraftOutcome(val wireName: String) {
     ENACTED("uchwalony"),
     REJECTED("odrzucony"),
+
+    /**
+     * Taken back by whoever filed it, which is not the same as being voted down and
+     * was being reported as such: the register says `passed: false` for both, and only
+     * the closing entry's own word tells them apart.
+     */
+    WITHDRAWN("wycofany"),
+    ;
+
+    companion object {
+        /** The register's closing word, which is more precise than `passed`. */
+        fun of(closingLabel: String): DraftOutcome? = when {
+            closingLabel.startsWith("Uchwalono") -> ENACTED
+            closingLabel.startsWith("Odrzucono") -> REJECTED
+            closingLabel.startsWith("Wycofano") -> WITHDRAWN
+            else -> null
+        }
+    }
 }

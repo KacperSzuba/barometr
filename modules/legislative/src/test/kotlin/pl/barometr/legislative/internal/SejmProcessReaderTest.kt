@@ -95,6 +95,49 @@ class SejmProcessReaderTest {
         assertTrue(candidates.title.startsWith("Kandydat"))
     }
 
+    /**
+     * Three stages the register types that this model had no name for until the archive
+     * produced them: the Sejm voting on the Senate's amendments, a presidential veto, and
+     * a draft its author took back. The counter on unmapped labels is what found them,
+     * which is what the counter is for.
+     */
+    @Test
+    fun `the stages the archive argued for are read`() {
+        assertEquals(
+            LegislativeStage.SENATE_POSITION_CONSIDERED,
+            SejmStageVocabulary.stageOf("SenatePositionConsideration", "Rozpatrywanie stanowiska Senatu"),
+        )
+        assertEquals(
+            LegislativeStage.PRESIDENT_VETO,
+            SejmStageVocabulary.stageOf("Veto", "Wniosek Prezydenta (weto)"),
+        )
+    }
+
+    /**
+     * Documents arriving *at* a draft rather than places the draft has got to. Giving them
+     * a stage would say it moved when it did not, so they stay unnamed — on purpose, and
+     * recorded with the register's own words either way.
+     */
+    @Test
+    fun `an opinion filed on a draft is not a stage the draft reached`() {
+        assertNull(SejmStageVocabulary.stageOf("Opinion", "Opinia organizacji samorządowej"))
+        // The register's own spelling of `Government`, which is what has to be matched.
+        assertNull(SejmStageVocabulary.stageOf("GovermentPosition", "Wpłynęło stanowisko rządu"))
+    }
+
+    /**
+     * The register says `passed: false` for a draft voted down and for one taken back
+     * alike; only the closing word tells them apart, and reporting a withdrawal as a
+     * rejection is a claim about the Sejm that the Sejm never made.
+     */
+    @Test
+    fun `a withdrawn draft is not a rejected one`() {
+        val payload = """{"number":"99","title":"Poselski projekt ustawy o czymś","term":10,"documentTypeEnum":"BILL","passed":false,"closureDate":"2023-12-05","stages":[{"stageType":"End","stageName":"Wycofano","date":"2023-12-05"}]}"""
+
+        val withdrawn = requireNotNull(reader.read(payload.toByteArray()))
+
+        assertEquals(DraftOutcome.WITHDRAWN, withdrawn.outcome)
+    }
     @Test
     fun `a payload that is not a process is refused rather than half-read`() {
         assertNull(reader.read("""{"title":"Something else"}""".toByteArray()))

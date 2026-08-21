@@ -41,13 +41,26 @@ class SejmProcessReader(private val json: ObjectMapper) {
             rclNumber = body.path("rclNum").asString()?.takeIf { it.isNotBlank() },
             startedOn = body.dateOf("processStartDate"),
             closedOn = closedOn,
-            // A verdict only once the register has closed the process. `passed` on an
-            // open process is the answer to a question nobody asked yet.
-            outcome = closedOn?.let {
-                if (body.path("passed").asBoolean()) DraftOutcome.ENACTED else DraftOutcome.REJECTED
-            },
+            outcome = closedOn?.let { outcomeOf(body) },
             stages = body.path("stages").mapIndexed { ordinal, stage -> stageOf(ordinal, stage) },
         )
+    }
+
+    /**
+     * How the passage ended, taken from the register's own closing word.
+     *
+     * `passed` alone is not enough: it is false both for a draft the Sejm voted down
+     * and for one its author took back, and reporting a withdrawal as a rejection is a
+     * claim about the Sejm that the Sejm never made. The closing entry says which.
+     * `passed` remains the fallback for a process closed without one.
+     */
+    private fun outcomeOf(body: JsonNode): DraftOutcome {
+        val closingLabel = body.path("stages")
+            .lastOrNull { it.path("stageType").asString() == CLOSING_STAGE }
+            ?.path("stageName")?.asString()
+
+        return closingLabel?.let(DraftOutcome::of)
+            ?: if (body.path("passed").asBoolean()) DraftOutcome.ENACTED else DraftOutcome.REJECTED
     }
 
     private fun stageOf(ordinal: Int, node: JsonNode): SejmProcessStage {
@@ -74,5 +87,7 @@ class SejmProcessReader(private val json: ObjectMapper) {
     private companion object {
         /** Bills and resolutions are drafts; motions and candidate lists are not. */
         val DRAFT_TYPES = setOf("BILL", "DRAFT_RESOLUTION")
+
+        const val CLOSING_STAGE = "End"
     }
 }

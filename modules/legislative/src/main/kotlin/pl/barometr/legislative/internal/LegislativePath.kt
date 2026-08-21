@@ -33,7 +33,10 @@ object LegislativePath {
         LegislativeStage.SECOND_READING to LegislativeStage.THIRD_READING,
         LegislativeStage.THIRD_READING to LegislativeStage.SENATE_POSITION,
         LegislativeStage.SENATE_POSITION to LegislativeStage.SENT_TO_PRESIDENT,
+        LegislativeStage.SENATE_POSITION_CONSIDERED to LegislativeStage.SENT_TO_PRESIDENT,
         LegislativeStage.SENT_TO_PRESIDENT to LegislativeStage.PRESIDENT_SIGNED,
+        // A veto goes back to the Sejm, which votes on overriding it.
+        LegislativeStage.PRESIDENT_VETO to LegislativeStage.THIRD_READING,
     )
 
     /**
@@ -52,8 +55,12 @@ object LegislativePath {
         LegislativeStage.SENATE_POSITION to setOf(
             LegislativeStage.COMMITTEE_WORK,
             LegislativeStage.THIRD_READING,
+            LegislativeStage.SENATE_POSITION_CONSIDERED,
         ),
-        LegislativeStage.SENT_TO_PRESIDENT to setOf(LegislativeStage.PRESIDENT_TO_TRIBUNAL),
+        LegislativeStage.SENT_TO_PRESIDENT to setOf(
+            LegislativeStage.PRESIDENT_TO_TRIBUNAL,
+            LegislativeStage.PRESIDENT_VETO,
+        ),
         LegislativeStage.PRESIDENT_TO_TRIBUNAL to setOf(LegislativeStage.PRESIDENT_SIGNED),
     )
 

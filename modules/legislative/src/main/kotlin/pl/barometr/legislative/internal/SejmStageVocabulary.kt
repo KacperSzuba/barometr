@@ -18,13 +18,22 @@ object SejmStageVocabulary {
         "SejmReading", "Reading" -> readingOf(stageName)
         "CommitteeWork" -> LegislativeStage.COMMITTEE_WORK
         "SenatePosition" -> LegislativeStage.SENATE_POSITION
+        "SenatePositionConsideration" -> LegislativeStage.SENATE_POSITION_CONSIDERED
+        "Veto" -> LegislativeStage.PRESIDENT_VETO
         "ToPresident" -> LegislativeStage.SENT_TO_PRESIDENT
         "PresidentSignature" -> LegislativeStage.PRESIDENT_SIGNED
         "PresidentToTribunal" -> LegislativeStage.PRESIDENT_TO_TRIBUNAL
-        // "Uchwalono" and "Odrzucono" arrive here, dateless: a verdict on the whole
-        // passage rather than a stage it went through. They are read as the draft's
-        // outcome instead — see [DraftOutcome].
+        // "Uchwalono", "Odrzucono" and "Wycofano" arrive here: a verdict on the whole
+        // passage rather than a stage it went through, and read as the draft's outcome
+        // instead — see [DraftOutcome].
         "End" -> null
+
+        // `Opinion` and `GovermentPosition` — the register's own spelling — are left
+        // unmapped deliberately rather than by oversight. An opinion filed by a local
+        // government association and the cabinet's position on somebody else's bill
+        // are documents arriving *at* a draft, not places the draft has got to, and
+        // giving them a stage would say it moved when it did not. They are still
+        // recorded, with the register's words on them, which is how they were noticed.
         else -> null
     }
 

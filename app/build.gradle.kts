@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":ingestion"))
     implementation(project(":corpus"))
     implementation(project(":legislative"))
+    implementation(project(":search"))
 
     implementation(libs.springBootStarterWeb)
     implementation(libs.springBootStarterSecurity)

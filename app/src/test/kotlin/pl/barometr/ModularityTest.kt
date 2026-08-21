@@ -99,6 +99,7 @@ class ModularityTest {
             "ingestion",
             "corpus",
             "legislative",
+            "search",
             "platform",
             "http",
             "storage",

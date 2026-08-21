@@ -8,6 +8,10 @@ plugins {
 // waiting to happen.
 dependencies {
     api(libs.testcontainersPostgres)
+    // The search index is tested against a real node with the Polish analyser in it,
+    // for the same reason the schema is tested against real Postgres: the analyser is
+    // the thing under test, and a stub of it would only confirm what we assumed.
+    api(libs.testcontainersElasticsearch)
     api(libs.liquibaseCore)
     api(libs.jooq)
     api(libs.postgresql)

@@ -21,15 +21,26 @@ class AlertRules(
 
     fun ownedBy(owner: UserId): List<AlertRule> = rules.ownedBy(owner)
 
-    fun create(owner: UserId, profile: ProfileId, stages: Set<String>): AlertRule {
+    fun create(
+        owner: UserId,
+        profile: ProfileId,
+        stages: Set<String>,
+        urgency: Urgency,
+    ): AlertRule {
         if (profiles.ownerOf(profile) != owner) throw UnknownProfileException(profile.toString())
 
-        return rules.create(owner, profile, stages)
+        return rules.create(owner, profile, stages, urgency)
             ?: throw DuplicateAlertRuleException(profile.toString())
     }
 
-    fun update(owner: UserId, id: AlertRuleId, enabled: Boolean, stages: Set<String>): AlertRule =
-        rules.update(own(owner, id).copy(enabled = enabled, stages = stages))
+    fun update(
+        owner: UserId,
+        id: AlertRuleId,
+        enabled: Boolean,
+        stages: Set<String>,
+        urgency: Urgency,
+    ): AlertRule =
+        rules.update(own(owner, id).copy(enabled = enabled, stages = stages, urgency = urgency))
 
     fun delete(owner: UserId, id: AlertRuleId) {
         own(owner, id)

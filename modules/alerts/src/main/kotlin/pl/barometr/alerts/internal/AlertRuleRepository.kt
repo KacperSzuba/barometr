@@ -29,7 +29,12 @@ class AlertRuleRepository(
 
     /** Null when this profile already has a rule — one profile, one standing instruction. */
     @Transactional
-    fun create(owner: UserId, profile: ProfileId, stages: Set<String>): AlertRule? {
+    fun create(
+        owner: UserId,
+        profile: ProfileId,
+        stages: Set<String>,
+        urgency: Urgency = Urgency.NORMAL,
+    ): AlertRule? {
         val id = AlertRuleId.next()
         val now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
 
@@ -38,6 +43,7 @@ class AlertRuleRepository(
             .set(ALERT_RULE.OWNER_ID, owner.value)
             .set(ALERT_RULE.PROFILE_ID, profile.value)
             .set(ALERT_RULE.ENABLED, true)
+            .set(ALERT_RULE.URGENCY, urgency.wireName)
             .set(ALERT_RULE.CREATED_AT, now)
             .set(ALERT_RULE.UPDATED_AT, now)
             .onConflict(ALERT_RULE.PROFILE_ID)
@@ -46,13 +52,14 @@ class AlertRuleRepository(
         if (created == 0) return null
 
         writeStages(id, stages)
-        return AlertRule(id, owner, profile, enabled = true, stages = stages)
+        return AlertRule(id, owner, profile, enabled = true, stages = stages, urgency = urgency)
     }
 
     @Transactional
     fun update(rule: AlertRule): AlertRule {
         dsl.update(ALERT_RULE)
             .set(ALERT_RULE.ENABLED, rule.enabled)
+            .set(ALERT_RULE.URGENCY, rule.urgency.wireName)
             .set(ALERT_RULE.UPDATED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
             .where(ALERT_RULE.ID.eq(rule.id.value))
             .execute()
@@ -89,6 +96,7 @@ class AlertRuleRepository(
             ALERT_RULE.OWNER_ID,
             ALERT_RULE.PROFILE_ID,
             ALERT_RULE.ENABLED,
+            ALERT_RULE.URGENCY,
             ALERT_RULE_STAGE.STAGE,
         )
             .from(ALERT_RULE)
@@ -103,6 +111,8 @@ class AlertRuleRepository(
                     profile = ProfileId(head[ALERT_RULE.PROFILE_ID]!!),
                     enabled = head[ALERT_RULE.ENABLED]!!,
                     stages = rows.mapNotNull { it[ALERT_RULE_STAGE.STAGE] }.toSet(),
+                    urgency = Urgency.of(head[ALERT_RULE.URGENCY]!!)
+                        ?: error("stored urgency '${head[ALERT_RULE.URGENCY]}'"),
                 )
             }
 }

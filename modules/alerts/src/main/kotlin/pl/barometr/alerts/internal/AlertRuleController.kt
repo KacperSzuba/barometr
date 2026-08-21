@@ -34,7 +34,14 @@ class AlertRuleController(private val rules: AlertRules) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(caller: Principal, @Valid @RequestBody request: RuleRequest): RuleResponse =
-        describe(rules.create(readerOf(caller), ProfileId(request.profileId), request.stages))
+        describe(
+            rules.create(
+                readerOf(caller),
+                ProfileId(request.profileId),
+                request.stages,
+                request.urgencyChosen(),
+            ),
+        )
 
     /**
      * States the whole rule, like the interests do: the stages sent are the stages
@@ -46,7 +53,15 @@ class AlertRuleController(private val rules: AlertRules) {
         @PathVariable id: UUID,
         @Valid @RequestBody request: RuleUpdate,
     ): RuleResponse =
-        describe(rules.update(readerOf(caller), AlertRuleId(id), request.enabled, request.stages))
+        describe(
+            rules.update(
+                readerOf(caller),
+                AlertRuleId(id),
+                request.enabled,
+                request.stages,
+                request.urgencyChosen(),
+            ),
+        )
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -59,6 +74,7 @@ class AlertRuleController(private val rules: AlertRules) {
         profileId = rule.profile.value,
         enabled = rule.enabled,
         stages = rule.stages,
+        urgency = rule.urgency.wireName,
     )
 
     data class RuleRequest(
@@ -66,22 +82,38 @@ class AlertRuleController(private val rules: AlertRules) {
         /** Empty means every stage — somebody who has not narrowed has not asked to hear less. */
         @field:Size(max = MAX_STAGES)
         val stages: Set<String> = emptySet(),
-    )
+        /**
+         * `critical` is what carries a match out of the digest window and through the
+         * quiet hours. Absent means ordinary, which is what almost everything is.
+         */
+        val urgency: String? = null,
+    ) {
+        fun urgencyChosen(): Urgency = urgencyIn(urgency)
+    }
 
     data class RuleUpdate(
         val enabled: Boolean = true,
         @field:Size(max = MAX_STAGES)
         val stages: Set<String> = emptySet(),
-    )
+        val urgency: String? = null,
+    ) {
+        fun urgencyChosen(): Urgency = urgencyIn(urgency)
+    }
 
     data class RuleResponse(
         val id: UUID,
         val profileId: UUID,
         val enabled: Boolean,
         val stages: Set<String>,
+        val urgency: String,
     )
 
     private companion object {
+        /** An urgency nobody implemented would look like a setting and behave like none. */
+        fun urgencyIn(chosen: String?): Urgency =
+            chosen?.trim()?.lowercase()?.let { Urgency.of(it) ?: throw InvalidCadenceException(it) }
+                ?: Urgency.NORMAL
+
         /**
          * More stages than the path has. Naming them all is the same as naming none,
          * and a set this size is a client sending something it did not mean.

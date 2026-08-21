@@ -23,6 +23,7 @@ import kotlin.math.min
 @RequestMapping("/api/v1/alerts")
 class NotificationController(
     private val notifications: NotificationRepository,
+    private val digests: DigestRepository,
     private val decisions: AlertDecisionRepository,
 ) {
 
@@ -51,6 +52,36 @@ class NotificationController(
         notifications.markRead(readerOf(caller), id)
     }
 
+    /**
+     * The windows that have closed, with what was in them, grouped by matter.
+     *
+     * The grouping is the composition the specification asks for, and it lives on the
+     * read rather than in the digest row: a draft that moved and was then published is
+     * one thing to a reader and two rows to this system, and which is which can be
+     * decided freshly every time it is rendered.
+     */
+    @GetMapping("/digests")
+    fun digests(caller: Principal, @RequestParam(required = false) limit: Int?): List<DigestResponse> {
+        val owner = readerOf(caller)
+
+        return digests.listFor(owner, boundedTo(limit)).map { digest ->
+            val contents = DigestContents.of(digest, notifications.inDigest(digest.id))
+
+            DigestResponse(
+                id = digest.id,
+                createdAt = digest.createdAt.toString(),
+                matters = contents.matters.map { matter ->
+                    MatterResponse(
+                        subjectKind = matter.subjectKind,
+                        subjectId = matter.subjectId,
+                        title = matter.title,
+                        alerts = matter.notifications.map { it.id },
+                    )
+                },
+            )
+        }
+    }
+
     @GetMapping("/decisions")
     fun decisions(caller: Principal, @RequestParam(required = false) limit: Int?): List<DecisionResponse> =
         decisions.listFor(readerOf(caller), boundedTo(limit)).map {
@@ -76,6 +107,21 @@ class NotificationController(
         val profileVersion: Int,
         val createdAt: String,
         val readAt: String?,
+    )
+
+    /** One closed window, and what was in it. */
+    data class DigestResponse(
+        val id: UUID,
+        val createdAt: String,
+        val matters: List<MatterResponse>,
+    )
+
+    /** Everything in a window about one act or one draft. */
+    data class MatterResponse(
+        val subjectKind: String,
+        val subjectId: String,
+        val title: String,
+        val alerts: List<UUID>,
     )
 
     /** One line of the log that answers "why did I not hear about this". */

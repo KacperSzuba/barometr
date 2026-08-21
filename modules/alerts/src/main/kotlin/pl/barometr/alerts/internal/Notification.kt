@@ -21,6 +21,7 @@ data class Notification(
     val subjectKind: String,
     val subjectId: String,
     val title: String,
+    val urgency: Urgency,
     val matchedBy: MatchedInterest,
     val createdAt: Instant,
     val readAt: Instant?,

@@ -15,3 +15,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0003-one-pending-match-per-document.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0004-draft-identity-and-stage-facts.sql
+      relativeToChangelogFile: false

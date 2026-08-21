@@ -1,0 +1,222 @@
+{
+  "ELI": "DU/2023/2730",
+  "UE": "NO",
+  "address": "WDU20230002730",
+  "changeDate": "2023-12-20T12:39:18",
+  "closureDate": "2023-11-29",
+  "comments": "Obywatelski projekt ustawy został wniesiony w IX kadencji Sejmu (druk nr 3171). Na podstawie art. 4. ust. 3 ustawy o wykonywaniu inicjatywy ustawodawczej przez obywateli - projekt ustawy, w stosunku do którego postępowanie ustawodawcze nie zostało zakończone w trakcie kadencji Sejmu, w której został wniesiony, jest rozpatrywany przez Sejm następnej kadencji.",
+  "description": "projekt dotyczy dodania przepisu przewidującego obligatoryjne przygotowanie, wdrożenie i finansowanie przez Ministra Zdrowia programu polityki zdrowotnej leczenia niepłodności obejmującego procedury medyczne wspomaganej prokreacji, w tym zapłodnienie pozaustrojowe",
+  "displayAddress": "Dz.U. 2023 poz. 2730",
+  "documentDate": "2023-11-20",
+  "documentType": "projekt ustawy",
+  "documentTypeEnum": "BILL",
+  "legislativeCommittee": false,
+  "links": [
+    {
+      "href": "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU20230002730",
+      "rel": "isap"
+    },
+    {
+      "href": "https://eli.gov.pl/eli/DU/2023/2730/ogl",
+      "rel": "eli"
+    },
+    {
+      "href": "https://api.sejm.gov.pl/eli/acts/DU/2023/2730",
+      "rel": "eli-api"
+    }
+  ],
+  "number": "31",
+  "passed": true,
+  "principleOfSubsidiarity": false,
+  "processStartDate": "2023-03-23",
+  "shortenProcedure": false,
+  "stages": [
+    {
+      "date": "2023-03-23",
+      "stageName": "Projekt wpłynął do Sejmu",
+      "printNumber": "31",
+      "stageType": "Start"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-20",
+          "stageName": "Skierowanie",
+          "committeeCode": "Sejm",
+          "stageType": "Referral",
+          "type": "NORMAL"
+        }
+      ],
+      "date": "2023-11-20",
+      "stageName": "Skierowano do I czytania na posiedzeniu Sejmu",
+      "stageType": "ReadingReferral"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-28",
+          "stageName": "Skierowanie",
+          "committeeCode": "ZDR",
+          "stageType": "Referral",
+          "type": "NORMAL"
+        },
+        {
+          "date": "2023-11-28",
+          "stageName": "Głosowanie",
+          "stageType": "Voting",
+          "voting": {
+            "abstain": 43,
+            "date": "2023-11-28T13:54:00",
+            "description": "wniosek o odrzucenie projektu ustawy w pierwszym czytaniu",
+            "kind": "ELECTRONIC",
+            "links": [
+              {
+                "href": "https://api.sejm.gov.pl/sejm/term10/votings/1/31/pdf",
+                "rel": "pdf"
+              }
+            ],
+            "majorityType": "SIMPLE_MAJORITY",
+            "majorityVotes": 305,
+            "no": 304,
+            "notParticipating": 19,
+            "present": 0,
+            "sitting": 1,
+            "sittingDay": 5,
+            "term": 10,
+            "title": "Pkt. 13 Pierwsze czytanie obywatelskiego projektu ustawy o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych (druk nr 31)",
+            "topic": "wniosek o odrzucenie projektu w pierwszym czytaniu.",
+            "totalVoted": 441,
+            "votingNumber": 31,
+            "yes": 94
+          }
+        }
+      ],
+      "date": "2023-11-28",
+      "stageName": "I czytanie na posiedzeniu Sejmu",
+      "sittingNum": 1,
+      "stageType": "SejmReading"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-28",
+          "stageName": "Sprawozdanie komisji",
+          "minorityMotions": 4,
+          "printNumber": "69",
+          "proposal": "załączony projekt ustawy",
+          "rapporteurID": "8",
+          "rapporteurName": "Bartosz Arłukowicz",
+          "reportFile": "https://api.sejm.gov.pl/sejm/term10/prints/69/69.pdf",
+          "stageType": "CommitteeReport",
+          "subCommittee": false
+        }
+      ],
+      "date": "2023-11-28",
+      "stageName": "Praca w komisjach po I czytaniu",
+      "stageType": "CommitteeWork"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-29",
+          "stageName": "Skierowanie",
+          "committeeCode": "ZDR",
+          "stageType": "Referral",
+          "type": "NORMAL"
+        }
+      ],
+      "date": "2023-11-29",
+      "stageName": "II czytanie na posiedzeniu Sejmu",
+      "comment": "poprawki",
+      "decision": "skierowano ponownie do komisji w celu przedstawienia sprawozdania",
+      "sittingNum": 1,
+      "stageType": "SejmReading"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-29",
+          "stageName": "Sprawozdanie komisji",
+          "minorityMotions": 0,
+          "printNumber": "69-A",
+          "proposal": "przyjąć część poprawek",
+          "rapporteurID": "8",
+          "rapporteurName": "Bartosz Arłukowicz",
+          "reportFile": "https://api.sejm.gov.pl/sejm/term10/prints/69-A/69-A.pdf",
+          "stageType": "CommitteeReport",
+          "subCommittee": false
+        }
+      ],
+      "date": "2023-11-29",
+      "stageName": "Praca w komisjach po II czytaniu",
+      "stageType": "CommitteeWork"
+    },
+    {
+      "children": [
+        {
+          "date": "2023-11-29",
+          "stageName": "Głosowanie",
+          "stageType": "Voting",
+          "voting": {
+            "abstain": 50,
+            "date": "2023-11-29T18:44:42",
+            "description": "całość projektu ustawy",
+            "kind": "ELECTRONIC",
+            "links": [
+              {
+                "href": "https://api.sejm.gov.pl/sejm/term10/votings/1/40/pdf",
+                "rel": "pdf"
+              }
+            ],
+            "majorityType": "SIMPLE_MAJORITY",
+            "majorityVotes": 119,
+            "no": 118,
+            "notParticipating": 24,
+            "present": 0,
+            "sitting": 1,
+            "sittingDay": 6,
+            "term": 10,
+            "title": "Pkt. 22 Sprawozdanie Komisji o obywatelskim projekcie ustawy o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych (druki nr 31 i 69)",
+            "topic": "głosowanie nad całością projektu.",
+            "totalVoted": 436,
+            "votingNumber": 40,
+            "yes": 268
+          }
+        }
+      ],
+      "date": "2023-11-29",
+      "stageName": "III czytanie na posiedzeniu Sejmu",
+      "comment": "wnioski mniejszości, poprawki",
+      "decision": "uchwalono",
+      "sittingNum": 1,
+      "stageType": "SejmReading",
+      "textAfter3": "https://api.sejm.gov.pl/sejm/term10/processes/31/attachment/31_u3.pdf"
+    },
+    {
+      "date": "2023-12-08",
+      "stageName": "Stanowisko Senatu",
+      "position": "nie wniósł poprawek",
+      "stageType": "SenatePosition"
+    },
+    {
+      "date": "2023-12-12",
+      "stageName": "Ustawę przekazano Prezydentowi do podpisu",
+      "stageType": "ToPresident"
+    },
+    {
+      "date": "2023-12-15",
+      "stageName": "Prezydent podpisał ustawę",
+      "omittedInconsistent": false,
+      "stageType": "PresidentSignature"
+    },
+    {
+      "stageName": "Uchwalono",
+      "stageType": "End"
+    }
+  ],
+  "term": 10,
+  "title": "Obywatelski projekt ustawy o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych",
+  "titleFinal": "o zmianie ustawy o świadczeniach opieki zdrowotnej finansowanych ze środków publicznych",
+  "urgencyStatus": "NORMAL",
+  "webGeneratedDate": "2023-12-20T12:39:32"
+}

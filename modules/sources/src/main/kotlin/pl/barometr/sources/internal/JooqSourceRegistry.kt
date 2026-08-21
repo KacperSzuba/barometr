@@ -36,6 +36,11 @@ class JooqSourceRegistry(private val dsl: DSLContext) : SourceRegistry {
             .and(SOURCE.ENABLED.isTrue)
             .fetchOne(::toDefinition)
 
+    override fun byId(id: SourceId): SourceDefinition? =
+        dsl.selectFrom(SOURCE)
+            .where(SOURCE.ID.eq(id.value))
+            .fetchOne(::toDefinition)
+
     private fun toDefinition(record: Record) = SourceDefinition(
         id = SourceId(record[SOURCE.ID]!!),
         connectorId = ConnectorId(record[SOURCE.CONNECTOR_ID]!!),

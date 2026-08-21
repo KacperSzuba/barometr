@@ -15,5 +15,17 @@ dependencies {
     api(project(":ingestion"))
     implementation(project(":platform"))
 
+    implementation(libs.springBootStarter)
+    implementation(libs.springBootStarterJooq)
+    implementation(libs.jacksonModuleKotlin)
     implementation(libs.springModulithStarterCore)
+    // Derivation listens to ingestion through the event register, so it needs the
+    // annotation; the register itself is wired in :app.
+    implementation(libs.springModulithEventsApi)
+    // MeterRegistry: a payload that cannot be derived is counted, not only logged.
+    implementation(libs.springBootStarterActuator)
+
+    testImplementation(project(":shared-testing"))
+    testImplementation(libs.testcontainersJunit)
+    testImplementation(kotlin("test"))
 }

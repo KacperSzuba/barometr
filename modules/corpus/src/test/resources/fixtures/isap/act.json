@@ -1,0 +1,84 @@
+{
+  "ELI": "DU/2026/1079",
+  "address": "WDU20260001079",
+  "announcementDate": "2026-07-17",
+  "authorizedBody": [],
+  "changeDate": "2026-08-13T10:16:55",
+  "comments": "art. 5 pkt 2 wchodzi w życie z dniem wdrożenia rozwiązań technicznych umożliwiających dostęp do systemu kontrolno-informacyjnego dla portów polskich (PHICS) uprawnionym lekarzom, określonym w komunikacie, wydanym na podstawie art. 129a ustawy zmienianej w art. 5.",
+  "directives": [],
+  "displayAddress": "Dz.U. 2026 poz. 1079",
+  "entryIntoForce": "2026-09-10",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "przedsiębiorstwa",
+    "podatki",
+    "porty morskie",
+    "żegluga morska",
+    "podatek dochodowy od osób fizycznych"
+  ],
+  "keywordsNames": [
+    "Państwowa Komisja Badania Wypadków Morskich"
+  ],
+  "obligated": [],
+  "pos": 1079,
+  "previousTitle": [],
+  "prints": [
+    {
+      "link": "https://www.sejm.gov.pl/Sejm10.nsf/PrzebiegProc.xsp?nr=2549",
+      "linkPrintAPI": "https://api.sejm.gov.pl/sejm/term10/prints/2549",
+      "linkProcessAPI": "https://api.sejm.gov.pl/sejm/term10/processes/2549",
+      "number": "2549",
+      "term": 10
+    }
+  ],
+  "promulgation": "2026-08-10",
+  "publisher": "DU",
+  "references": {
+    "Akty zmienione": [
+      {
+        "date": "2026-09-10",
+        "id": "DU/2015/1569"
+      },
+      {
+        "date": "2026-09-10",
+        "id": "DU/2012/1068"
+      },
+      {
+        "date": "2026-09-10",
+        "id": "DU/2006/1353"
+      },
+      {
+        "date": "2026-09-10",
+        "id": "DU/2001/1381"
+      },
+      {
+        "date": "2026-09-10",
+        "id": "DU/1991/350"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "status": "obowiązujący",
+  "textHTML": false,
+  "textPDF": true,
+  "texts": [
+    {
+      "fileName": "D20261079.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D20261079.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D20261079L.pdf",
+      "type": "T"
+    }
+  ],
+  "title": "Ustawa z dnia 17 lipca 2026 r. o zmianie niektórych ustaw w celu wsparcia przedsiębiorstw żeglugowych oraz stworzenia warunków ich funkcjonowania pod polską banderą",
+  "type": "Ustawa",
+  "volume": 0,
+  "year": 2026
+}

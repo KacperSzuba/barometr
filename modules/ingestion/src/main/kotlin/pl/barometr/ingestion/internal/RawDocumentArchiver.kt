@@ -2,6 +2,7 @@ package pl.barometr.ingestion.internal
 
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import pl.barometr.ingestion.api.PayloadMediaTypes
 import pl.barometr.ingestion.api.RawDocumentIngested
 import pl.barometr.ingestion.api.RawPayload
 import pl.barometr.ingestion.api.SinkOutcome

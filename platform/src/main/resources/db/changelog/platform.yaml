@@ -15,3 +15,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/platform/0003-shedlock.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/platform/0004-event-publication.sql
+      relativeToChangelogFile: false

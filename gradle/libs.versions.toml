@@ -79,6 +79,10 @@ jacksonModuleKotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 # these to declare what they expose, without pulling in any runtime.
 springModulithApi = { module = "org.springframework.modulith:spring-modulith-api" }
 springModulithStarterCore = { module = "org.springframework.modulith:spring-modulith-starter-core" }
+# The `@ApplicationModuleListener` annotation only. A context that consumes another's
+# events needs it; the register that persists and redelivers them belongs to the
+# application, which is what carries the JDBC starter.
+springModulithEventsApi = { module = "org.springframework.modulith:spring-modulith-events-api" }
 springModulithStarterJdbc = { module = "org.springframework.modulith:spring-modulith-starter-jdbc" }
 springModulithActuator = { module = "org.springframework.modulith:spring-modulith-actuator" }
 springModulithTest = { module = "org.springframework.modulith:spring-modulith-starter-test" }

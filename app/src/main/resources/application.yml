@@ -13,6 +13,13 @@ spring:
     # schema is built on, so the order is a consequence of the dependency graph
     # rather than of a filename convention.
     change-log: classpath:db/changelog/master.yaml
+  modulith:
+    events:
+      jdbc:
+        # The register lives in `platform`, beside the other technical tables, and is
+        # created by a migration like everything else — `schema-initialization` stays
+        # off so the schema has exactly one author.
+        schema: platform
 
 server:
   port: 8080

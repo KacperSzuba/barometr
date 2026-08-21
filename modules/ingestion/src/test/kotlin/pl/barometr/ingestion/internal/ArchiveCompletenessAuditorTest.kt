@@ -238,6 +238,8 @@ class ArchiveCompletenessAuditorTest {
             definition.takeIf { connectorId == CONNECTOR }
 
         override fun enabledById(id: SourceId) = definition.takeIf { id == sourceId }
+
+        override fun byId(id: SourceId) = definition.takeIf { id == sourceId }
     }
 
     private class FakeCursors(private val replayed: Set<String>) : IngestionCursors {

@@ -1,0 +1,106 @@
+{
+  "email": "kp-centrum@kluby.sejm.pl, kp-centrum@centrumpolska.eu",
+  "fax": "(22) 694-20-71",
+  "id": "Centrum",
+  "members": [
+    {
+      "firstName": "Mirosław",
+      "function": "przewodniczący",
+      "id": 359,
+      "joinDate": "2026-02-18",
+      "lastName": "Suchoń"
+    },
+    {
+      "firstName": "Aleksandra",
+      "function": "wiceprzewodnicząca",
+      "id": 211,
+      "joinDate": "2026-02-18",
+      "lastName": "Leo"
+    },
+    {
+      "firstName": "Ryszard",
+      "function": "wiceprzewodniczący",
+      "id": 286,
+      "joinDate": "2026-02-18",
+      "lastName": "Petru"
+    },
+    {
+      "firstName": "Barbara",
+      "function": "sekretarz",
+      "id": 271,
+      "joinDate": "2026-02-18",
+      "lastName": "Okuła"
+    },
+    {
+      "firstName": "Izabela",
+      "function": "członek prezydium",
+      "id": 23,
+      "joinDate": "2026-02-18",
+      "lastName": "Bodnar"
+    },
+    {
+      "firstName": "Barbara",
+      "function": "członek prezydium",
+      "id": 272,
+      "joinDate": "2026-02-18",
+      "lastName": "Oliwiecka"
+    },
+    {
+      "firstName": "Norbert",
+      "id": 292,
+      "joinDate": "2026-02-18",
+      "lastName": "Pietrykowski"
+    },
+    {
+      "firstName": "Paulina",
+      "id": 128,
+      "joinDate": "2026-02-18",
+      "lastName": "Hennig-Kloska"
+    },
+    {
+      "firstName": "Elżbieta",
+      "id": 39,
+      "joinDate": "2026-02-18",
+      "lastName": "Burkiewicz"
+    },
+    {
+      "firstName": "Rafał",
+      "id": 158,
+      "joinDate": "2026-02-18",
+      "lastName": "Kasprzyk"
+    },
+    {
+      "firstName": "Rafał",
+      "id": 171,
+      "joinDate": "2026-02-18",
+      "lastName": "Komarewicz"
+    },
+    {
+      "firstName": "Sławomir",
+      "id": 63,
+      "joinDate": "2026-02-18",
+      "lastName": "Ćwik"
+    },
+    {
+      "firstName": "Żaneta",
+      "id": 53,
+      "joinDate": "2026-02-18",
+      "lastName": "Cwalina-Śliwowska"
+    },
+    {
+      "firstName": "Ewa",
+      "id": 376,
+      "joinDate": "2026-02-18",
+      "lastName": "Szymanowska"
+    },
+    {
+      "firstName": "Marcin",
+      "id": 341,
+      "joinDate": "2026-02-18",
+      "lastName": "Skonieczka"
+    }
+  ],
+  "membersCount": 15,
+  "name": "Klub Parlamentarny Centrum",
+  "phone": ""
+}

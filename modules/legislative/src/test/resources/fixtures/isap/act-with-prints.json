@@ -1,0 +1,117 @@
+{
+  "ELI": "DU/2026/1074",
+  "address": "WDU20260001074",
+  "announcementDate": "2026-07-17",
+  "authorizedBody": [],
+  "changeDate": "2026-08-13T10:15:23",
+  "directives": [
+    {
+      "address": "32019R2033",
+      "date": "2019-11-27",
+      "title": "Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2019/2033 z dnia 27 listopada 2019 r. w sprawie wymogów ostrożnościowych dla firm inwestycyjnych oraz zmieniające rozporządzenia (UE) nr 1093/2010, (UE) nr 575/2013, (UE) nr 600/2014 i (UE) nr 806/2014 (Tekst mający znaczenie dla EOG)"
+    },
+    {
+      "address": "32020R1503",
+      "date": "2020-10-07",
+      "title": "Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2020/1503 z dnia 7 października 2020 r. w sprawie europejskich dostawców usług finansowania społecznościowego dla przedsięwzięć gospodarczych oraz zmieniające rozporządzenie (UE) 2017/1129 i dyrektywę (UE) 2019/1937 (Tekst mający znaczenie dla EOG)"
+    },
+    {
+      "address": "32013R0575",
+      "date": "2013-06-26",
+      "title": "ROZPORZĄDZENIE PARLAMENTU EUROPEJSKIEGO I RADY (UE) nr 575/2013 z dnia 26 czerwca 2013 r. w sprawie wymogów ostrożnościowych dla instytucji kredytowych i firm inwestycyjnych, zmieniające rozporządzenie (UE) nr 648/2012 (Tekst mający znaczenie dla EOG)"
+    },
+    {
+      "address": "32016R1011",
+      "date": "2016-06-08",
+      "title": "Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/1011 z dnia 8 czerwca 2016 r. w sprawie indeksów stosowanych jako wskaźniki referencyjne w instrumentach finansowych i umowach finansowych lub do pomiaru wyników funduszy inwestycyjnych i zmieniające dyrektywy 2008/48/WE i 2014/17/UE oraz rozporządzenie (UE) nr 596/2014 (Tekst mający znaczenie dla EOG)"
+    }
+  ],
+  "displayAddress": "Dz.U. 2026 poz. 1074",
+  "entryIntoForce": "2027-02-11",
+  "inForce": "IN_FORCE",
+  "keywords": [
+    "fundusz inwestycyjny",
+    "instrumenty finansowe",
+    "giełdy",
+    "opłaty"
+  ],
+  "keywordsNames": [
+    "Komisja Nadzoru Finansowego"
+  ],
+  "obligated": [],
+  "pos": 1074,
+  "previousTitle": [],
+  "prints": [
+    {
+      "link": "https://www.sejm.gov.pl/Sejm10.nsf/PrzebiegProc.xsp?nr=2620",
+      "linkPrintAPI": "https://api.sejm.gov.pl/sejm/term10/prints/2620",
+      "linkProcessAPI": "https://api.sejm.gov.pl/sejm/term10/processes/2620",
+      "number": "2620",
+      "term": 10
+    }
+  ],
+  "promulgation": "2026-08-10",
+  "publisher": "DU",
+  "references": {
+    "Akty uznane za uchylone": [
+      {
+        "date": "2027-02-11",
+        "id": "DU/2020/770"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2020/767"
+      }
+    ],
+    "Akty zmienione": [
+      {
+        "date": "2027-02-11",
+        "id": "DU/2022/1488"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2011/1175"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2005/1539"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2005/1538"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2004/1546"
+      },
+      {
+        "date": "2027-02-11",
+        "id": "DU/2000/1099"
+      }
+    ]
+  },
+  "releasedBy": [
+    "SEJM"
+  ],
+  "status": "obowiązujący",
+  "textHTML": false,
+  "textPDF": true,
+  "texts": [
+    {
+      "fileName": "D20261074.pdf",
+      "type": "O"
+    },
+    {
+      "fileName": "D20261074.pdf",
+      "type": "I"
+    },
+    {
+      "fileName": "D20261074L.pdf",
+      "type": "T"
+    }
+  ],
+  "title": "Ustawa z dnia 17 lipca 2026 r. o zmianie niektórych ustaw w związku z opłatami uiszczanymi na rzecz Komisji Nadzoru Finansowego",
+  "type": "Ustawa",
+  "volume": 0,
+  "year": 2026
+}

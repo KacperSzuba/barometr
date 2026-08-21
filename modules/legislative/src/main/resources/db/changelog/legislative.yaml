@@ -9,3 +9,9 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0001-legislative.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0002-act-reference.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0003-one-pending-match-per-document.sql
+      relativeToChangelogFile: false

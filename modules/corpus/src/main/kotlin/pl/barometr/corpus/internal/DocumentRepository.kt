@@ -3,6 +3,7 @@ package pl.barometr.corpus.internal
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
+import pl.barometr.corpus.api.ArchivedDocument
 import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionId
@@ -113,6 +114,49 @@ class DocumentRepository(
             versionNo = recorded.value2()!!,
         )
     }
+
+    /**
+     * A document as another context sees it, with the day its newest version was
+     * issued.
+     *
+     * The date belongs to the version rather than to the document — a draft's page
+     * carries a new one every time it is republished — so it is read from the latest
+     * version rather than copied onto the document, where it would immediately start
+     * disagreeing with the versions underneath it.
+     */
+    fun byId(id: DocumentId): ArchivedDocument? {
+        val publishedAt = DSL.select(DOCUMENT_VERSION.PUBLISHED_AT)
+            .from(DOCUMENT_VERSION)
+            .where(DOCUMENT_VERSION.DOCUMENT_ID.eq(DOCUMENT.ID))
+            .orderBy(DOCUMENT_VERSION.VERSION_NO.desc())
+            .limit(1)
+            .asField<OffsetDateTime?>()
+
+        return dsl.select(DOCUMENT.EXTERNAL_ID, DOCUMENT.KIND, DOCUMENT.TITLE, publishedAt)
+            .from(DOCUMENT)
+            .where(DOCUMENT.ID.eq(id.value))
+            .fetchOne { record ->
+                ArchivedDocument(
+                    id = id,
+                    externalId = ExternalId(record.value1()!!),
+                    kind = DocumentKind(record.value2()!!),
+                    title = record.value3(),
+                    publishedAt = record.value4()?.toInstant(),
+                )
+            }
+    }
+
+    /**
+     * Counted in the database rather than by loading rows: this feeds a gauge, and a
+     * gauge that walks the corpus on every scrape is a gauge nobody can afford to
+     * keep.
+     */
+    fun countByKind(): Map<DocumentKind, Int> =
+        dsl.select(DOCUMENT.KIND, DSL.count())
+            .from(DOCUMENT)
+            .groupBy(DOCUMENT.KIND)
+            .fetch()
+            .associate { DocumentKind(it.value1()!!) to it.value2() }
 
     private fun now() = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
 }

@@ -29,6 +29,11 @@ dependencies {
     runtimeOnly(libs.postgresql)
 
     testImplementation(libs.springModulithTest)
+    // Authorization is asserted against the real chain: an operator endpoint that
+    // stops being one is a security defect, and nothing else in the build would see it.
+    testImplementation(libs.springSecurityTest)
+    testImplementation(libs.springBootStarterWebmvcTest)
+    testImplementation(libs.springBootSecurityTest)
     testImplementation(libs.archunitJunit5)
     // The one test that starts the real context needs a real database, and the
     // schema it starts against must be the one the migrations produce.

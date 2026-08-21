@@ -20,11 +20,8 @@ value class Eli(val value: String) {
         require(value.matches(PATTERN)) { "Not an ELI address: '$value'" }
     }
 
+    /** `DU` or `MP`: which journal published it. */
     val publisher: String get() = value.substringBefore(SEPARATOR)
-
-    val year: Int get() = value.split(SEPARATOR)[1].toInt()
-
-    val position: Int get() = value.substringAfterLast(SEPARATOR).toInt()
 
     override fun toString(): String = value
 

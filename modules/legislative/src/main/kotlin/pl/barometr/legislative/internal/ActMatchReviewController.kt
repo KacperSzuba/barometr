@@ -24,45 +24,19 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api/v1/legislative/act-matches")
 @PreAuthorize("hasRole('OPERATOR')")
-class ActMatchReviewController(
-    private val candidates: ActMatchCandidateRepository,
-    private val identifiers: ActIdentifierRepository,
-) {
+class ActMatchReviewController(private val review: ActMatchReview) {
 
     @GetMapping
     fun awaitingReview(@RequestParam(defaultValue = "$DEFAULT_PAGE") limit: Int): List<PendingMatchResponse> =
-        candidates.awaitingReview(limit.coerceIn(1, MAX_PAGE)).map(::describe)
+        review.awaitingReview(limit.coerceIn(1, MAX_PAGE)).map(::describe)
 
-    /**
-     * Accepts the proposed act, and records who said so.
-     *
-     * The identifier is written as [MatchMethod.MANUAL] with no confidence: a person
-     * decided, and dressing that up as a similarity score would suggest the machine
-     * had something to do with it.
-     */
     @PostMapping("/{id}/acceptance")
-    fun accept(@PathVariable id: UUID, reviewer: Authentication): PendingMatchResponse {
-        val match = candidates.byId(id) ?: throw UnknownActMatchException(id.toString())
-        val actId = match.actId ?: throw UnknownActMatchException(id.toString())
-
-        if (!candidates.recordDecision(id, accepted = true, reviewer = reviewer.name)) {
-            throw UnknownActMatchException(id.toString())
-        }
-        identifiers.pointAtAct(match.scheme, match.value, actId, MatchMethod.MANUAL, confidence = null)
-
-        return describe(match)
-    }
+    fun accept(@PathVariable id: UUID, reviewer: Authentication): PendingMatchResponse =
+        describe(review.acceptMatch(id, reviewer.name))
 
     @PostMapping("/{id}/rejection")
-    fun reject(@PathVariable id: UUID, reviewer: Authentication): PendingMatchResponse {
-        val match = candidates.byId(id) ?: throw UnknownActMatchException(id.toString())
-
-        if (!candidates.recordDecision(id, accepted = false, reviewer = reviewer.name)) {
-            throw UnknownActMatchException(id.toString())
-        }
-
-        return describe(match)
-    }
+    fun reject(@PathVariable id: UUID, reviewer: Authentication): PendingMatchResponse =
+        describe(review.rejectMatch(id, reviewer.name))
 
     private fun describe(match: PendingActMatch) = PendingMatchResponse(
         id = match.id,

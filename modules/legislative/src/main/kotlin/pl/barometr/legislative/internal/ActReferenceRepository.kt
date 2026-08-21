@@ -54,17 +54,4 @@ class ActReferenceRepository(
             },
         ).execute()
     }
-
-    /** What this act changes, and what changed it — the question the table exists for. */
-    fun referencesTouching(act: Eli): List<ActReferenceEdge> =
-        dsl.selectFrom(ACT_REFERENCE)
-            .where(ACT_REFERENCE.FROM_ELI.eq(act.value))
-            .or(ACT_REFERENCE.TO_ELI.eq(act.value))
-            .fetch { record ->
-                ActReferenceEdge(
-                    from = Eli(record.fromEli!!),
-                    to = Eli(record.toEli!!),
-                    relation = ActRelation.entries.first { it.wireName == record.relation },
-                )
-            }
 }

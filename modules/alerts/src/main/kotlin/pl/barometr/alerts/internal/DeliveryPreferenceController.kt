@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController
 import pl.barometr.identity.api.UserId
 import java.security.Principal
 import java.time.ZoneId
+import pl.barometr.identity.api.callerOf
 
 /**
  * How often, in whose time, and when not at all.
@@ -26,12 +27,12 @@ class DeliveryPreferenceController(private val preferences: DeliveryPreferences)
 
     @GetMapping
     fun preference(caller: Principal): PreferenceResponse =
-        describe(preferences.forOwner(readerOf(caller)))
+        describe(preferences.forOwner(callerOf(caller)))
 
     /** Stated whole rather than patched: a cadence is one sentence, not a set of flags. */
     @PutMapping
     fun set(caller: Principal, @Valid @RequestBody request: PreferenceRequest): PreferenceResponse {
-        val owner = readerOf(caller)
+        val owner = callerOf(caller)
 
         return describe(preferences.set(owner, request.asPreference(owner)))
     }

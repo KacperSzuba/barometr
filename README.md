@@ -126,13 +126,13 @@ shared-testing  test harness: a migrated Postgres and a movable clock.
 platform        technical capability with no domain meaning: http · jobs · storage
 modules/        one bounded context each — identity, sources, ingestion (with the
                 connectors that read each source), corpus, legislative, search,
-                profiles, alerts
+                profiles, alerts, audit
 infra/          the Elasticsearch image, which is built rather than pulled: the
                 Polish analyser ships as a plugin Elastic distributes separately
 build-logic/    convention plugins, as an included build
 ```
 
-Twelve Gradle projects, one per thing that could become a service. It was twenty, split
+Thirteen Gradle projects, one per thing that could become a service. It was twenty, split
 `-api`/`-impl` and by technical layer, which meant extracting any one context would
 have meant taking nine projects with it.
 

@@ -1,5 +1,6 @@
 package pl.barometr
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -13,6 +14,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.web.SecurityFilterChain
+import pl.barometr.audit.api.AuditOutcome
+import pl.barometr.audit.api.AuditTrail
 import pl.barometr.identity.api.JwtClaims
 
 /**
@@ -26,7 +29,7 @@ import pl.barometr.identity.api.JwtClaims
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-class ApplicationSecurityConfig {
+class ApplicationSecurityConfig(private val trail: AuditTrail) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
@@ -59,10 +62,17 @@ class ApplicationSecurityConfig {
         .exceptionHandling { exceptions ->
             // A plain 401 with a JSON body: the Next.js route guard keys its
             // silent refresh off this status, so it must never be a redirect.
-            exceptions.authenticationEntryPoint { _, response, _ ->
+            exceptions.authenticationEntryPoint { request, response, _ ->
+                // Recorded here rather than in the audit filter, and that is the whole
+                // reason this is not one line. A refused request never reaches the
+                // filter — it is turned back inside this chain — and this is also the
+                // last point at which the caller is still known, because the context
+                // is cleared on the way out.
+                recordDenial(request, HttpServletResponse.SC_UNAUTHORIZED)
                 response.writeError(HttpServletResponse.SC_UNAUTHORIZED, "unauthorized")
             }
-            exceptions.accessDeniedHandler { _, response, _ ->
+            exceptions.accessDeniedHandler { request, response, _ ->
+                recordDenial(request, HttpServletResponse.SC_FORBIDDEN)
                 response.writeError(HttpServletResponse.SC_FORBIDDEN, "forbidden")
             }
         }
@@ -76,6 +86,15 @@ class ApplicationSecurityConfig {
                     .map<String, GrantedAuthority> { SimpleGrantedAuthority("ROLE_$it") }
             }
         }
+
+    /**
+     * A guardrail nobody can see does not build trust: "somebody tried to read another
+     * account's data and was stopped" is the entry an audit log is bought for, and a
+     * log of successful requests answers a different, easier question.
+     */
+    private fun recordDenial(request: HttpServletRequest, status: Int) {
+        trail.record(AuditedRequest.of(request, AuditOutcome.DENIED, status))
+    }
 
     private fun HttpServletResponse.writeError(statusCode: Int, error: String) {
         status = statusCode

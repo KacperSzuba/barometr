@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import pl.barometr.identity.api.callerOf
 import pl.barometr.profiles.api.ProfileId
 import java.security.Principal
 import java.util.UUID
@@ -29,14 +30,14 @@ class AlertRuleController(private val rules: AlertRules) {
 
     @GetMapping
     fun list(caller: Principal): List<RuleResponse> =
-        rules.ownedBy(readerOf(caller)).map(::describe)
+        rules.ownedBy(callerOf(caller)).map(::describe)
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(caller: Principal, @Valid @RequestBody request: RuleRequest): RuleResponse =
         describe(
             rules.create(
-                readerOf(caller),
+                callerOf(caller),
                 ProfileId(request.profileId),
                 request.stages,
                 request.urgencyChosen(),
@@ -55,7 +56,7 @@ class AlertRuleController(private val rules: AlertRules) {
     ): RuleResponse =
         describe(
             rules.update(
-                readerOf(caller),
+                callerOf(caller),
                 AlertRuleId(id),
                 request.enabled,
                 request.stages,
@@ -66,7 +67,7 @@ class AlertRuleController(private val rules: AlertRules) {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(caller: Principal, @PathVariable id: UUID) {
-        rules.delete(readerOf(caller), AlertRuleId(id))
+        rules.delete(callerOf(caller), AlertRuleId(id))
     }
 
     private fun describe(rule: AlertRule) = RuleResponse(

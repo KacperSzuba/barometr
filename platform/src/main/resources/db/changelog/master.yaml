@@ -53,3 +53,7 @@ databaseChangeLog:
       file: db/changelog/alerts.yaml
       relativeToChangelogFile: false
       errorIfMissing: false
+  - include:
+      file: db/changelog/audit.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false

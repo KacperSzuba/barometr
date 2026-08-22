@@ -56,7 +56,17 @@ include(":platform")
 // ——— Bounded contexts —————————————————————————————————————————————————————
 // Directories stay grouped under `modules/`; the project paths are short because
 // a module is a top-level thing.
-listOf("identity", "sources", "ingestion", "corpus", "legislative", "search", "profiles", "alerts").forEach { context ->
+listOf(
+    "identity",
+    "sources",
+    "ingestion",
+    "corpus",
+    "legislative",
+    "search",
+    "profiles",
+    "alerts",
+    "audit",
+).forEach { context ->
     include(":$context")
     project(":$context").projectDir = file("modules/$context")
 }

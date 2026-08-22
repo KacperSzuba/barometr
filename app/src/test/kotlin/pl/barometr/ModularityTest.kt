@@ -101,6 +101,7 @@ class ModularityTest {
             "legislative",
             "search",
             "profiles",
+            "audit",
             "alerts",
             "platform",
             "http",

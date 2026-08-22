@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.util.UUID
+import pl.barometr.identity.api.callerOf
 import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 
@@ -39,17 +40,17 @@ class InterestProfileController(
 
     @GetMapping
     fun list(caller: Principal): List<ProfileResponse> =
-        profiles.ownedBy(ownerOf(caller)).map(::describe)
+        profiles.ownedBy(callerOf(caller)).map(::describe)
 
     @GetMapping("/{id}")
     fun profile(caller: Principal, @PathVariable id: UUID): ProfileResponse =
-        describe(profiles.read(ownerOf(caller), ProfileId(id)))
+        describe(profiles.read(callerOf(caller), ProfileId(id)))
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(caller: Principal, @Valid @RequestBody request: ProfileRequest): ProfileResponse =
         describe(
-            profiles.create(ownerOf(caller), request.name, request.interests.map(::toInterest)),
+            profiles.create(callerOf(caller), request.name, request.interests.map(::toInterest)),
         )
 
     /**
@@ -64,7 +65,7 @@ class InterestProfileController(
         @Valid @RequestBody request: InterestsRequest,
     ): ProfileResponse =
         describe(
-            profiles.revise(ownerOf(caller), ProfileId(id), request.interests.map(::toInterest)),
+            profiles.revise(callerOf(caller), ProfileId(id), request.interests.map(::toInterest)),
         )
 
     @PatchMapping("/{id}")
@@ -72,17 +73,17 @@ class InterestProfileController(
         caller: Principal,
         @PathVariable id: UUID,
         @Valid @RequestBody request: RenameRequest,
-    ): ProfileResponse = describe(profiles.rename(ownerOf(caller), ProfileId(id), request.name))
+    ): ProfileResponse = describe(profiles.rename(callerOf(caller), ProfileId(id), request.name))
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(caller: Principal, @PathVariable id: UUID) {
-        profiles.delete(ownerOf(caller), ProfileId(id))
+        profiles.delete(callerOf(caller), ProfileId(id))
     }
 
     @GetMapping("/{id}/versions")
     fun versions(caller: Principal, @PathVariable id: UUID): List<VersionResponse> =
-        profiles.history(ownerOf(caller), ProfileId(id))
+        profiles.history(callerOf(caller), ProfileId(id))
             .map { VersionResponse(it.version, it.createdAt.toString()) }
 
     @GetMapping("/{id}/versions/{version}")
@@ -90,7 +91,7 @@ class InterestProfileController(
         caller: Principal,
         @PathVariable id: UUID,
         @PathVariable version: Int,
-    ): ProfileResponse = describe(profiles.readVersion(ownerOf(caller), ProfileId(id), version))
+    ): ProfileResponse = describe(profiles.readVersion(callerOf(caller), ProfileId(id), version))
 
     /**
      * What this profile would catch if it fired now — the answer somebody needs while
@@ -102,7 +103,7 @@ class InterestProfileController(
      */
     @GetMapping("/{id}/matches")
     fun matches(caller: Principal, @PathVariable id: UUID): PreviewResponse {
-        val found = preview.preview(ownerOf(caller), ProfileId(id))
+        val found = preview.preview(callerOf(caller), ProfileId(id))
 
         return PreviewResponse(
             version = found.version,

@@ -62,25 +62,38 @@ description: HTTP API and security rules for barometr — controllers and DTOs, 
 
 ## Tokens and secrets
 
-13. **Access tokens are short-lived** — that is what substitutes for a revocation list.
+14. **Access tokens are short-lived** — that is what substitutes for a revocation list.
     Refresh tokens rotate, and a family is revoked as a unit when replay is detected.
-14. **Only a hash of a refresh token is stored.** Plain SHA-256 is correct there: the
+15. **Only a hash of a refresh token is stored.** Plain SHA-256 is correct there: the
     input is already 256 bits of entropy and needs no work factor. Passwords use BCrypt.
-15. **Validate `aud` as well as `exp`, `nbf` and `iss`.** The default validator does
+16. **Validate `aud` as well as `exp`, `nbf` and `iss`.** The default validator does
     not check audience, which is the check most often missed —
     [JwtConfig](modules/identity/src/main/kotlin/pl/barometr/identity/internal/config/JwtConfig.kt)
     adds it explicitly.
-16. **Nothing sensitive goes in a JWT claim.** The payload is base64, readable by
+17. **Nothing sensitive goes in a JWT claim.** The payload is base64, readable by
     anyone holding the token.
-17. **Authentication failures are indistinguishable from one another.** An unknown
+18. **Authentication failures are indistinguishable from one another.** An unknown
     e-mail and a wrong password return the same code and take the same time — otherwise
     response time becomes an account-enumeration oracle.
-18. **Secrets come from the environment, and the prod profile has no fallback.**
+19. **Secrets come from the environment, and the prod profile has no fallback.**
     `${JWT_SECRET}` unset must stop the application from starting.
-19. **Cross-instance state must be in the database, not in a field.** A grace window
+20. **Cross-instance state must be in the database, not in a field.** A grace window
     held in a `ConcurrentHashMap` turned a normal parallel refresh into a detected
     theft the moment a second replica existed; it is now a row lock and a timestamp,
     which work on any number of instances (review A3).
+
+## The audit trail
+
+21. **Refusals are recorded where they are produced**, in the two handlers in
+    [ApplicationSecurityConfig](app/src/main/kotlin/pl/barometr/ApplicationSecurityConfig.kt).
+    A refused request never reaches the audit filter — it is turned back inside the
+    security chain — and that is also the last point at which the caller is still
+    known, because the context is cleared on the way out. A denial nobody recorded is
+    the entry the whole feature exists for, missing.
+22. **The trail is append-only in the database**, by a trigger rather than a `REVOKE`:
+    the application owns that schema and an owner's privileges are its own to restore.
+    Nothing may `UPDATE`, `DELETE` or `TRUNCATE` it — including a retention job, until
+    somebody writes down how long these must be kept.
 
 ## Never
 

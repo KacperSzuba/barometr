@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.security.Principal
 import java.util.UUID
 import kotlin.math.min
+import pl.barometr.identity.api.callerOf
 
 /**
  * What I have been told, and why I was not told the rest.
@@ -29,7 +30,7 @@ class NotificationController(
 
     @GetMapping
     fun list(caller: Principal, @RequestParam(required = false) limit: Int?): List<AlertResponse> =
-        notifications.listFor(readerOf(caller), boundedTo(limit)).map {
+        notifications.listFor(callerOf(caller), boundedTo(limit)).map {
             AlertResponse(
                 id = it.id,
                 subjectKind = it.subjectKind,
@@ -49,7 +50,7 @@ class NotificationController(
     fun markRead(caller: Principal, @PathVariable id: UUID) {
         // Marking one that was already read, or one that is not the caller's, is not an
         // error worth a status code: both mean "there is nothing to do here".
-        notifications.markRead(readerOf(caller), id)
+        notifications.markRead(callerOf(caller), id)
     }
 
     /**
@@ -62,7 +63,7 @@ class NotificationController(
      */
     @GetMapping("/digests")
     fun digests(caller: Principal, @RequestParam(required = false) limit: Int?): List<DigestResponse> {
-        val owner = readerOf(caller)
+        val owner = callerOf(caller)
 
         return digests.listFor(owner, boundedTo(limit)).map { digest ->
             val contents = DigestContents.of(digest, notifications.inDigest(digest.id))
@@ -84,7 +85,7 @@ class NotificationController(
 
     @GetMapping("/decisions")
     fun decisions(caller: Principal, @RequestParam(required = false) limit: Int?): List<DecisionResponse> =
-        decisions.listFor(readerOf(caller), boundedTo(limit)).map {
+        decisions.listFor(callerOf(caller), boundedTo(limit)).map {
             DecisionResponse(
                 subjectKind = it.subjectKind,
                 subjectId = it.subjectId,

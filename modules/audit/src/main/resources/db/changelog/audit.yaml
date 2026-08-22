@@ -1,0 +1,5 @@
+# Everything audit has done to the database, in the order it did it.
+databaseChangeLog:
+  - include:
+      file: db/changelog/audit/0001-audit-event.sql
+      relativeToChangelogFile: false

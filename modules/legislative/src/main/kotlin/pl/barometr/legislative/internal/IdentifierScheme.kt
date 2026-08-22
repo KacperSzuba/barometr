@@ -13,4 +13,9 @@ enum class IdentifierScheme(val wireName: String) {
     SEJM_PRINT("druk_sejmowy"),
     RCL("rcl_id"),
     JOURNAL_POSITION("dziennik_pozycja"),
+    ;
+
+    companion object {
+        fun of(wireName: String): IdentifierScheme? = entries.firstOrNull { it.wireName == wireName }
+    }
 }

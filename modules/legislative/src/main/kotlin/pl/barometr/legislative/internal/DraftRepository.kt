@@ -115,4 +115,21 @@ class DraftRepository(
     )
 
     private fun now() = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
+
+    /**
+     * The draft this act was, if the identity matching ever tied the two together.
+     *
+     * One draft becomes one act, so the column is on the draft and this reads it
+     * backwards — which is the direction a reader travels: they are looking at the law
+     * and want to know how it got there.
+     */
+    fun draftBecoming(act: ActId): DraftId? =
+        dsl.select(DRAFT.ID)
+            .from(DRAFT)
+            .where(DRAFT.ACT_ID.eq(act.value))
+            .orderBy(DRAFT.CREATED_AT)
+            .limit(1)
+            .fetchOne()
+            ?.value1()
+            ?.let(::DraftId)
 }

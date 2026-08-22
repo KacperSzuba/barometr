@@ -71,4 +71,25 @@ class ActIdentifierRepository(
             .toMap()
 
     private fun now() = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
+
+    /**
+     * Every number this act is quoted by, which is how a reader gets from a published
+     * act back to the print, the government's programme number and the draft it was.
+     */
+    fun identifiersOf(act: ActId): List<ActIdentifierValue> =
+        dsl.select(ACT_IDENTIFIER.SCHEME, ACT_IDENTIFIER.VALUE, ACT_IDENTIFIER.RESOLVED_BY)
+            .from(ACT_IDENTIFIER)
+            .where(ACT_IDENTIFIER.ACT_ID.eq(act.value))
+            .orderBy(ACT_IDENTIFIER.SCHEME, ACT_IDENTIFIER.VALUE)
+            .fetch { row ->
+                ActIdentifierValue(
+                    scheme = IdentifierScheme.of(row[ACT_IDENTIFIER.SCHEME]!!)
+                        ?: error("stored scheme '${row[ACT_IDENTIFIER.SCHEME]}'"),
+                    value = row[ACT_IDENTIFIER.VALUE]!!,
+                    // How it was matched travels with it: a title-similarity match is
+                    // a different claim from a number read out of the register, and a
+                    // reader looking at a wrong link deserves to see which it was.
+                    resolvedBy = row[ACT_IDENTIFIER.RESOLVED_BY]!!,
+                )
+            }
 }

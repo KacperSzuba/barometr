@@ -15,4 +15,9 @@ enum class ActRelation(val wireName: String) {
 
     /** Issued under another act's authority — a regulation to its statute. */
     IMPLEMENTS("implements"),
+    ;
+
+    companion object {
+        fun of(wireName: String): ActRelation? = entries.firstOrNull { it.wireName == wireName }
+    }
 }

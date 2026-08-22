@@ -51,12 +51,27 @@ own changelog, and against an Elasticsearch node built from `infra/elasticsearch
 the analyser is the thing under test, so a stub of it would prove nothing. Docker must
 be running, and the first search test builds the image once.
 
-Test classes run concurrently, and each one gets **its own database**, copied from the
-migrated template with `CREATE DATABASE … TEMPLATE` — about seventy milliseconds, so a
-class clearing a table is clearing its own copy. The methods inside one class do not
-run concurrently: they share that class's fixture by design. The two fixtures that
-cannot be copied — the application's own database and the search index — are held under
-a `@ResourceLock` by the handful of tests that use them.
+**One Postgres for the whole build**, started before any module's tests and stopped
+when the build ends — the same container code generation reads. Nine modules each
+starting their own and re-running the same changesets was most of what a test run spent
+its time on.
+
+Inside it, each test class gets **its own database**, copied from the migrated template
+with `CREATE DATABASE … TEMPLATE` — about seventy milliseconds, so a class clearing a
+table is clearing its own copy and classes can run side by side. The methods inside one
+class do not: they share that class's fixture by design. The two fixtures that cannot be
+copied — the application's own database and the search index — are held under a
+`@ResourceLock` by the handful of tests that use them.
+
+Connections are pooled, which is worth more than any of it: without a pool jOOQ opens
+one per statement, and the suite spent most of its life in TCP handshakes. Run from an
+IDE there is no build to hand a container over, so one is started per JVM instead —
+`-Pbarometr.test.ownContainers=true` forces that path from Gradle too, which is the
+first thing to try if the shared one is ever suspected.
+
+Every container is capped at a couple of cores, here and in `compose.yaml`: a database
+that takes every core it can see is why a build feels slow when it is actually the
+editor that is starving.
 
 ### What runs on a push
 

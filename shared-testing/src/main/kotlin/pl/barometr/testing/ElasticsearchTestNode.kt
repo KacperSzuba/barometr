@@ -34,6 +34,10 @@ object ElasticsearchTestNode {
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+            // Two cores. Indexing will use every one it is given, and it is sharing
+            // the machine with a database, a build and whatever the developer is
+            // doing — the same cap the compose file puts on the node they run locally.
+            .withCreateContainerCmdModifier { it.hostConfig?.withNanoCPUs(CPU_SHARE) }
             // Testcontainers gives a container a minute to say it has started, and this
             // one is asked to start while the rest of the suite is holding a Postgres
             // per module. Under that, a node that takes ninety seconds is slow rather
@@ -69,6 +73,9 @@ object ElasticsearchTestNode {
     private const val OFFICIAL_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch"
 
     private val STARTUP_TIMEOUT: Duration = Duration.ofMinutes(3)
+
+    /** Two cores, in the units Docker counts them: nanoseconds of CPU per second. */
+    private const val CPU_SHARE = 2_000_000_000L
 
     /**
      * What a test that rebuilds the index holds while it runs.

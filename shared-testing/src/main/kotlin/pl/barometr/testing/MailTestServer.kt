@@ -15,6 +15,9 @@ import org.testcontainers.containers.wait.strategy.Wait
  */
 object MailTestServer {
 
+    /** One core, in the units Docker counts them: nanoseconds of CPU per second. */
+    private const val CPU_SHARE = 1_000_000_000L
+
     private const val SMTP_PORT = 1025
     private const val HTTP_PORT = 8025
 
@@ -22,6 +25,9 @@ object MailTestServer {
         GenericContainer("axllent/mailpit:v1.21")
             .withExposedPorts(SMTP_PORT, HTTP_PORT)
             .waitingFor(Wait.forHttp("/api/v1/messages").forPort(HTTP_PORT))
+            // A mail server that holds a handful of messages needs a fraction of a
+            // core; without a cap it is entitled to all of them.
+            .withCreateContainerCmdModifier { it.hostConfig?.withNanoCPUs(CPU_SHARE) }
             .also { it.start() }
     }
 

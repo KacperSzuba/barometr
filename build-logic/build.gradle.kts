@@ -6,7 +6,7 @@ plugins {
 // runs Gradle. On JDK 25 that means Kotlin silently falls back to target 24
 // while javac stays on 25, and every build reports the mismatch.
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
 
 dependencies {

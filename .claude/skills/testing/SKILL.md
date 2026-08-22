@@ -47,29 +47,34 @@ description: Test conventions for barometr — Testcontainers on the production 
    `@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)` by the few tests that use them —
    a new test touching either needs the same annotation, and nothing in the build will
    tell you if it is missing.
-8. **Prefer plain construction to `@SpringBootTest`.** Compose the object graph the
+8. **A new container is capped and reaped.** Give it a share of the machine
+   (`withCreateContainerCmdModifier { it.hostConfig?.withNanoCPUs(…) }`) and start it
+   from a `by lazy` that never reads itself — a re-entrant lazy answers by running the
+   initialiser again, and the one that did started two hundred containers before Docker
+   stopped answering.
+9. **Prefer plain construction to `@SpringBootTest`.** Compose the object graph the
    way Spring composes it and test it with no context —
    [RawDocumentArchiverTest](modules/ingestion/src/test/kotlin/pl/barometr/ingestion/internal/RawDocumentArchiverTest.kt)
    builds repository, archiver and sink directly. Context tests are for wiring, and
    wiring is one test, not every test.
-9. **Hand-written fakes, not a mocking framework.** `RecordingSink`,
+10. **Hand-written fakes, not a mocking framework.** `RecordingSink`,
    `FixtureHttpClient`, `RecordingEventPublisher` — each is a dozen lines, reads as a
    specification of the collaborator, and never silently agrees with a signature that
    changed. No mocking library is in the catalog; do not add one.
-10. **Connector tests run against recorded responses** from the live source, so a
+11. **Connector tests run against recorded responses** from the live source, so a
    *source* changing shape fails the build. A stub written by hand only ever confirms
    what the author already believed —
    [SejmConnectorContractTest](modules/ingestion/src/test/kotlin/pl/barometr/connectors/sejm/SejmConnectorContractTest.kt).
-11. **Time is controlled by an injected `Clock`**, not by sleeping and not by
+12. **Time is controlled by an injected `Clock`**, not by sleeping and not by
     rewriting rows: `TestClock` in `shared-testing` moves on demand. Backoff, token
     expiry and the refresh grace window are all tested by advancing it (review B11).
-12. **Test names are behaviour sentences in backticks**, describing the guarantee:
+13. **Test names are behaviour sentences in backticks**, describing the guarantee:
     `` `identical content is recognised and publishes nothing` ``.
-13. **One behaviour per test.** Several assertions about one behaviour are fine;
+14. **One behaviour per test.** Several assertions about one behaviour are fine;
     several behaviours are several tests.
-14. **Assertions carry a message when a bare failure would be cryptic**:
+15. **Assertions carry a message when a bare failure would be cryptic**:
     `assertEquals(1, count, "one row for one piece of content")`.
-15. **Test the seam a bug crossed.** A defect found in production gets a test at the
+16. **Test the seam a bug crossed.** A defect found in production gets a test at the
     level where it could have been caught, not at the level where it was noticed.
 
 ## Never

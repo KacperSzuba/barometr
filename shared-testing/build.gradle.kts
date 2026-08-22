@@ -16,5 +16,8 @@ dependencies {
     api(libs.testcontainersCore)
     api(libs.liquibaseCore)
     api(libs.jooq)
+    // A connection per statement is what a bare DataSource does, and at a few thousand
+    // statements a test that is mostly handshakes.
+    api(libs.hikariCp)
     api(libs.postgresql)
 }

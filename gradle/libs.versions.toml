@@ -147,6 +147,11 @@ testcontainersElasticsearch = { module = "org.testcontainers:elasticsearch", ver
 # headers that decide whether a digest reaches an inbox — `List-Unsubscribe` above all
 # — are only observable on the receiving side.
 testcontainersCore = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+# The pool the application already runs on, in the tests too. Without one, jOOQ opens a
+# connection per statement and a test spends most of its time in TCP handshakes — the
+# volume test went from a hundred and seventy seconds to twenty. Version from the Boot
+# BOM, like every other starter's transitive.
+hikariCp = { module = "com.zaxxer:HikariCP" }
 archunitJunit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 [bundles]

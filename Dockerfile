@@ -4,7 +4,7 @@
 # build would download the world on every run — the layer cache is not the dependency
 # cache, and CI already has one that works.
 
-FROM eclipse-temurin:21-jre AS layers
+FROM eclipse-temurin:25-jre AS layers
 
 WORKDIR /layers
 COPY app/build/libs/app.jar app.jar
@@ -13,7 +13,7 @@ COPY app/build/libs/app.jar app.jar
 # commit, so splitting them means a deploy ships megabytes rather than eighty of them.
 RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 # Not root. Nothing here needs to write outside its own directory, and a container that
 # could is one more thing standing between a bug and a bad afternoon.

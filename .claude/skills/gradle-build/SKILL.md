@@ -35,20 +35,29 @@ description: Gradle build conventions for barometr — the version catalog as th
    exposes `RestClient.Builder`, so its starter is `api`; that is the whole test.
 7. **BOMs are imported as Gradle platforms**, not via
    `io.spring.dependency-management`. One fewer plugin, alignment handled by Gradle.
-8. **Toolchain 21 everywhere**, including `build-logic` — without
-   `kotlin { jvmToolchain(21) }` there, Kotlin and javac silently target different
+8. **Toolchain 25 everywhere**, including `build-logic` — without
+   `kotlin { jvmToolchain(25) }` there, Kotlin and javac silently target different
    versions.
-9. **Tasks must be configuration-cache safe.** Capture plain values at configuration
+9. **One Postgres per build**, not per module:
+   [MigratedPostgresService](build-logic/src/main/kotlin/pl/barometr/build/MigratedPostgresService.kt)
+   starts it, code generation reads it, and every `Test` task is told where it is
+   through a `CommandLineArgumentProvider` — a plain `systemProperty` would start a
+   container during configuration, so `./gradlew help` would want Docker. Limits on
+   parallel use belong on a lock service of their own
+   ([JooqCodegenLock](build-logic/src/main/kotlin/pl/barometr/build/JooqCodegenLock.kt)),
+   never on the shared container: the day the tests started using it, a
+   `maxParallelUsages = 1` there would have run every module's tests one after another.
+10. **Tasks must be configuration-cache safe.** Capture plain values at configuration
    time; never touch `project` inside a task action. Shared expensive resources are
    `BuildService`s —
    [MigratedPostgresService](build-logic/src/main/kotlin/pl/barometr/build/MigratedPostgresService.kt)
    starts one Postgres per build for all codegen.
-10. **Codegen is generated from migrated migrations, never hand-written or checked
+11. **Codegen is generated from migrated migrations, never hand-written or checked
     in.** After changing the schema, regenerate — see `database-schema`.
-11. **A module earns its existence.** It owns a schema, or code, or both — and a
+12. **A module earns its existence.** It owns a schema, or code, or both — and a
     context is one module, not an `-api`/`-impl` pair. Twenty projects became nine
     when that rule was applied (review D20).
-12. **JVM memory settings in `gradle.properties` are load-bearing** — the defaults
+13. **JVM memory settings in `gradle.properties` are load-bearing** — the defaults
     fail as `Could not read class .../Row12.class` in an unrelated module rather than
     as an `OutOfMemoryError`. Do not lower them without reproducing that.
 

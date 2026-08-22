@@ -1,3 +1,5 @@
+import pl.barometr.build.MigratedPostgresService
+import pl.barometr.build.PostgresConnectionArguments
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
@@ -6,7 +8,10 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(21)
+    // 25, the current LTS. The toolchain is downloaded if the machine has no such JDK,
+    // so this is the version everything compiles and runs against — locally, in CI and
+    // in the image — rather than whatever happens to be on the PATH.
+    jvmToolchain(25)
 
     compilerOptions {
         // Spring Framework 7 annotates nullability with JSpecify. Strict mode turns
@@ -16,8 +21,32 @@ kotlin {
     }
 }
 
+// One Postgres for the whole build, shared by code generation and by every module's
+// tests. Registered here because this plugin is applied everywhere; the container is
+// started on first use and stopped when the build ends.
+val migratedPostgres =
+    gradle.sharedServices.registerIfAbsent("migratedPostgres", MigratedPostgresService::class) {
+        parameters.rootDirectory.set(rootProject.layout.projectDirectory)
+    }
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+
+    // Where to find that container. Passed at execution time, so `./gradlew help` does
+    // not start a database, and absent when tests are run from an IDE — which is what
+    // the fallback in `PostgresTestDatabase` is for.
+    usesService(migratedPostgres)
+    // `-Pbarometr.test.ownContainers=true` withholds it, and every module starts a
+    // container of its own instead. Kept because it is the first thing to try when the
+    // shared one is suspected — and because it is the same path an IDE run takes, so it
+    // cannot rot unnoticed.
+    if (!providers.gradleProperty("barometr.test.ownContainers").isPresent) {
+        jvmArgumentProviders.add(
+            objects.newInstance(PostgresConnectionArguments::class).apply {
+                postgres.set(migratedPostgres)
+            },
+        )
+    }
     // Test classes run at the same time; the methods inside one do not.
     //
     // The split is not arbitrary. A class owns its fixture — its own database, cloned

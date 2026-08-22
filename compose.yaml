@@ -3,12 +3,20 @@
 # Provisioning for real environments is a separate concern; this file exists so
 # that `docker compose up -d` followed by `./gradlew :app:bootRun` is all it takes
 # to have the application running against the same engine production uses.
+#
+# Both services are capped. Neither needs a whole laptop to serve one developer, and
+# a database that takes every core it can see is why a build feels slow while it is
+# actually the editor that is starving. The test containers carry the same caps.
 
 services:
   postgres:
     # pgvector ships on top of the official Postgres image, so embeddings and the
     # relational schema live in one database rather than two systems to operate.
     image: pgvector/pgvector:pg16
+    # Two cores and a gigabyte: more than a development dataset needs, and far less
+    # than Postgres will take if nobody says otherwise.
+    cpus: 2
+    mem_limit: 1g
     environment:
       POSTGRES_DB: barometr
       POSTGRES_USER: barometr
@@ -28,6 +36,10 @@ services:
     # separately, and without it a search for an inflected form finds nothing. See
     # infra/elasticsearch/Dockerfile.
     build: infra/elasticsearch
+    # The heap below is 512m; the rest is what Lucene wants for file cache. The core
+    # limit matters more here — indexing will use everything it is given.
+    cpus: 2
+    mem_limit: 1500m
     environment:
       # One node, and no security: this is a derived index on a developer's machine,
       # rebuildable from Postgres at any time, and never the source of truth for

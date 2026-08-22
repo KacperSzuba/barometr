@@ -14,6 +14,10 @@ resilience4j = "2.4.0"
 crawlerCommons = "1.6"
 jsoup = "1.23.1"
 testcontainers = "1.21.4"
+# The archive is the product. Keeping it on a container's disk means one instance and a
+# volume nobody backs up, so it goes to object storage — Google's, with the client that
+# speaks its own API rather than the S3 compatibility layer.
+googleCloudStorage = "2.71.0"
 # Used only by build-logic, which has no Boot BOM to inherit from. Kept in step with
 # the version the Boot 4.1 BOM manages, so the schema the build generates code from is
 # produced by the same engine that migrates production.
@@ -152,6 +156,12 @@ testcontainersCore = { module = "org.testcontainers:testcontainers", version.ref
 # volume test went from a hundred and seventy seconds to twenty. Version from the Boot
 # BOM, like every other starter's transitive.
 hikariCp = { module = "com.zaxxer:HikariCP" }
+
+# ——— Object storage ——————————————————————————————————————————————————————
+# Google Cloud Storage, through its own client rather than the S3 compatibility layer:
+# that layer needs HMAC keys, which are long-lived secrets in an environment whose whole
+# point is that a workload proves who it is without holding one.
+googleCloudStorage = { module = "com.google.cloud:google-cloud-storage", version.ref = "googleCloudStorage" }
 archunitJunit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 [bundles]

@@ -19,7 +19,6 @@ import pl.barometr.sources.api.ConnectorId
 import pl.barometr.sources.api.SourceId
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.internal.FilesystemBlobStore
-import pl.barometr.storage.internal.StorageProperties
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import tools.jackson.databind.json.JsonMapper
@@ -56,7 +55,7 @@ class EliActProjectorTest {
         dsl.deleteFrom(ACT_IDENTIFIER).execute()
         dsl.deleteFrom(ACT).execute()
 
-        blobs = FilesystemBlobStore(StorageProperties(blobRoot))
+        blobs = FilesystemBlobStore(blobRoot)
         meters = SimpleMeterRegistry()
         projector = EliActProjector(
             blobs = blobs,

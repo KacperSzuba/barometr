@@ -22,10 +22,23 @@ app:
     # No fallback: the application must refuse to start without a real secret.
     secret: ${JWT_SECRET}
   storage:
-    # Where archived documents are written. No fallback either, and for a sharper
-    # reason than the secret: a default would point inside the container, the archive
-    # would be written to a layer, and the layer would go when the container did —
-    # silently, and only discovered the first time somebody asked for a document.
+    # Object storage by default, and that is the recommendation rather than a
+    # preference: the archive is the one thing here that cannot be recomputed, and a
+    # directory inside a container means one instance, no replication, and a volume
+    # somebody has to remember to back up.
     #
-    # A mounted volume until this becomes S3, which is still an open item.
-    root: ${BLOB_ROOT}
+    # `filesystem` remains available for a single-machine deployment, and then
+    # `BLOB_ROOT` must name a mounted volume. Either way the application refuses to
+    # start without what its chosen kind needs.
+    kind: ${BLOB_STORAGE_KIND:gcs}
+    root: ${BLOB_ROOT:}
+    gcs:
+      project: ${GCP_PROJECT:}
+      # A bucket name is global to all of Google Cloud, so the three are prefixed:
+      # `<prefix>-raw`, `-derived`, `-exports`.
+      bucket-prefix: ${GCS_BUCKET_PREFIX:barometr}
+      location: ${GCS_LOCATION:europe-central2}
+      # No credentials here, deliberately. On Google Cloud the workload proves who it
+      # is by its own identity; a key in an environment variable would be a secret to
+      # leak, and the only reason to have one would be the S3 compatibility layer this
+      # deliberately does not use.

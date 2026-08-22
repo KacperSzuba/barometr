@@ -39,6 +39,9 @@ dependencies {
     // inherited by accident from the jOOQ starter.
     implementation(libs.springBootStarterJdbc)
     implementation(libs.springBootStarterActuator)
+    // Object storage. `implementation`, because nothing outside this module names a
+    // storage type — the contexts see `BlobStore` and know nothing of what is behind it.
+    implementation(libs.googleCloudStorage)
 
     runtimeOnly(libs.postgresql)
 

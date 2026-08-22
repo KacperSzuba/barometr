@@ -13,10 +13,27 @@ docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on
 ./gradlew :app:bootRun        # local profile, no further setup needed
 ```
 
-`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET` and `BLOB_ROOT`.
-None has a production fallback, deliberately: a missing secret must stop the
-application rather than sign tokens with a known key, and a default blob root would
-write the archive somewhere that disappears with the container.
+`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET` and — for the
+default `gcs` storage — `GCP_PROJECT`. None has a production fallback, deliberately: a
+missing secret must stop the application rather than sign tokens with a known key.
+
+### Where the archive is kept
+
+The archive is the one thing here that cannot be recomputed, so in production it goes
+to Google Cloud Storage: `app.storage.kind: gcs` and a project. Buckets are
+`<prefix>-raw`, `-derived` and `-exports` — prefixed because a bucket name is global to
+all of Google Cloud — and the application creates any that are missing when it starts,
+so a wrong project stops it rather than failing the first ingestion run of the night.
+
+**No credentials in configuration.** On Google Cloud the workload proves who it is by
+its own identity, and on a developer's machine `gcloud auth application-default login`
+does. That is why this uses Google's own client rather than the S3 compatibility layer:
+that layer needs HMAC keys, which are a long-lived secret to leak.
+
+`filesystem` is still there for a single-machine deployment, and then `BLOB_ROOT` must
+name a mounted volume. `docker compose` runs a storage emulator on 4443 for trying the
+`gcs` path locally; the default stays `filesystem`, because it needs nothing running and
+leaves the blobs where they can be opened.
 
 ### Sending mail
 
@@ -92,9 +109,8 @@ built and pushed; pointing it at a staging environment, and putting the producti
 behind a manual approval, is the next thing this workflow needs and the one part of it
 that cannot be written without the environment existing.
 
-Running the image needs `DATABASE_URL`, `JWT_SECRET` and `BLOB_ROOT` — the last a
-mounted volume, until the blob store becomes S3. A default for it would write the
-archive into a container layer, and the layer would go when the container did.
+Running the image needs `DATABASE_URL`, `JWT_SECRET` and `GCP_PROJECT`; see *Where the
+archive is kept* above for the storage side of it.
 
 The schema is managed by Liquibase; the manifest is
 `platform/src/main/resources/db/changelog/master.yaml`. A database created before the

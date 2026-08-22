@@ -1,6 +1,5 @@
 package pl.barometr.storage.internal
 
-import org.springframework.stereotype.Component
 import pl.barometr.shared.ContentHash
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.BlobStore
@@ -19,8 +18,16 @@ import java.nio.file.StandardCopyOption
  * rather than a rewrite, and lets development and tests run with no object
  * storage at all.
  */
-@Component
-class FilesystemBlobStore(private val properties: StorageProperties) : BlobStore {
+class FilesystemBlobStore(root: Path) : BlobStore {
+
+    /**
+     * Required, and checked here rather than left to fail on the first write.
+     *
+     * A store with nowhere to write is not a store, and the archive is the one thing
+     * in this system that cannot be recomputed — finding out at the first document
+     * rather than at startup is finding out too late.
+     */
+    private val root: Path = requireNotNull(root) { "app.storage.root must be set" }
 
     override fun store(bucket: BlobBucket, payload: ByteArray, mediaType: String): StoredBlob {
         val contentHash = ContentHash.of(payload)
@@ -57,5 +64,5 @@ class FilesystemBlobStore(private val properties: StorageProperties) : BlobStore
         Files.exists(pathFor(bucket, contentHash))
 
     private fun pathFor(bucket: BlobBucket, contentHash: ContentHash): Path =
-        properties.root.resolve(bucket.bucketName).resolve(keyOf(contentHash))
+        root.resolve(bucket.bucketName).resolve(keyOf(contentHash))
 }

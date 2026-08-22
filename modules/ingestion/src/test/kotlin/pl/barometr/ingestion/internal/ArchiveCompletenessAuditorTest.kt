@@ -22,7 +22,6 @@ import pl.barometr.sources.api.SourceDefinition
 import pl.barometr.sources.api.SourceId
 import pl.barometr.sources.api.SourceRegistry
 import pl.barometr.storage.internal.FilesystemBlobStore
-import pl.barometr.storage.internal.StorageProperties
 import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
@@ -49,7 +48,7 @@ class ArchiveCompletenessAuditorTest {
     fun setUp() {
         dsl.deleteFrom(RAW_DOCUMENT).execute()
         archiver = RawDocumentArchiver(
-            blobs = FilesystemBlobStore(StorageProperties(blobRoot)),
+            blobs = FilesystemBlobStore(blobRoot),
             documents = RawDocumentRepository(dsl, clock),
             events = SilentEvents(),
             clock = clock,

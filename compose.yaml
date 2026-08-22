@@ -15,7 +15,7 @@ services:
     image: pgvector/pgvector:pg16
     # Two cores and a gigabyte: more than a development dataset needs, and far less
     # than Postgres will take if nobody says otherwise.
-    cpus: 2
+    cpus: 0.5
     mem_limit: 1g
     environment:
       POSTGRES_DB: barometr
@@ -38,7 +38,7 @@ services:
     build: infra/elasticsearch
     # The heap below is 512m; the rest is what Lucene wants for file cache. The core
     # limit matters more here — indexing will use everything it is given.
-    cpus: 2
+    cpus: 1
     mem_limit: 1500m
     environment:
       # One node, and no security: this is a derived index on a developer's machine,
@@ -57,5 +57,26 @@ services:
       timeout: 5s
       retries: 20
 
+  storage:
+    # Google Cloud Storage, emulated. The application talks to this exactly as it talks
+    # to the real thing — same client, same API — so `app.storage.kind: gcs` locally
+    # exercises the path that actually ships.
+    #
+    # Not the default here: the filesystem store needs nothing running and leaves the
+    # blobs where a developer can open them.
+    image: fsouza/fake-gcs-server:1.56.0
+    entrypoint: /bin/fake-gcs-server
+    # Plain HTTP, because the default is TLS with a certificate nothing here trusts.
+    # `-public-host` is what makes the URLs it hands back point at this address rather
+    # than at its own idea of itself.
+    command: ["-scheme", "http", "-port", "4443", "-public-host", "localhost:4443"]
+    cpus: 1
+    mem_limit: 512m
+    ports:
+      - "4443:4443"
+    volumes:
+      - storage-data:/storage
+
 volumes:
   postgres-data:
+  storage-data:

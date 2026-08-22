@@ -20,7 +20,6 @@ import pl.barometr.testing.TestClock
 import pl.barometr.sources.api.SourceId
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.internal.FilesystemBlobStore
-import pl.barometr.storage.internal.StorageProperties
 import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -155,7 +154,7 @@ class RawDocumentArchiverTest {
     }
 
     private fun archiverOver(root: Path) = RawDocumentArchiver(
-        blobs = FilesystemBlobStore(StorageProperties(root)),
+        blobs = FilesystemBlobStore(root),
         documents = RawDocumentRepository(dsl, clock),
         events = events,
         clock = clock,

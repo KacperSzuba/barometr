@@ -167,7 +167,7 @@ abstract class MigratedPostgresService :
         const val ADMIN = "postgres"
 
         /** Four cores, in the units Docker counts them: nanoseconds of CPU per second. */
-        const val CPU_SHARE = 4_000_000_000L
+        const val CPU_SHARE = 2_500_000_000L
 
         const val MAX_CONNECTIONS = 300
     }

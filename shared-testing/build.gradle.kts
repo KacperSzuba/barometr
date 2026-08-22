@@ -14,6 +14,9 @@ dependencies {
     api(libs.testcontainersElasticsearch)
     // The mail server digests are sent to in tests is a plain container.
     api(libs.testcontainersCore)
+    // Object storage, for the adapter that has to behave identically to the one that
+    // writes to a disk. A generic container: the emulator is a plain HTTP server.
+    api(libs.googleCloudStorage)
     api(libs.liquibaseCore)
     api(libs.jooq)
     // A connection per statement is what a bare DataSource does, and at a few thousand

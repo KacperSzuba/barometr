@@ -22,7 +22,6 @@ import pl.barometr.sources.api.ConnectorId
 import pl.barometr.sources.api.SourceId
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.internal.FilesystemBlobStore
-import pl.barometr.storage.internal.StorageProperties
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.nio.file.Path
@@ -58,7 +57,7 @@ class RclCardProjectorTest {
         dsl.deleteFrom(DRAFT_IDENTIFIER).execute()
         dsl.deleteFrom(DRAFT).execute()
 
-        blobs = FilesystemBlobStore(StorageProperties(blobRoot))
+        blobs = FilesystemBlobStore(blobRoot)
         projector = RclCardProjector(
             blobs = blobs,
             pages = StubRclPages,

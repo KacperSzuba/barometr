@@ -23,7 +23,6 @@ import pl.barometr.sources.api.SourceId
 import pl.barometr.sources.api.SourceRegistry
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.internal.FilesystemBlobStore
-import pl.barometr.storage.internal.StorageProperties
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import tools.jackson.databind.json.JsonMapper
@@ -67,7 +66,7 @@ class ArchivedDocumentRecorderTest {
         dsl.deleteFrom(DOCUMENT).execute()
         dsl.deleteFrom(BLOB).execute()
 
-        blobs = FilesystemBlobStore(StorageProperties(blobRoot))
+        blobs = FilesystemBlobStore(blobRoot)
         events = RecordingEventPublisher()
         meters = SimpleMeterRegistry()
         documents = DocumentRepository(dsl, clock)

@@ -13,9 +13,10 @@ docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on
 ./gradlew :app:bootRun        # local profile, no further setup needed
 ```
 
-`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL` and `JWT_SECRET`. Neither has a
-production fallback, deliberately: a missing secret must stop the application rather
-than sign tokens with a known key.
+`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET` and `BLOB_ROOT`.
+None has a production fallback, deliberately: a missing secret must stop the
+application rather than sign tokens with a known key, and a default blob root would
+write the archive somewhere that disappears with the container.
 
 ### Sending mail
 
@@ -49,6 +50,29 @@ Tests run against the same Postgres image production uses, migrated by the proje
 own changelog, and against an Elasticsearch node built from `infra/elasticsearch` —
 the analyser is the thing under test, so a stub of it would prove nothing. Docker must
 be running, and the first search test builds the image once.
+
+### What runs on a push
+
+[`.github/workflows/backend.yml`](.github/workflows/backend.yml) runs `./gradlew check`
+on every push and pull request — the tests, the module boundaries and the modularity
+rules, which are the only thing enforcing those boundaries since each context became a
+single module. Documentation-only changes are skipped, and a second push cancels the
+first run rather than queueing behind it.
+
+A merge to `main` also builds the image from [`Dockerfile`](Dockerfile) and pushes it
+to GHCR **tagged with the commit**, never `latest`: which code is running has to be
+answerable afterwards, and rolling back is redeploying the tag that was there before,
+which only works when tags never move. The dependency graph is submitted from `main` so
+a new advisory becomes an alert here rather than a thing somebody reads about.
+
+**There is no deploy step, because there is nowhere to deploy to yet.** The image is
+built and pushed; pointing it at a staging environment, and putting the production one
+behind a manual approval, is the next thing this workflow needs and the one part of it
+that cannot be written without the environment existing.
+
+Running the image needs `DATABASE_URL`, `JWT_SECRET` and `BLOB_ROOT` — the last a
+mounted volume, until the blob store becomes S3. A default for it would write the
+archive into a container layer, and the layer would go when the container did.
 
 The schema is managed by Liquibase; the manifest is
 `platform/src/main/resources/db/changelog/master.yaml`. A database created before the

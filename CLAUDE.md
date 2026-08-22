@@ -52,5 +52,7 @@ docker compose up -d          # Postgres with pgvector
 ./gradlew :<module>:generateJooq   # after any schema change
 ```
 
-`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL` and `JWT_SECRET`; there are no
-production fallbacks, deliberately.
+`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET` and `BLOB_ROOT`;
+there are no production fallbacks, deliberately. Every push runs `./gradlew check` in
+[.github/workflows/backend.yml](.github/workflows/backend.yml), and a merge to `main`
+pushes an image tagged with the commit.

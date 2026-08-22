@@ -21,3 +21,11 @@ app:
   jwt:
     # No fallback: the application must refuse to start without a real secret.
     secret: ${JWT_SECRET}
+  storage:
+    # Where archived documents are written. No fallback either, and for a sharper
+    # reason than the secret: a default would point inside the container, the archive
+    # would be written to a layer, and the layer would go when the container did —
+    # silently, and only discovered the first time somebody asked for a document.
+    #
+    # A mounted volume until this becomes S3, which is still an open item.
+    root: ${BLOB_ROOT}

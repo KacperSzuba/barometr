@@ -25,6 +25,12 @@ dependencies {
     // MeterRegistry: a payload that cannot be derived is counted, not only logged.
     implementation(libs.springBootStarterActuator)
 
+    // Plain text out of what ministries file. Nothing in Spring or the JDK reads a
+    // PDF or a Word document, and every downstream promise starts from the text.
+    implementation(libs.tikaCore)
+    runtimeOnly(libs.tikaParserPdf)
+    runtimeOnly(libs.tikaParserMicrosoft)
+
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersJunit)
     testImplementation(kotlin("test"))

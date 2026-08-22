@@ -13,6 +13,9 @@ shedlock = "7.8.0"
 resilience4j = "2.4.0"
 crawlerCommons = "1.6"
 jsoup = "1.23.1"
+# Text extraction from the files RPL and the BIPs publish. Nothing in Spring or the
+# JDK reads a PDF or a Word document, and the archive is now mostly both.
+tika = "3.3.1"
 testcontainers = "1.21.4"
 # The archive is the product. Keeping it on a container's disk means one instance and a
 # volume nobody backs up, so it goes to object storage — Google's, with the client that
@@ -149,6 +152,20 @@ crawlerCommons = { module = "com.github.crawler-commons:crawler-commons", versio
 # HTML parsing for sources that publish no API. Selectors come from configuration,
 # so a layout change is an edit to YAML rather than to Kotlin.
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+# ——— Text extraction ————————————————————————————————————————————————————
+# The archive holds what ministries actually file: Word documents and PDFs. Neither
+# the JDK nor anything in Spring reads either, and every downstream promise — a
+# summary that cites a character range, a diff between two versions, an embedding —
+# starts from plain text with offsets.
+#
+# Per-format modules rather than `tika-parsers-standard-package`, which pulls in
+# several dozen parsers for formats these sources do not publish.
+tikaCore = { module = "org.apache.tika:tika-core", version.ref = "tika" }
+# Detection reads the bytes rather than trusting a file name, which is the point:
+# a `.docx` that is really a PDF is a thing ministries file.
+tikaParserPdf = { module = "org.apache.tika:tika-parser-pdf-module", version.ref = "tika" }
+tikaParserMicrosoft = { module = "org.apache.tika:tika-parser-microsoft-module", version.ref = "tika" }
 
 liquibaseCore = { module = "org.liquibase:liquibase-core" }
 postgresql = { module = "org.postgresql:postgresql" }

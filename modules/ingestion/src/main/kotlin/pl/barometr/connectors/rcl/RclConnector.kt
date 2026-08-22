@@ -1,7 +1,8 @@
 package pl.barometr.connectors.rcl
 
-import pl.barometr.connectors.rcl.api.RclStage
 import org.slf4j.LoggerFactory
+import pl.barometr.connectors.rcl.api.RclFiledDocument
+import pl.barometr.connectors.rcl.api.RclStage
 import pl.barometr.ingestion.api.AuditableConnector
 import pl.barometr.ingestion.api.BackfillConnector
 import pl.barometr.ingestion.api.BackfillPartition
@@ -11,11 +12,12 @@ import pl.barometr.ingestion.api.ExternalId
 import pl.barometr.ingestion.api.FetchResult
 import pl.barometr.ingestion.api.IncrementalConnector
 import pl.barometr.ingestion.api.PayloadKind
+import pl.barometr.ingestion.api.PayloadMediaTypes
 import pl.barometr.ingestion.api.RawDocumentSink
 import pl.barometr.ingestion.api.RawPayload
+import pl.barometr.ingestion.api.SchemaWarning
 import pl.barometr.ingestion.api.SourceAccessDeniedException
 import pl.barometr.ingestion.api.SourceFetchException
-import pl.barometr.ingestion.api.SchemaWarning
 import pl.barometr.sources.api.ConnectorId
 import pl.barometr.sources.api.IngestionMode
 import java.net.URI
@@ -25,17 +27,18 @@ import java.time.LocalDate
  * Rządowy Proces Legislacyjny — where a draft lives before the Sejm ever sees it.
  *
  * This class decides *what* to read and in what order. How pages are fetched lives
- * in [RclSiteClient], how they are read in the three parsers, how a page is
- * addressed in [RclExternalIds] — so what follows should read as a description of a
- * walk rather than as a scraper.
+ * in [RclSiteClient], how they are read in the four parsers, how a page is addressed
+ * in [RclExternalIds], and what one draft's walk has already reached in
+ * [RclDraftWalk] — so what follows should read as a description of a walk rather than
+ * as a scraper.
  *
- * The walk is the same shape in both modes — index, then card, then the register
- * and the stage catalogs behind it — but the two modes order their index
- * differently, and that is the one decision here worth stating plainly. Backfill
- * reads oldest first, which makes paging stable: RPL appends new drafts at the end,
- * so page 40 holds the same drafts tomorrow and a replay can resume mid-collection.
- * Incremental reads most-recently-changed first, so it can stop the moment it
- * reaches drafts it already has. Neither ordering would do the other's job.
+ * The walk is the same shape in both modes — index, then card, then the register and
+ * the stage catalogs behind it, then the files filed in them — but the two modes order
+ * their index differently, and that is the one decision here worth stating plainly.
+ * Backfill reads oldest first, which makes paging stable: RPL appends new drafts at
+ * the end, so page 40 holds the same drafts tomorrow and a replay can resume
+ * mid-collection. Incremental reads most-recently-changed first, so it can stop the
+ * moment it reaches drafts it already has. Neither ordering would do the other's job.
  */
 class RclConnector(
     private val site: RclSiteClient,
@@ -43,7 +46,8 @@ class RclConnector(
     private val listings: RclListingParser,
     private val cards: RclProjectCardParser,
     private val registers: RclChangeRegisterParser,
-    /** How far a single call walks before its cursor becomes durable. */
+    private val catalogs: RclCatalogParser,
+    /** How far and how wide a single call walks before its cursor becomes durable. */
     val settings: RclWalkSettings = RclWalkSettings(),
 ) : IncrementalConnector, BackfillConnector, AuditableConnector {
 
@@ -119,7 +123,7 @@ class RclConnector(
             }
 
             val changed = listing.entries.filter { it.changedOnOrAfter(changedSince) }
-            changed.forEach { visitProject(type, it.projectId, changedSince, sink) }
+            changed.forEach { visitProject(RclDraftWalk(type, it.projectId, sink), changedSince) }
             visited += changed.size
 
             if (changedSince == null) return RecentScan(newest, visited)
@@ -172,7 +176,7 @@ class RclConnector(
             pageCount = listing.pageCount(settings.pageSize)
             if (listing.isEmpty) break
 
-            listing.entries.forEach { visitProject(type, it.projectId, since = null, sink) }
+            listing.entries.forEach { visitProject(RclDraftWalk(type, it.projectId, sink), since = null) }
             lastCompletedPage = pageNumber
             if (pageNumber >= pageCount) break
         }
@@ -228,20 +232,15 @@ class RclConnector(
      * minute — a card can only say which day a stage last moved, and a bitemporal
      * record wants better than that.
      */
-    private fun visitProject(
-        type: RclProjectType,
-        projectId: String,
-        since: LocalDate?,
-        sink: RawDocumentSink,
-    ) {
-        val cardPage = readProjectPage(pages.project(projectId), sink) ?: return
-        store(RclExternalIds.project(type, projectId), cardPage, sink)
+    private fun visitProject(walk: RclDraftWalk, since: LocalDate?) {
+        val cardPage = readProjectPage(pages.project(walk.projectId), walk) ?: return
+        store(RclExternalIds.project(walk.type, walk.projectId), cardPage, walk)
 
         val card = cards.readProjectCard(cardPage.document)
         if (card == null) {
-            sink.recordSchemaWarning(
+            walk.sink.recordSchemaWarning(
                 SchemaWarning(
-                    "/projekt/$projectId",
+                    "/projekt/${walk.projectId}",
                     SchemaWarning.Kind.MISSING_FIELD,
                     "no project id could be recovered from the card",
                 ),
@@ -249,53 +248,104 @@ class RclConnector(
             return
         }
 
-        readProjectPage(pages.projectChangeRegister(projectId), sink)?.let { page ->
-            store(RclExternalIds.projectChangeRegister(type, projectId), page, sink)
+        readProjectPage(pages.projectChangeRegister(walk.projectId), walk)?.let { page ->
+            store(RclExternalIds.projectChangeRegister(walk.type, walk.projectId), page, walk)
         }
 
-        val visited = mutableSetOf<String>()
         card.visitableStages
             .filter { it.touchedOnOrAfter(since) }
-            .forEach { stage ->
-                visitCatalog(type, projectId, stage.catalogId, settings.catalogDepth, visited, sink)
-            }
+            .forEach { stage -> visitCatalog(walk, stage.catalogId, settings.catalogDepth) }
     }
 
     /**
-     * One catalog: the page itself, its event log, and whatever catalogs the log
-     * says are filed beneath it.
+     * One catalog: the page itself, the files filed in it, its event log, and
+     * whatever catalogs the log says are filed beneath it.
      *
-     * The tree is discovered from the register rather than from the page, because
-     * the register is the part we can read: it names each child catalog and links
-     * it, while the catalog page's own markup has never been captured. The page is
-     * still fetched and archived whole, so the day its structure is known the
-     * documents can be extracted from the archive instead of re-crawled.
-     *
-     * [visited] guards against a register that names an ancestor. RPL has no reason
-     * to produce one, but recursion driven by scraped links should not be able to
-     * spin forever on a page nobody has seen.
+     * The page is read twice over, because the two readings answer different
+     * questions. It names every file in its whole subtree and links each one, which is
+     * what the fetch below needs and what no register carries. The register names the
+     * same filings but times them to the minute, which is what a bitemporal record
+     * needs and what the page cannot give — and it is still what the tree is walked
+     * from, since only a child's own register times the transition into it.
      */
-    private fun visitCatalog(
-        type: RclProjectType,
-        projectId: String,
-        catalogId: String,
-        remainingDepth: Int,
-        visited: MutableSet<String>,
-        sink: RawDocumentSink,
-    ) {
-        if (remainingDepth <= 0 || !visited.add(catalogId)) return
+    private fun visitCatalog(walk: RclDraftWalk, catalogId: String, remainingDepth: Int) {
+        if (remainingDepth <= 0 || !walk.entersCatalog(catalogId)) return
 
-        readProjectPage(pages.catalog(projectId, catalogId), sink)?.let { page ->
-            store(RclExternalIds.catalog(type, projectId, catalogId), page, sink)
+        readProjectPage(pages.catalog(walk.projectId, catalogId), walk)?.let { page ->
+            store(RclExternalIds.catalog(walk.type, walk.projectId, catalogId), page, walk)
+            if (settings.fetchAttachments) fetchFiledDocuments(walk, page)
         }
 
-        val registerPage = readProjectPage(pages.catalogChangeRegister(catalogId), sink) ?: return
-        store(RclExternalIds.catalogChangeRegister(type, projectId, catalogId), registerPage, sink)
+        val registerPage = readProjectPage(pages.catalogChangeRegister(catalogId), walk) ?: return
+        store(RclExternalIds.catalogChangeRegister(walk.type, walk.projectId, catalogId), registerPage, walk)
 
         if (remainingDepth <= 1) return
         registers.readChangeRegister(registerPage.document).childCatalogs.forEach { child ->
-            visitCatalog(type, projectId, child.catalogId, remainingDepth - 1, visited, sink)
+            visitCatalog(walk, child.catalogId, remainingDepth - 1)
         }
+    }
+
+    /**
+     * Follows every link on a catalog page to the file behind it.
+     *
+     * The step this connector was missing. A change register names a filed document
+     * and times it to the minute but carries no link to it, so until a catalog page
+     * had been captured and its markup written down, the archive knew a document
+     * existed without knowing where to fetch it.
+     */
+    private fun fetchFiledDocuments(walk: RclDraftWalk, page: RclPage) {
+        catalogs.readCatalog(page.document).documents
+            .filter { walk.fetchesDocument(it.documentId) }
+            .forEach { document -> fetchFiledDocument(walk, document) }
+    }
+
+    private fun fetchFiledDocument(walk: RclDraftWalk, document: RclFiledDocument) {
+        val file = readAttachment(pages.resolve(document.href), walk) ?: return
+
+        walk.sink.archive(
+            RawPayload(
+                externalId = RclExternalIds.attachment(
+                    walk.type,
+                    walk.projectId,
+                    document.catalogId,
+                    document.documentId,
+                ),
+                payload = file.bytes,
+                kind = kindOf(file, document, walk),
+                etag = file.etag,
+                lastModified = file.lastModified,
+            ),
+        )
+    }
+
+    /**
+     * What the file is, preferring what the server said over what the link was called.
+     *
+     * A `Content-Type` is what the server will stand behind; an extension is what
+     * somebody typed when uploading. Where they disagree the archive keeps the
+     * server's answer and says so out loud, because a ministry filing a PDF under a
+     * `.docx` name is exactly the kind of shape change this warning exists to
+     * surface — and whichever answer were picked silently, something downstream would
+     * fail to parse the result and have no idea why.
+     */
+    private fun kindOf(file: RclAttachment, document: RclFiledDocument, walk: RclDraftWalk): PayloadKind {
+        val served = PayloadMediaTypes.kindOf(file.contentType)
+        val named = PayloadKind.of(document.extension)
+
+        if (served != null && named != null && served != named) {
+            walk.sink.recordSchemaWarning(
+                SchemaWarning(
+                    document.href,
+                    SchemaWarning.Kind.UNEXPECTED_TYPE,
+                    "served as ${file.contentType} but filed as '${document.fileName}'",
+                ),
+            )
+        }
+
+        // Neither known means a format this system has no name for yet. Archived as
+        // bytes rather than dropped: the archive is the one thing here that cannot be
+        // recomputed, and a reader taught the format later can still reach it.
+        return served ?: named ?: PayloadKind.BINARY
     }
 
     private fun RclStage.touchedOnOrAfter(threshold: LocalDate?): Boolean {
@@ -304,8 +354,8 @@ class RclConnector(
         return !touched.isBefore(threshold)
     }
 
-    private fun store(externalId: ExternalId, page: RclPage, sink: RawDocumentSink) {
-        sink.archive(
+    private fun store(externalId: ExternalId, page: RclPage, walk: RclDraftWalk) {
+        walk.sink.archive(
             RawPayload(
                 externalId = externalId,
                 payload = page.html,
@@ -328,24 +378,34 @@ class RclConnector(
     private fun readIndexPage(url: URI): RclPage =
         site.readPage(url) ?: throw SourceFetchException(url.path, "unexpected 304 on an index page")
 
+    private fun readProjectPage(url: URI, walk: RclDraftWalk): RclPage? =
+        recordingGaps(walk) { site.readPage(url) }
+
+    private fun readAttachment(url: URI, walk: RclDraftWalk): RclAttachment? =
+        recordingGaps(walk) { site.readAttachment(url) }
+
     /**
-     * Fetches one draft's page, turning both a refusal and a failure into a
-     * recorded gap rather than a failed run.
+     * Turns both a refusal and a failure into a recorded gap rather than a failed run.
      *
-     * A single page RPL will not serve is a hole with a cause worth writing down;
-     * it is not a reason to abandon the other twenty thousand. This matters most in
-     * backfill, where one poison page that aborted the run would stop the replay
-     * from ever getting past it.
+     * A single resource RPL will not serve is a hole with a cause worth writing down;
+     * it is not a reason to abandon the other twenty thousand drafts. This matters
+     * most in backfill, where one poison page that aborted the run would stop the
+     * replay from ever getting past it — and it matters more now that a draft is
+     * dozens of files rather than a handful of pages.
      */
-    private fun readProjectPage(url: URI, sink: RawDocumentSink): RclPage? = try {
-        site.readPage(url)
+    private fun <T> recordingGaps(walk: RclDraftWalk, read: () -> T?): T? = try {
+        read()
     } catch (denied: SourceAccessDeniedException) {
         log.warn("Denied access to {}: {}", denied.resource, denied.reason)
-        sink.recordSchemaWarning(SchemaWarning(denied.resource, SchemaWarning.Kind.ACCESS_DENIED, denied.reason))
+        walk.sink.recordSchemaWarning(
+            SchemaWarning(denied.resource, SchemaWarning.Kind.ACCESS_DENIED, denied.reason),
+        )
         null
     } catch (failed: SourceFetchException) {
         log.warn("Could not read {}: {}", failed.resource, failed.detail)
-        sink.recordSchemaWarning(SchemaWarning(failed.resource, SchemaWarning.Kind.MISSING_FIELD, failed.detail))
+        walk.sink.recordSchemaWarning(
+            SchemaWarning(failed.resource, SchemaWarning.Kind.MISSING_FIELD, failed.detail),
+        )
         null
     }
 

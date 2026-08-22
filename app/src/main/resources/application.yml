@@ -102,3 +102,10 @@ app:
       # depth 1 and about two months at depth 2; raise requests-per-second once
       # RCL has agreed a pace, rather than lowering the depth.
       catalog-depth: 2
+      # Whether a catalog page is followed to the files filed under it — the draft
+      # texts, the impact assessments, the tables of comments from consultation.
+      # A stage holds a dozen files where it holds one page, so turning this off
+      # roughly halves the requests and gives up everything the corpus is made of.
+      # Off is a way to back off from a pace RCL objects to without giving up the
+      # record of what was filed and when, which the pages still carry.
+      fetch-attachments: true

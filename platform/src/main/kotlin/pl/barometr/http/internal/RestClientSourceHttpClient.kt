@@ -86,7 +86,8 @@ class RestClientSourceHttpClient(
                 val status = response.statusCode
                 when {
                     status.value() == NOT_MODIFIED -> HttpOutcome.NotModified
-                    status.is2xxSuccessful -> interpretSuccess(response.headers, response.bodyTo(ByteArray::class.java))
+                    status.is2xxSuccessful ->
+                        interpretSuccess(response.headers) { response.bodyTo(ByteArray::class.java) }
                     status.value() == TOO_MANY_REQUESTS || status.is5xxServerError -> {
                         // `Retry-After` is honoured here rather than in the retry
                         // policy, which has no hook for a server-supplied delay.
@@ -99,7 +100,7 @@ class RestClientSourceHttpClient(
             }
     }
 
-    private fun interpretSuccess(headers: HttpHeaders, body: ByteArray?): HttpOutcome {
+    private fun interpretSuccess(headers: HttpHeaders, readBody: () -> ByteArray?): HttpOutcome {
         // Machine-readable rights reservation under the DSM text-and-data-mining
         // exception. Only readable from the response, so the bytes arrive and are
         // then dropped unread — the legal boundary enforced in code, not in a note.
@@ -112,8 +113,18 @@ class RestClientSourceHttpClient(
             )
         }
 
+        // Checked before a byte is read, which is the only point at which refusing
+        // still saves the memory the limit exists to protect.
+        val declaredSize = headers.contentLength
+        if (declaredSize > policy.maxBodyBytes) {
+            return HttpOutcome.Failed(
+                statusCode = null,
+                detail = "body declares $declaredSize bytes, over the ${policy.maxBodyBytes} byte limit",
+            )
+        }
+
         return HttpOutcome.Fetched(
-            body = body ?: ByteArray(0),
+            body = readBody() ?: ByteArray(0),
             contentType = headers.contentType?.toString(),
             etag = headers.eTag,
             lastModified = headers.getFirst(HttpHeaders.LAST_MODIFIED),

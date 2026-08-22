@@ -1,6 +1,7 @@
 package pl.barometr.corpus.internal
 
 import org.junit.jupiter.api.Test
+import pl.barometr.connectors.rcl.api.RclCatalogPage
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
 import pl.barometr.corpus.api.DocumentKind
@@ -160,6 +161,9 @@ class ArchivedDocumentReaderTest {
             createdOn = null,
             stages = emptyList(),
         )
+
+        /** No catalog is read here; the kinds under test come from the address. */
+        override fun readCatalog(page: ByteArray) = RclCatalogPage(emptyList(), emptyList())
     }
 
     private fun fixture(name: String): ByteArray =

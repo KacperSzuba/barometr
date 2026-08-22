@@ -33,8 +33,10 @@ class RclConnectorConfiguration {
      * pages goes through it, so the selectors have one home rather than three.
      */
     @Bean
-    fun rclPageReader(properties: RclProperties): RclPageReader =
-        JsoupRclPageReader(RclProjectCardParser(properties.selectors.projectCard))
+    fun rclPageReader(properties: RclProperties): RclPageReader = JsoupRclPageReader(
+        RclProjectCardParser(properties.selectors.projectCard),
+        RclCatalogParser(properties.selectors.catalog),
+    )
 
     @Bean
     fun rclConnector(
@@ -49,6 +51,7 @@ class RclConnectorConfiguration {
             listings = RclListingParser(properties.selectors.listing),
             cards = RclProjectCardParser(properties.selectors.projectCard),
             registers = RclChangeRegisterParser(properties.selectors.changeRegister),
+            catalogs = RclCatalogParser(properties.selectors.catalog),
             settings = properties.walkSettings(),
         )
     }
@@ -56,11 +59,16 @@ class RclConnectorConfiguration {
     /**
      * Says at startup what this connector cannot yet do.
      *
-     * A warning rather than a failure, because the two blank groups mean different
-     * things. Missing catalog selectors leave a connector that still archives every
-     * page whole and only stops short of following attachments — reduced, not
-     * broken. Blanking anything else leaves one that walks nothing, which is worth
-     * refusing to start over.
+     * A warning rather than a failure, because a blank catalog group means something
+     * different from every other blank. Without it the connector still archives every
+     * page whole and only stops short of following the files filed under a stage —
+     * reduced, not broken, and recoverable later from the archive itself. Blanking
+     * anything else leaves a connector that walks nothing, which is worth refusing to
+     * start over.
+     *
+     * With the defaults nothing is reported: the catalog selectors are written now,
+     * against a captured page. What this still guards is a YAML override that blanks
+     * one of them.
      */
     private fun reportUnwrittenSelectors(selectors: RclSelectors) {
         val missing = selectors.missingFields()
@@ -73,8 +81,7 @@ class RclConnectorConfiguration {
 
         log.warn(
             "RCL catalog selectors are unset ({}), so stage catalogs are archived as " +
-                "HTML but their attachments are not followed. Fill them in once a " +
-                "catalog page has been captured.",
+                "HTML but the files filed under them are not fetched.",
             missing.joinToString(),
         )
     }

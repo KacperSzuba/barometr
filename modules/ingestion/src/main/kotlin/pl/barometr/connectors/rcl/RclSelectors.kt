@@ -66,28 +66,31 @@ data class RclSelectors(
     /**
      * `/projekt/{id}/katalog/{catalogId}` — the documents filed under one stage.
      *
-     * **Empty, and that is the honest state.** The connector reaches these pages
-     * and archives them whole, but no saved copy of one exists yet, so the
-     * selectors below cannot be written without guessing.
+     * Written against a captured page at last, which closes the one step the walk was
+     * missing: the change registers name a filed document and time it to the minute
+     * but carry no link to it, so the archive knew a document existed without knowing
+     * where to fetch it.
      *
-     * What the change registers have since revealed about them: a catalog holds
-     * *other catalogs* as well as documents — "Konsultacje publiczne" contains five,
-     * among them "c) Stanowiska zgłoszone w ramach konsultacji publicznych" and
-     * "d) Odniesienie się wnioskodawcy do uwag" — and documents arrive as named
-     * files ("1e pismo konsultacje publiczne rozdzielnik.pdf"). So the tree and the
-     * filings are already known; what is missing is the href beside each file name,
-     * which no register carries.
-     *
-     * Until then nothing is lost: the pages are in the archive and can be re-parsed
-     * once the structure is known, which is exactly what content-addressed storage
-     * is for. What is missing is the step *after* — following those hrefs to fetch
-     * the PDFs themselves.
+     * The page renders the whole subtree inline — child catalogs as `li.childdir`
+     * carrying their id in the `id` attribute, and every file beneath them as `li.doc`
+     * regardless of depth. There is no separate title selector because there is no
+     * separate title: the anchor's own text *is* the file name, and declaring that
+     * fact twice would only create somewhere for the two to disagree.
      */
     data class Catalog(
-        val documentRow: String = "",
-        val documentLink: String = "",
-        val documentTitle: String = "",
-        val documentPublishedAt: String = "",
+        val documentRow: String = "li.doc",
+        /** Carries the href and, as its text, the file name. */
+        val documentLink: String = "a[href*=/docs/]",
+        /**
+         * The lines under a file: "Autor dokumentu: …" and "Data utworzenia: …".
+         *
+         * Read by label rather than by position, like the project card's metadata,
+         * because RPL omits the author line on some filings.
+         */
+        val documentDetail: String = "div.small3",
+        val childDirectory: String = "li.childdir",
+        /** Carries "Data ostatniej modyfikacji: 18-08-2026". */
+        val childDirectoryModifiedAt: String = "div.small2",
     )
 
     /**
@@ -132,7 +135,7 @@ data class RclSelectors(
             mapOf(
                 "documentRow" to catalog.documentRow,
                 "documentLink" to catalog.documentLink,
-                "documentTitle" to catalog.documentTitle,
+                "childDirectory" to catalog.childDirectory,
             ),
         )
     }

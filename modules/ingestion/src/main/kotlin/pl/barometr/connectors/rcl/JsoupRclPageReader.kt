@@ -1,6 +1,7 @@
 package pl.barometr.connectors.rcl
 
 import org.jsoup.Jsoup
+import pl.barometr.connectors.rcl.api.RclCatalogPage
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
 import java.io.ByteArrayInputStream
@@ -17,10 +18,18 @@ import java.io.ByteArrayInputStream
  * a page decoded as the wrong one loses exactly the characters Polish titles are made
  * of.
  */
-class JsoupRclPageReader(private val cards: RclProjectCardParser) : RclPageReader {
+class JsoupRclPageReader(
+    private val cards: RclProjectCardParser,
+    private val catalogs: RclCatalogParser,
+) : RclPageReader {
 
     override fun readProjectCard(page: ByteArray): RclProjectCard? =
-        ByteArrayInputStream(page).use { bytes ->
-            cards.readProjectCard(Jsoup.parse(bytes, null, ""))
-        }
+        cards.readProjectCard(parse(page))
+
+    override fun readCatalog(page: ByteArray): RclCatalogPage =
+        catalogs.readCatalog(parse(page))
+
+    private fun parse(page: ByteArray) = ByteArrayInputStream(page).use { bytes ->
+        Jsoup.parse(bytes, null, "")
+    }
 }

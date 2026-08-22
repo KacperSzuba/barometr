@@ -27,6 +27,7 @@ class RclPageParsingTest {
     private val listings = RclListingParser()
     private val cards = RclProjectCardParser()
     private val registers = RclChangeRegisterParser()
+    private val catalogs = RclCatalogParser()
 
     // ——— Listings ————————————————————————————————————————————————————————————
 
@@ -124,7 +125,7 @@ class RclPageParsingTest {
         val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/rcl/project-ustawa-12409051.html"))
             .use { it.readBytes() }
 
-        val throughPort = assertNotNull(JsoupRclPageReader(cards).readProjectCard(bytes))
+        val throughPort = assertNotNull(JsoupRclPageReader(cards, catalogs).readProjectCard(bytes))
 
         assertEquals(cards.readProjectCard(fixture("project-ustawa-12409051.html"))?.title, throughPort.title)
         assertEquals("12409051", throughPort.projectId)
@@ -374,32 +375,130 @@ class RclPageParsingTest {
     }
 
     /**
-     * The register names the file but does not link it — so this page tells us a
-     * document exists without telling us where to fetch it. That is exactly the
-     * gap the catalog page has to close.
+     * The register names the file but does not link it, so this page says a document
+     * exists without saying where to fetch it. The catalog page is what closes that
+     * gap, and the pair of these tests is the whole point: two pages that each hold
+     * half of what a filing is.
      */
     @Test
-    fun `a filed document carries no link to itself`() {
+    fun `a filed document carries no link to itself in the register`() {
         val register = registers.readChangeRegister(fixture("register-catalog-13196868-pisma.html"))
 
         assertNull(register.documentsFiled.single().catalogId)
     }
 
+    // ——— The catalog page ————————————————————————————————————————————————————
+
+    /**
+     * The step the walk was missing, now readable: the same filing the register
+     * could only name is linked here, under the folder it was filed in.
+     */
+    @Test
+    fun `a catalog links every file filed anywhere beneath it`() {
+        val catalog = catalogs.readCatalog(fixture("catalog-13196866-konsultacje.html"))
+
+        assertEquals(12, catalog.documents.size)
+        val letter = catalog.documents.single { it.documentId == "778141" }
+        assertEquals("1e pismo konsultacje publiczne rozdzielnik.pdf", letter.fileName)
+        assertEquals("/docs//1/12409051/13196866/13196868/dokument778141.pdf", letter.href)
+        assertEquals(LocalDate.of(2026, 5, 26), letter.createdOn)
+        assertEquals("Minister Sprawiedliwości", letter.author)
+    }
+
+    /**
+     * A file belongs to the folder its own href names, not to the page it was read
+     * from. Every file here was read from catalog 13196866 and none of them is filed
+     * in it.
+     */
+    @Test
+    fun `a file is filed in the folder its href names, not the page it was read from`() {
+        val catalog = catalogs.readCatalog(fixture("catalog-13196866-konsultacje.html"))
+
+        assertEquals(
+            setOf("13196867", "13196868", "13196869", "13196870"),
+            catalog.documents.map { it.catalogId }.toSet(),
+        )
+    }
+
+    /**
+     * The folders a stage is divided into, including the one nothing has been filed
+     * in yet — an empty folder is a fact about the process, not a row to drop.
+     */
+    @Test
+    fun `a catalog names the folders inside it`() {
+        val catalog = catalogs.readCatalog(fixture("catalog-13196866-konsultacje.html"))
+
+        assertEquals(
+            listOf(
+                "Projekt",
+                "Pisma kierujące projekt do konsultacji publicznych",
+                "Stanowiska zgłoszone w ramach konsultacji publicznych",
+                "Odniesienie się wnioskodawcy do uwag",
+                "Odrębna konferencja z udziałem podmiotów publicznych",
+            ),
+            catalog.childDirectories.map { it.name },
+        )
+        assertEquals("13196871", catalog.childDirectories.last().catalogId)
+        assertTrue(catalog.documents.none { it.catalogId == "13196871" })
+    }
+
+    /**
+     * The document this whole tranche exists for. "Kto to wykreślił" is answered from
+     * a table of comments and the applicant's reply to it, and both are filed here.
+     */
+    @Test
+    fun `the tables of comments from consultation are among the files linked`() {
+        val catalog = catalogs.readCatalog(fixture("catalog-13196866-konsultacje.html"))
+
+        assertTrue(catalog.documents.any { it.fileName == "tabela uwag UD383.docx" })
+        assertTrue(
+            catalog.documents.any {
+                it.fileName == "odpowiedź wnioskodawcy - tabela uwag - konsultacje publiczne"
+            },
+        )
+    }
+
+    /**
+     * RPL indents these lines with `&nbsp;`, which no `trim` removes. Left in, every
+     * author would carry three invisible characters and no two readings of the same
+     * ministry would compare equal.
+     */
+    @Test
+    fun `the non-breaking spaces RPL indents with are not part of a name`() {
+        val catalog = catalogs.readCatalog(fixture("catalog-13196866-konsultacje.html"))
+
+        assertTrue(catalog.documents.none { it.fileName.contains(NON_BREAKING_SPACE) })
+        assertTrue(catalog.documents.mapNotNull { it.author }.none { it.contains(NON_BREAKING_SPACE) })
+        assertTrue(catalog.childDirectories.none { it.name.contains(NON_BREAKING_SPACE) })
+    }
+
+    /**
+     * A page that is not a catalog is an empty catalog, not a failure: a stage
+     * nothing has been filed under renders exactly like a folder with nothing in it,
+     * and the two are not worth telling apart.
+     */
+    @Test
+    fun `a page that holds no filings reads as an empty catalog`() {
+        val catalog = catalogs.readCatalog(fixture("home.html"))
+
+        assertTrue(catalog.documents.isEmpty())
+        assertTrue(catalog.childDirectories.isEmpty())
+    }
+
     // ——— Selector configuration ——————————————————————————————————————————————
 
     /**
-     * The site can be walked end to end, and one group is still blank: nobody has
-     * saved a catalog page, so the step from a stage to the PDFs filed under it
-     * cannot be written without guessing. Stated as a test so the gap is a fact in
-     * the build rather than a note in a file.
+     * Every group is written now, catalog included. This was the test that recorded
+     * the gap; it records the closing of it, and it will fail again the day a YAML
+     * override blanks one of the fields.
      */
     @Test
-    fun `catalog selectors are the only ones still unwritten`() {
+    fun `every selector group is written against a captured page`() {
         val selectors = RclSelectors()
 
         assertTrue(selectors.canWalkSite)
-        assertFalse(selectors.isConfigured)
-        assertTrue(selectors.missingFields().all { it.startsWith("catalog.") })
+        assertTrue(selectors.isConfigured)
+        assertEquals(emptyList(), selectors.missingFields())
     }
 
     private fun fixture(name: String): Document {
@@ -407,5 +506,10 @@ class RclPageParsingTest {
             "Missing fixture $name"
         }.use { it.readBytes().toString(Charsets.UTF_8) }
         return Jsoup.parse(html, "https://legislacja.rcl.gov.pl/")
+    }
+
+    private companion object {
+        /** What RPL indents its detail lines with, and what no trim removes. */
+        const val NON_BREAKING_SPACE = '\u00A0'
     }
 }

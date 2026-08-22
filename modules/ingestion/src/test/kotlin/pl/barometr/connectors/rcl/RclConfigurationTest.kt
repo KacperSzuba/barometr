@@ -49,19 +49,34 @@ class RclConfigurationTest {
         assertEquals(RobotsPolicy.Exempt(basis), setting.toPolicy())
     }
 
+    /**
+     * Both questions answer yes now. The catalog group used to be the standing
+     * exception — every page reachable and archivable, but the step from a stage to
+     * the files filed under it unwritten for want of a captured page — and this test
+     * is what recorded it. It records the closing of it instead.
+     */
     @Test
-    fun `the site can be walked while the catalog step is still unwritten`() {
+    fun `the whole walk is configured, catalog step included`() {
         val selectors = RclSelectors()
 
-        // Two different questions. Every page type can be reached and archived;
-        // what is missing is the step from a stage to the PDFs filed under it,
-        // which needs a saved catalog page nobody has captured yet.
+        assertTrue(selectors.canWalkSite)
+        assertTrue(selectors.isConfigured)
+        assertEquals(emptyList(), selectors.missingFields())
+    }
+
+    /**
+     * Blanking a catalog selector is the one kind of missing configuration that does
+     * not stop the connector: it still archives every page whole, and the files can
+     * be fetched later from links the archive already holds. Everything else missing
+     * leaves a connector that walks nothing.
+     */
+    @Test
+    fun `a blanked catalog selector leaves a reduced connector, not a broken one`() {
+        val selectors = RclSelectors(catalog = RclSelectors.Catalog(documentLink = ""))
+
         assertTrue(selectors.canWalkSite)
         assertFalse(selectors.isConfigured)
-        assertEquals(
-            listOf("catalog.documentLink", "catalog.documentRow", "catalog.documentTitle"),
-            selectors.missingFields(),
-        )
+        assertEquals(listOf("catalog.documentLink"), selectors.missingFields())
     }
 
     /**

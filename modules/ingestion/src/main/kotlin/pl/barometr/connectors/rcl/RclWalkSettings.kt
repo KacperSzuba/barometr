@@ -3,7 +3,7 @@ package pl.barometr.connectors.rcl
 /**
  * How far and how wide the RPL walk goes.
  *
- * Grouped rather than passed as five scalars, because they are one decision: how
+ * Grouped rather than passed as loose scalars, because they are one decision: how
  * much of the site a single call reads before its progress becomes durable. Passing
  * them separately made the connector's constructor a list of numbers whose order
  * nothing but the compiler was checking.
@@ -32,6 +32,20 @@ data class RclWalkSettings(
      * a question about the pace RPL has agreed to, not one this code should answer.
      */
     val catalogDepth: Int = DEFAULT_CATALOG_DEPTH,
+
+    /**
+     * Whether a catalog page is followed to the files filed under it.
+     *
+     * The expensive half of the walk and the valuable one. A stage holds a dozen
+     * files where it holds one page, so switching this off roughly halves the
+     * requests and gives up the draft texts, the impact assessments and the tables
+     * of comments — everything the corpus is eventually made of.
+     *
+     * A setting rather than a constant for the same reason as [catalogDepth]: it is
+     * a question about the pace RPL has agreed to, and an operator who needs to back
+     * off should not have to wait for a release to do it.
+     */
+    val fetchAttachments: Boolean = DEFAULT_FETCH_ATTACHMENTS,
 ) {
     init {
         require(pageSize > 0) { "Page size must be positive" }
@@ -43,5 +57,6 @@ data class RclWalkSettings(
         const val DEFAULT_PAGE_SIZE = 100
         const val DEFAULT_PAGES_PER_CHUNK = 1
         const val DEFAULT_CATALOG_DEPTH = 2
+        const val DEFAULT_FETCH_ATTACHMENTS = true
     }
 }

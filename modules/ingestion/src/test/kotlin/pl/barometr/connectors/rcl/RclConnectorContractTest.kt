@@ -9,6 +9,8 @@ import pl.barometr.http.SourceHttpClient
 import pl.barometr.ingestion.api.BackfillPartition
 import pl.barometr.ingestion.api.Cursor
 import pl.barometr.ingestion.api.SourceAccessDeniedException
+import pl.barometr.ingestion.api.PayloadKind
+import pl.barometr.ingestion.api.PayloadMediaTypes
 import pl.barometr.ingestion.api.RawDocumentSink
 import pl.barometr.ingestion.api.RawPayload
 import pl.barometr.ingestion.api.SchemaWarning
@@ -52,8 +54,10 @@ class RclConnectorContractTest {
         // for; the fourth kind has nothing listed.
         assertEquals(21, site.projectCardRequests)
 
-        // Three of those are cards we hold, and the tree beneath one of them.
-        assertEquals(6, sink.accepted.size)
+        // Three of those are cards we hold, and the tree beneath one of them: two
+        // change registers, the one catalog page a copy was saved of, and the twelve
+        // files that page links.
+        assertEquals(19, sink.accepted.size)
         assertTrue(sink.accepted.map { it.externalId.value }.containsAll(
             listOf("projekt/rozporzadzenia/12413554", "projekt/ustawy/12413553"),
         ))
@@ -118,7 +122,7 @@ class RclConnectorContractTest {
         assertTrue(sink.warnings.any { it.path == "/projekt/12413507" })
         // Everything that does exist was still archived — including the catalog
         // tree of a draft reached after several failures in a row.
-        assertEquals(6, sink.accepted.size)
+        assertEquals(19, sink.accepted.size)
     }
 
     /**
@@ -141,6 +145,7 @@ class RclConnectorContractTest {
                 listings = RclListingParser(),
                 cards = RclProjectCardParser(),
                 registers = RclChangeRegisterParser(),
+                catalogs = RclCatalogParser(),
             ).readChangesSince(cursor = null, sink = RecordingSink())
         }
     }
@@ -182,8 +187,9 @@ class RclConnectorContractTest {
     }
 
     /**
-     * Recursion driven by links scraped from a page nobody has fully characterised
-     * should not be able to spin forever if one of those links ever points back up.
+     * Recursion driven by links scraped from a page should not be able to spin
+     * forever if one of those links ever points back up. RPL has no reason to
+     * produce one; the guard costs a set.
      */
     @Test
     fun `a catalog is never visited twice within one draft`() {
@@ -194,6 +200,122 @@ class RclConnectorContractTest {
         val archived = sink.accepted.map { it.externalId.value }
         assertEquals(archived.size, archived.distinct().size)
     }
+    // ——— The files filed under a stage ———————————————————————————————————————
+
+    /**
+     * The step the walk was missing. A change register names a filed document and
+     * times it to the minute but carries no link to it, so before the catalog page
+     * could be read the archive knew a document existed without knowing where to
+     * fetch it.
+     */
+    @Test
+    fun `the walk follows a catalog page to the files filed under it`() {
+        val site = FixtureSite()
+        val sink = RecordingSink()
+
+        connectorOf(site).readChangesSince(cursor = null, sink = sink)
+
+        assertEquals(12, site.filesRequested.size)
+        val archived = sink.accepted.map { it.externalId.value }
+        assertTrue(archived.contains("projekt/zalozenia/12409051/katalog/13196867/dokument/770754"))
+        assertTrue(archived.contains("projekt/zalozenia/12409051/katalog/13196868/dokument/778141"))
+    }
+
+    /**
+     * The format is taken from what the server served, and the archive records it —
+     * so a Word document and a PDF filed in the same folder do not both arrive as
+     * bytes of unknown kind.
+     */
+    @Test
+    fun `a file is archived under the kind the server served it as`() {
+        val sink = RecordingSink()
+
+        connectorOf(FixtureSite()).readChangesSince(cursor = null, sink = sink)
+
+        val byId = sink.accepted.associateBy { it.externalId.value }
+        assertEquals(
+            PayloadKind.DOCX,
+            byId.getValue("projekt/zalozenia/12409051/katalog/13196867/dokument/770754").kind,
+        )
+        assertEquals(
+            PayloadKind.PDF,
+            byId.getValue("projekt/zalozenia/12409051/katalog/13196868/dokument/778141").kind,
+        )
+
+        // The one filing RPL named without an extension. Nothing but the media type
+        // it was served under says what it is, which is the whole reason that answer
+        // is preferred over the name.
+        assertEquals(
+            PayloadKind.DOCX,
+            byId.getValue("projekt/zalozenia/12409051/katalog/13196870/dokument/792735").kind,
+        )
+    }
+
+    /**
+     * Where the two disagree the archive keeps the server's answer and says so. A
+     * ministry filing a PDF under a `.docx` name is the shape change this exists to
+     * surface, and picking either answer silently leaves something downstream
+     * failing to parse with no idea why.
+     */
+    @Test
+    fun `a file served as one format and named as another is recorded as a shape change`() {
+        val sink = RecordingSink()
+        val mislabelling = object : SourceHttpClient {
+            private val real = FixtureSite()
+
+            override fun fetch(request: HttpFetch): HttpOutcome {
+                val outcome = real.fetch(request)
+                if (!request.url.path.startsWith("/docs/")) return outcome
+                // Same bytes, a media type that contradicts the link's extension.
+                val served = outcome as HttpOutcome.Fetched
+                return HttpOutcome.Fetched(served.body, "application/pdf", null, null)
+            }
+        }
+
+        connectorOf(mislabelling).readChangesSince(cursor = null, sink = sink)
+
+        val mismatched = sink.warnings.filter { it.kind == SchemaWarning.Kind.UNEXPECTED_TYPE }
+        // Eight of the twelve carry a .docx name, three a .pdf one, and the last
+        // carries no extension at all — so only the eight can contradict a PDF.
+        assertEquals(8, mismatched.size)
+        assertEquals(12, sink.accepted.count { it.kind == PayloadKind.PDF })
+    }
+
+    /**
+     * The expensive half of the walk, and switchable for that reason: a stage holds
+     * a dozen files where it holds one page, and how much of that RPL will tolerate
+     * is a question about an agreed pace rather than one this code can answer.
+     */
+    @Test
+    fun `turning the files off leaves the pages and fetches nothing else`() {
+        val site = FixtureSite()
+        val sink = RecordingSink()
+
+        connectorOf(site, fetchAttachments = false).readChangesSince(cursor = null, sink = sink)
+
+        assertEquals(0, site.filesRequested.size)
+        assertEquals(7, sink.accepted.size)
+        assertTrue(
+            sink.accepted.map { it.externalId.value }
+                .contains("projekt/zalozenia/12409051/katalog/13196866"),
+        )
+    }
+
+    /**
+     * A catalog page renders its whole subtree, so a file appears again on every
+     * page above the one it is filed in. The sink would recognise the repeat and
+     * store nothing; the point of the guard is the request it saves, which at one
+     * every five seconds is worth more than the write.
+     */
+    @Test
+    fun `a file is fetched once however many pages list it`() {
+        val walk = RclDraftWalk(RclProjectType.BILLS, "12409051", RecordingSink())
+
+        assertTrue(walk.fetchesDocument("770751"))
+        assertFalse(walk.fetchesDocument("770751"))
+        assertTrue(walk.fetchesDocument("770752"))
+    }
+
 
     // ——— Backfill ———————————————————————————————————————————————————————————
 
@@ -277,16 +399,22 @@ class RclConnectorContractTest {
     // ——— Fixtures ————————————————————————————————————————————————————————————
 
     private fun connectorOf(
-        site: FixtureSite,
+        site: SourceHttpClient,
         pageSize: Int = 100,
         catalogDepth: Int = RclWalkSettings.DEFAULT_CATALOG_DEPTH,
+        fetchAttachments: Boolean = true,
     ) = RclConnector(
         site = RclSiteClient(site),
         pages = RclUrls(BASE_URL),
         listings = RclListingParser(),
         cards = RclProjectCardParser(),
         registers = RclChangeRegisterParser(),
-        settings = RclWalkSettings(pageSize = pageSize, catalogDepth = catalogDepth),
+        catalogs = RclCatalogParser(),
+        settings = RclWalkSettings(
+            pageSize = pageSize,
+            catalogDepth = catalogDepth,
+            fetchAttachments = fetchAttachments,
+        ),
     )
 
     /**
@@ -300,6 +428,7 @@ class RclConnectorContractTest {
     private class FixtureSite : SourceHttpClient {
 
         val indexPagesRequested = mutableListOf<String>()
+        val filesRequested = mutableListOf<String>()
         var projectCardRequests = 0
             private set
 
@@ -320,6 +449,15 @@ class RclConnectorContractTest {
                 }
             }
 
+            // Files come back as opaque bytes under the media type RPL states for
+            // them. What is in them is not this suite's subject — the walk is — and
+            // a dozen real Word documents in the repository would prove nothing that
+            // a dozen bytes do not.
+            if (path.startsWith("/docs/")) {
+                filesRequested += path
+                return HttpOutcome.Fetched(path.toByteArray(), mediaTypeOf(path), null, null)
+            }
+
             if (PROJECT_CARD.matches(path)) projectCardRequests++
 
             return FIXTURES_BY_PATH[path]?.let { serve(it) }
@@ -330,6 +468,9 @@ class RclConnectorContractTest {
             .firstOrNull { it.startsWith("typeId=") }
             ?.removePrefix("typeId=")
             ?.toIntOrNull()
+
+        private fun mediaTypeOf(path: String): String =
+            PayloadMediaTypes.of(PayloadKind.of(path.substringAfterLast('.')) ?: PayloadKind.BINARY)
 
         private fun serve(name: String) =
             HttpOutcome.Fetched(bytesOf(name), "text/html; charset=utf-8", null, null)
@@ -366,6 +507,7 @@ class RclConnectorContractTest {
                 "/projekt/12413553" to "project-ustawa-12413553.html",
                 "/projekt/12413554" to "project-rozporzadzenie-12413554.html",
                 "/projekt/12409051" to "project-ustawa-12409051.html",
+                "/projekt/12409051/katalog/13196866" to "catalog-13196866-konsultacje.html",
                 "/projekt/rejestr/projekt/12409051" to "register-project-12409051.html",
                 "/projekt/rejestr/katalog/13196859" to "register-catalog-13196859.html",
                 "/projekt/rejestr/katalog/13196866" to "register-catalog-13196866-konsultacje.html",

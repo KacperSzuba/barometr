@@ -38,6 +38,13 @@ data class RclProperties(
      */
     val catalogDepth: Int = RclWalkSettings.DEFAULT_CATALOG_DEPTH,
 
+    /**
+     * Whether catalog pages are followed to the files filed under them — the draft
+     * texts, the impact assessments, the tables of comments. See
+     * [RclWalkSettings.fetchAttachments] for what turning it off gives up.
+     */
+    val fetchAttachments: Boolean = RclWalkSettings.DEFAULT_FETCH_ATTACHMENTS,
+
     val robots: RobotsSetting = RobotsSetting(),
     val selectors: RclSelectors = RclSelectors(),
 ) {
@@ -50,7 +57,8 @@ data class RclProperties(
      * operator can change without a deployment. A second copy here would only be a
      * number nobody consults.
      */
-    fun walkSettings(): RclWalkSettings = RclWalkSettings(pageSize, pagesPerChunk, catalogDepth)
+    fun walkSettings(): RclWalkSettings =
+        RclWalkSettings(pageSize, pagesPerChunk, catalogDepth, fetchAttachments)
 
     /**
      * Whether this source's robots.txt is honoured.

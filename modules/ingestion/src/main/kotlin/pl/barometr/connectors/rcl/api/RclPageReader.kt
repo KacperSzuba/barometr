@@ -12,4 +12,13 @@ interface RclPageReader {
 
     /** Null when the bytes are not a draft's page — an error page, or another view. */
     fun readProjectCard(page: ByteArray): RclProjectCard?
+
+    /**
+     * A stage's catalog: its folders and the files in them.
+     *
+     * Returns an empty page rather than null for bytes that are not a catalog, because
+     * "no files here" is a real and common answer — a stage nothing has been filed
+     * under yet renders exactly like one whose folders are empty.
+     */
+    fun readCatalog(page: ByteArray): RclCatalogPage
 }

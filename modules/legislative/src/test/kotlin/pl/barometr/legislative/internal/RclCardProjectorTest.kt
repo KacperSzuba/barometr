@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import pl.barometr.connectors.rcl.api.RclCatalogPage
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
 import pl.barometr.connectors.rcl.api.RclStage
@@ -183,6 +184,9 @@ class RclCardProjectorTest {
                 RclStage("13196868", 3, "Opiniowanie", RclStageState.NOT_STARTED, null, isVisitable = false),
             ),
         )
+
+        /** Nothing here reads a catalog; a card is the whole of what is projected. */
+        override fun readCatalog(page: ByteArray) = RclCatalogPage(emptyList(), emptyList())
     }
 
     /** Records what the projector announced; nothing here asserts on it yet. */

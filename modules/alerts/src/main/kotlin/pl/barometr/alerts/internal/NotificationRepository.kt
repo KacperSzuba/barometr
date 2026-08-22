@@ -37,6 +37,7 @@ class NotificationRepository(
         profileVersion: Int,
         item: ResolvedItem,
         matchedBy: MatchedInterest,
+        urgency: Urgency,
     ): Boolean =
         dsl.insertInto(NOTIFICATION)
             .set(NOTIFICATION.ID, Ids.next())
@@ -50,6 +51,7 @@ class NotificationRepository(
             .set(NOTIFICATION.MATCHED_VALUE, matchedBy.value)
             .set(NOTIFICATION.EVENT_KEY, AlertKeys.eventOf(item))
             .set(NOTIFICATION.CASE_KEY, AlertKeys.caseOf(item))
+            .set(NOTIFICATION.URGENCY, urgency.wireName)
             .set(NOTIFICATION.CREATED_AT, at(clock.instant()))
             .onConflict(NOTIFICATION.OWNER_ID, NOTIFICATION.EVENT_KEY)
             .doNothing()
@@ -65,8 +67,47 @@ class NotificationRepository(
         )
 
     fun listFor(owner: UserId, limit: Int): List<Notification> =
+        read(NOTIFICATION.OWNER_ID.eq(owner.value), limit).sortedByDescending { it.createdAt }
+
+    /** Everybody with something waiting for a window. The run's outer loop. */
+    fun ownersWaiting(): List<UserId> =
+        dsl.selectDistinct(NOTIFICATION.OWNER_ID)
+            .from(NOTIFICATION)
+            .where(NOTIFICATION.DIGEST_ID.isNull)
+            .fetch { UserId(it.value1()!!) }
+
+    /** What this person has waiting, oldest first — the buffer, read. */
+    fun waitingFor(owner: UserId): List<Notification> =
+        read(NOTIFICATION.OWNER_ID.eq(owner.value).and(NOTIFICATION.DIGEST_ID.isNull))
+            .sortedBy { it.createdAt }
+
+    /** What went out in one window, newest first. */
+    fun inDigest(digest: UUID): List<Notification> =
+        read(NOTIFICATION.DIGEST_ID.eq(digest)).sortedByDescending { it.createdAt }
+
+    /**
+     * Puts them in the window. Only what is still waiting moves, so a run that overlaps
+     * another cannot pull a notification out of a digest that already holds it.
+     */
+    fun attachTo(digest: Digest, notifications: List<Notification>): Int =
+        dsl.update(NOTIFICATION)
+            .set(NOTIFICATION.DIGEST_ID, digest.id)
+            .where(NOTIFICATION.ID.`in`(notifications.map { it.id }))
+            .and(NOTIFICATION.DIGEST_ID.isNull)
+            .execute()
+
+    /** False when it is not this person's notification, which reads the same as absent. */
+    fun markRead(owner: UserId, id: UUID): Boolean =
+        dsl.update(NOTIFICATION)
+            .set(NOTIFICATION.READ_AT, at(clock.instant()))
+            .where(NOTIFICATION.ID.eq(id))
+            .and(NOTIFICATION.OWNER_ID.eq(owner.value))
+            .and(NOTIFICATION.READ_AT.isNull)
+            .execute() == 1
+
+    private fun read(condition: org.jooq.Condition, limit: Int = ALL): List<Notification> =
         dsl.selectFrom(NOTIFICATION)
-            .where(NOTIFICATION.OWNER_ID.eq(owner.value))
+            .where(condition)
             .orderBy(NOTIFICATION.CREATED_AT.desc())
             .limit(limit)
             .fetch {
@@ -78,9 +119,10 @@ class NotificationRepository(
                     subjectKind = it.subjectKind!!,
                     subjectId = it.subjectId!!,
                     title = it.title!!,
+                    urgency = Urgency.of(it.urgency!!) ?: error("stored urgency '${it.urgency}'"),
                     matchedBy = MatchedInterest(
                         // A kind stored by this system and unknown to it would mean a
-                        // release removed one; the log below is what would explain the
+                        // release removed one; this row is what would explain the
                         // notification, so it fails rather than guesses.
                         InterestKind.of(it.matchedKind!!) ?: error("stored kind '${it.matchedKind}'"),
                         it.matchedValue!!,
@@ -90,14 +132,13 @@ class NotificationRepository(
                 )
             }
 
-    /** False when it is not this person's notification, which reads the same as absent. */
-    fun markRead(owner: UserId, id: UUID): Boolean =
-        dsl.update(NOTIFICATION)
-            .set(NOTIFICATION.READ_AT, at(clock.instant()))
-            .where(NOTIFICATION.ID.eq(id))
-            .and(NOTIFICATION.OWNER_ID.eq(owner.value))
-            .and(NOTIFICATION.READ_AT.isNull)
-            .execute() == 1
-
     private fun at(instant: Instant) = OffsetDateTime.ofInstant(instant, ZoneOffset.UTC)
+
+    private companion object {
+        /**
+         * A digest holds what a window holds, which nothing bounds in advance — and a
+         * silent cut would drop somebody's alerts on the floor.
+         */
+        const val ALL = Int.MAX_VALUE
+    }
 }

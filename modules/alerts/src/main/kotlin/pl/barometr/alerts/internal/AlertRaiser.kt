@@ -61,7 +61,7 @@ class AlertRaiser(
         !rule.enabled -> AlertOutcome.RULE_DISABLED
         !rule.watches(item.stage) -> AlertOutcome.STAGE_NOT_WATCHED
         toldRecentlyAbout(interested, item) -> AlertOutcome.CASE_RECENTLY_RAISED
-        !raise(interested, item) -> AlertOutcome.ALREADY_TOLD
+        !raise(rule, interested, item) -> AlertOutcome.ALREADY_TOLD
         else -> AlertOutcome.RAISED
     }
 
@@ -72,13 +72,14 @@ class AlertRaiser(
             clock.instant().minus(CASE_WINDOW),
         )
 
-    private fun raise(interested: InterestedProfile, item: ResolvedItem): Boolean =
+    private fun raise(rule: AlertRule, interested: InterestedProfile, item: ResolvedItem): Boolean =
         notifications.raiseIfNew(
             interested.owner,
             interested.profile,
             interested.version,
             item,
             interested.matchedBy,
+            rule.urgency,
         )
 
     private companion object {

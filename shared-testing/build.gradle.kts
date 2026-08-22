@@ -12,6 +12,8 @@ dependencies {
     // for the same reason the schema is tested against real Postgres: the analyser is
     // the thing under test, and a stub of it would only confirm what we assumed.
     api(libs.testcontainersElasticsearch)
+    // The mail server digests are sent to in tests is a plain container.
+    api(libs.testcontainersCore)
     api(libs.liquibaseCore)
     api(libs.jooq)
     api(libs.postgresql)

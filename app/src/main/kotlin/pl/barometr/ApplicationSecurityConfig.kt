@@ -41,6 +41,16 @@ class ApplicationSecurityConfig {
         .authorizeHttpRequests {
             it.requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                // Stopping the mail must not require signing in. Somebody who cannot
+                // unsubscribe from the message in front of them presses "spam"
+                // instead, and one such press costs the sending domain more than the
+                // subscription was worth. The token in the link is the authorisation,
+                // it is random, and all it can do is stop mail.
+                .requestMatchers("/api/v1/alerts/unsubscribe/**").permitAll()
+                // The mail provider reporting a bounce has no account here. It
+                // authenticates with a shared secret the endpoint checks itself, and
+                // refuses everything while that secret is unset.
+                .requestMatchers("/api/v1/alerts/email-events").permitAll()
                 .anyRequest().authenticated()
         }
         .oauth2ResourceServer { resourceServer ->

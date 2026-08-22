@@ -18,6 +18,8 @@ data class AlertRule(
     val enabled: Boolean,
     /** Stages worth hearing about. Empty means every stage. */
     val stages: Set<String>,
+    /** Whether matches from this profile are worth the quiet hours. */
+    val urgency: Urgency = Urgency.NORMAL,
 ) {
 
     /**

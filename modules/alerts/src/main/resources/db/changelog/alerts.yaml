@@ -6,3 +6,9 @@ databaseChangeLog:
   - include:
       file: db/changelog/alerts/0001-rules-and-notifications.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/alerts/0002-digests.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/alerts/0003-email-delivery.sql
+      relativeToChangelogFile: false

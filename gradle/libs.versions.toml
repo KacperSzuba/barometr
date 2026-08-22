@@ -71,6 +71,10 @@ springBootStarterJdbc = { module = "org.springframework.boot:spring-boot-starter
 springBootStarterJooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
 springBootStarterValidation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 springBootStarterActuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+# `JavaMailSender`, auto-configured from `spring.mail.*`. Both providers this is aimed
+# at — Postmark and SES — speak SMTP, so the alternative was a hand-written HTTP client
+# for one of them plus a fixture nobody could record without an account.
+springBootStarterMail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 # Boot 4 moved autoconfiguration into per-technology modules: `liquibase-core` alone
 # sits on the classpath and never runs. The starter is what wires it up.
 springBootStarterLiquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
@@ -139,6 +143,10 @@ kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", 
 testcontainersPostgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainersJunit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainersElasticsearch = { module = "org.testcontainers:elasticsearch", version.ref = "testcontainers" }
+# A generic container, for the mail server the SMTP transport is tested against. The
+# headers that decide whether a digest reaches an inbox — `List-Unsubscribe` above all
+# — are only observable on the receiving side.
+testcontainersCore = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 archunitJunit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 [bundles]

@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
  */
 class AlertVolumeTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val catalog = FakeCatalog()

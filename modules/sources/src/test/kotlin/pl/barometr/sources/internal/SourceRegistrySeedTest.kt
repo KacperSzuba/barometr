@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
  */
 class SourceRegistrySeedTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
 
     @Test
     fun `the Sejm source is seeded enabled with its legal basis`() {

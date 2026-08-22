@@ -42,7 +42,7 @@ class EliActProjectorTest {
     @TempDir
     lateinit var blobRoot: Path
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
     private val json = JsonMapper.builder().addModule(kotlinModule()).build()
 

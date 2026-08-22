@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
  */
 class DigestCloserTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
 
     // A Saturday at 10:00 UTC, which is noon in Warsaw: inside nobody's quiet hours and
     // after a morning boundary, so a test has to be explicit to get either.

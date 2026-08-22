@@ -8,6 +8,7 @@ import org.apache.hc.core5.http.HttpHost
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import pl.barometr.testing.ElasticsearchTestNode
 import java.net.URI
 import java.time.Clock
@@ -24,6 +25,7 @@ import kotlin.test.assertTrue
  * The two share an analyser and differ in that one operator, and both halves of that
  * sentence are worth a test — the strictness, and the stemming that survives it.
  */
+@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)
 class SubscriptionMatchingTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-08-21T10:00:00Z"), ZoneOffset.UTC)

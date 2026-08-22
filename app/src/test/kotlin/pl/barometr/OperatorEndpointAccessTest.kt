@@ -1,6 +1,7 @@
 package pl.barometr
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -27,6 +28,7 @@ import pl.barometr.testing.PostgresTestDatabase
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ResourceLock(PostgresTestDatabase.APPLICATION_LOCK)
 class OperatorEndpointAccessTest {
 
     @Autowired

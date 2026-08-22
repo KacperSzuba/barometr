@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
  */
 class InterestProfilesTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val profiles = InterestProfiles(InterestProfileRepository(dsl, clock), InterestNormalizer())

@@ -51,6 +51,13 @@ own changelog, and against an Elasticsearch node built from `infra/elasticsearch
 the analyser is the thing under test, so a stub of it would prove nothing. Docker must
 be running, and the first search test builds the image once.
 
+Test classes run concurrently, and each one gets **its own database**, copied from the
+migrated template with `CREATE DATABASE … TEMPLATE` — about seventy milliseconds, so a
+class clearing a table is clearing its own copy. The methods inside one class do not
+run concurrently: they share that class's fixture by design. The two fixtures that
+cannot be copied — the application's own database and the search index — are held under
+a `@ResourceLock` by the handful of tests that use them.
+
 ### What runs on a push
 
 [`.github/workflows/backend.yml`](.github/workflows/backend.yml) runs `./gradlew check`

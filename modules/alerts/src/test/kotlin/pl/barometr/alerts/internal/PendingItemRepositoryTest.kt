@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
  */
 class PendingItemRepositoryTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
     private val pending = PendingItemRepository(dsl, clock)
 

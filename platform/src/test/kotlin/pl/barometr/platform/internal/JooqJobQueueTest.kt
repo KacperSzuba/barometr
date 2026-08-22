@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  */
 class JooqJobQueueTest {
 
-    private val dsl: DSLContext = PostgresTestDatabase.dsl()
+    private val dsl: DSLContext = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
     private lateinit var queue: JooqJobQueue
 
@@ -134,7 +134,9 @@ class JooqJobQueueTest {
             Callable {
                 // Every worker starts polling at the same instant.
                 barrier.await(10, TimeUnit.SECONDS)
-                JooqJobQueue(PostgresTestDatabase.dsl(), JobBackoffPolicy(), clock)
+                // A queue of its own, on this class's database: four workers on four
+                // connections is the whole point of the test.
+                JooqJobQueue(dsl, JobBackoffPolicy(), clock)
                     .claim(worker = "w$worker", limit = jobCount)
                     .map { it.id }
             }

@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
  */
 class ProfileMatchPreviewTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val profiles = InterestProfiles(
         InterestProfileRepository(dsl, TestClock()),
         InterestNormalizer(),

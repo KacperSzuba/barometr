@@ -1,6 +1,7 @@
 package pl.barometr
 
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
@@ -23,6 +24,7 @@ import kotlin.test.assertTrue
  * by an annotation with nothing behind it.
  */
 @SpringBootTest
+@ResourceLock(PostgresTestDatabase.APPLICATION_LOCK)
 class ApplicationContextTest {
 
     @Autowired

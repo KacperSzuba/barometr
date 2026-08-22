@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
  */
 class AlertRaiserTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val rules = AlertRuleRepository(dsl, clock)

@@ -22,7 +22,7 @@ import kotlin.test.assertNotNull
  */
 class ActMatchReviewTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val acts = ActRepository(dsl, clock)

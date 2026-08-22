@@ -34,33 +34,42 @@ description: Test conventions for barometr — Testcontainers on the production 
    migrated by the project's own migrations. H2 accepts `SKIP LOCKED` and ignores it,
    which is precisely the behaviour the queue test exists to prove.
 6. **Use the shared database helper**, never a private container:
+   `PostgresTestDatabase.dslFor(javaClass)` in
    [PostgresTestDatabase](shared-testing/src/main/kotlin/pl/barometr/testing/PostgresTestDatabase.kt),
-   via `testImplementation(project(":shared:shared-testing"))`. A module that starts
-   its own container makes the build wait twice and leaves two setups to keep in step
+   via `testImplementation(project(":shared-testing"))`. A module that starts its own
+   container makes the build wait twice and leaves two setups to keep in step
    (review C18).
-7. **Prefer plain construction to `@SpringBootTest`.** Compose the object graph the
+7. **A test class gets a database of its own**, cloned from the migrated template —
+   which is what `dslFor(javaClass)` says. Test classes run concurrently, so a class
+   clearing a table in `@BeforeEach` must be clearing its own copy. The two fixtures
+   that cannot be cloned, the application's database and the search index, are held
+   under `@ResourceLock(PostgresTestDatabase.APPLICATION_LOCK)` and
+   `@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)` by the few tests that use them —
+   a new test touching either needs the same annotation, and nothing in the build will
+   tell you if it is missing.
+8. **Prefer plain construction to `@SpringBootTest`.** Compose the object graph the
    way Spring composes it and test it with no context —
    [RawDocumentArchiverTest](modules/ingestion/src/test/kotlin/pl/barometr/ingestion/internal/RawDocumentArchiverTest.kt)
    builds repository, archiver and sink directly. Context tests are for wiring, and
    wiring is one test, not every test.
-8. **Hand-written fakes, not a mocking framework.** `RecordingSink`,
+9. **Hand-written fakes, not a mocking framework.** `RecordingSink`,
    `FixtureHttpClient`, `RecordingEventPublisher` — each is a dozen lines, reads as a
    specification of the collaborator, and never silently agrees with a signature that
    changed. No mocking library is in the catalog; do not add one.
-9. **Connector tests run against recorded responses** from the live source, so a
+10. **Connector tests run against recorded responses** from the live source, so a
    *source* changing shape fails the build. A stub written by hand only ever confirms
    what the author already believed —
    [SejmConnectorContractTest](modules/ingestion/src/test/kotlin/pl/barometr/connectors/sejm/SejmConnectorContractTest.kt).
-10. **Time is controlled by an injected `Clock`**, not by sleeping and not by
+11. **Time is controlled by an injected `Clock`**, not by sleeping and not by
     rewriting rows: `TestClock` in `shared-testing` moves on demand. Backoff, token
     expiry and the refresh grace window are all tested by advancing it (review B11).
-11. **Test names are behaviour sentences in backticks**, describing the guarantee:
+12. **Test names are behaviour sentences in backticks**, describing the guarantee:
     `` `identical content is recognised and publishes nothing` ``.
-12. **One behaviour per test.** Several assertions about one behaviour are fine;
+13. **One behaviour per test.** Several assertions about one behaviour are fine;
     several behaviours are several tests.
-13. **Assertions carry a message when a bare failure would be cryptic**:
+14. **Assertions carry a message when a bare failure would be cryptic**:
     `assertEquals(1, count, "one row for one piece of content")`.
-14. **Test the seam a bug crossed.** A defect found in production gets a test at the
+15. **Test the seam a bug crossed.** A defect found in production gets a test at the
     level where it could have been caught, not at the level where it was noticed.
 
 ## Never

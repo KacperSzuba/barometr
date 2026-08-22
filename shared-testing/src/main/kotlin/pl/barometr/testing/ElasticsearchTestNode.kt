@@ -3,6 +3,7 @@ package pl.barometr.testing
 import org.testcontainers.elasticsearch.ElasticsearchContainer
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.utility.DockerImageName
+import java.time.Duration
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -33,6 +34,12 @@ object ElasticsearchTestNode {
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+            // Testcontainers gives a container a minute to say it has started, and this
+            // one is asked to start while the rest of the suite is holding a Postgres
+            // per module. Under that, a node that takes ninety seconds is slow rather
+            // than broken — and the failure it produced was a timeout on a node that
+            // came up fine seconds later.
+            .withStartupTimeout(STARTUP_TIMEOUT)
             .also { it.start() }
     }
 
@@ -60,4 +67,16 @@ object ElasticsearchTestNode {
     private const val DOCKERFILE = "infra/elasticsearch/Dockerfile"
     private const val IMAGE_NAME = "barometr/elasticsearch-polish:test"
     private const val OFFICIAL_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch"
+
+    private val STARTUP_TIMEOUT: Duration = Duration.ofMinutes(3)
+
+    /**
+     * What a test that rebuilds the index holds while it runs.
+     *
+     * One node, one alias, and a rebuild points that alias at a fresh index — so two
+     * such tests running at once would each be searching whatever the other had just
+     * switched to. Unlike the databases, an index is not worth cloning per class: the
+     * mapping is the thing under test, and building it is most of the cost.
+     */
+    const val INDEX_LOCK = "elasticsearch.legislative"
 }

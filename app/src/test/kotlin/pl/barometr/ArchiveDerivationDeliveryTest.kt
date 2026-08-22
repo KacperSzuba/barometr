@@ -2,6 +2,7 @@ package pl.barometr
 
 import org.jooq.impl.DSL
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -41,6 +42,7 @@ import kotlin.test.assertNotNull
  * against a live source, is not a test.
  */
 @SpringBootTest
+@ResourceLock(PostgresTestDatabase.APPLICATION_LOCK)
 class ArchiveDerivationDeliveryTest {
 
     @Autowired
@@ -49,7 +51,9 @@ class ArchiveDerivationDeliveryTest {
     @Autowired
     private lateinit var sources: SourceRegistry
 
-    private val dsl = PostgresTestDatabase.dsl()
+    // The application's database, not one of this class's own: what is being
+    // asserted is what the running application wrote.
+    private val dsl = PostgresTestDatabase.applicationDsl()
 
     @Test
     fun `an archived payload becomes a document without anything else being called`() {

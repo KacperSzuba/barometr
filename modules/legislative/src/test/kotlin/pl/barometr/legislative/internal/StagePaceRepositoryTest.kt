@@ -22,7 +22,7 @@ import kotlin.test.assertNull
  */
 class StagePaceRepositoryTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val drafts = DraftRepository(dsl, clock)

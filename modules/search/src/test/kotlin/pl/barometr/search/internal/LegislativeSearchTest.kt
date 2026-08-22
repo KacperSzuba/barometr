@@ -8,6 +8,7 @@ import org.apache.hc.core5.http.HttpHost
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import pl.barometr.testing.ElasticsearchTestNode
 import java.net.URI
 import java.time.Clock
@@ -21,6 +22,7 @@ import kotlin.test.assertTrue
  * Searching the way somebody actually searches: a phrase half-remembered from a
  * document, a number pasted out of an e-mail, and then a facet clicked to narrow it.
  */
+@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)
 class LegislativeSearchTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-08-21T10:00:00Z"), ZoneOffset.UTC)

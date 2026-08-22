@@ -8,6 +8,7 @@ import co.elastic.clients.transport.rest5_client.low_level.Rest5Client
 import org.apache.hc.core5.http.HttpHost
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
@@ -34,6 +35,7 @@ import kotlin.test.assertTrue
  * between two indices without a moment where a search finds nothing — and no fake of
  * Elasticsearch would tell us whether that works.
  */
+@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)
 class SearchIndexRebuildTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-08-21T10:00:00Z"), ZoneOffset.UTC)

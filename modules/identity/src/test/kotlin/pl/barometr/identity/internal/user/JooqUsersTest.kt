@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  */
 class JooqUsersTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val users = JooqUsers(dsl)
 
     @BeforeEach

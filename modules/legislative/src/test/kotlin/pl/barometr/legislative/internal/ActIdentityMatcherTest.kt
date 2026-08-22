@@ -38,7 +38,7 @@ import kotlin.test.assertNull
  */
 class ActIdentityMatcherTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
 
     private val acts = ActRepository(dsl, clock)

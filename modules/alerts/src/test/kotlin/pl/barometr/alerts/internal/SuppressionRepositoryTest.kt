@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class SuppressionRepositoryTest {
 
-    private val dsl = PostgresTestDatabase.dsl()
+    private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val suppressions = SuppressionRepository(dsl, TestClock())
 
     @BeforeEach

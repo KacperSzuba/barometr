@@ -9,6 +9,7 @@ import co.elastic.clients.transport.rest5_client.low_level.Rest5Client
 import org.apache.hc.core5.http.HttpHost
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import pl.barometr.testing.ElasticsearchTestNode
 import java.net.URI
 import java.time.Clock
@@ -24,6 +25,7 @@ import kotlin.test.assertTrue
  * `polish` analyser fails the specification's own acceptance query, which is why the
  * index carries an override list and why the list is checked here rather than trusted.
  */
+@ResourceLock(ElasticsearchTestNode.INDEX_LOCK)
 class LegislativeIndexTest {
 
     private val maintenance = LegislativeIndexMaintenance(client, Clock.systemUTC())

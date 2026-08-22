@@ -21,6 +21,9 @@ dependencies {
     implementation(libs.springBootStarterSecurity)
     implementation(libs.springBootStarterResourceServer)
     implementation(libs.springBootStarterActuator)
+    // One trace per document, from the request that started it to the alert it became.
+    implementation(libs.springBootStarterOpenTelemetry)
+    runtimeOnly(libs.micrometerPrometheus)
     implementation(libs.jacksonModuleKotlin)
 
     implementation(libs.springModulithStarterCore)

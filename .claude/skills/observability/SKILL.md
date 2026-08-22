@@ -51,6 +51,18 @@ description: Logging and metrics conventions for barometr — SLF4J placeholders
     `ifAvailable`, so a platform module does not force Actuator onto a consumer that
     only needs to fetch a URL.
 
+## Tracing
+
+13. **Work that crosses a thread runs inside an `Observation`, not only inside a span.**
+    The observation is what the executor's decorator carries to the next thread; a bare
+    span is not, and the listener on the far side quietly starts a trace of its own.
+    [JobTracing](platform/src/main/kotlin/pl/barometr/platform/internal/JobTracing.kt) is
+    the worked example.
+14. **A queue ends a trace unless the context is carried in the row.** `platform.job`
+    holds the `traceparent` of whoever queued the work, because the gap is minutes and
+    machines wide and no thread-local reaches across it. Anything else that defers work
+    to another process needs the same.
+
 ## Never
 
 - **Never log a payload, a token, a password hash, an authorization header or a

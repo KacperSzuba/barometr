@@ -47,8 +47,30 @@ server:
 management:
   endpoints:
     web:
+      # `prometheus` and `metrics` are behind the same authentication as everything
+      # else, deliberately. A metrics endpoint states how many users, how many
+      # documents and which jobs are failing, and opening that to the internet because
+      # a scraper cannot hold a token is a decision for a deployment to make on its own
+      # network — not a default shipped here.
       exposure:
-        include: health, modulith
+        include: health, modulith, prometheus, metrics
+
+  tracing:
+    sampling:
+      # Everything, because the point of tracing here is to follow one document from
+      # the fetch to the alert it became — a tenth of that is a tenth of a story. At
+      # this volume it costs nothing; a busier deployment lowers it.
+      probability: ${TRACING_SAMPLE:1.0}
+
+  otlp:
+    tracing:
+      # Off unless somebody points it at a collector. With exporting on and nothing
+      # listening, the exporter retries into a closed port and fills the log with it —
+      # while trace and span ids still appear in every log line either way, which is
+      # most of the value on a developer's machine.
+      export:
+        enabled: ${OTLP_ENABLED:false}
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 app:
   jwt:

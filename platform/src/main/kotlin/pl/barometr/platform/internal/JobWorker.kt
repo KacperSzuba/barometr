@@ -29,6 +29,7 @@ class JobWorker(
     private val queue: JobQueue,
     handlers: List<JobHandler>,
     private val properties: JobWorkerProperties,
+    private val tracing: JobTracing,
     private val meters: MeterRegistry,
     private val clock: Clock,
 ) {
@@ -57,7 +58,10 @@ class JobWorker(
 
         val timer = meters.timer("jobs.execution", "type", job.type.value)
         try {
-            timer.recordCallable { handler.handle(job) }
+            // Continuing whoever queued it rather than starting afresh. Without this a
+            // document's journey is three unrelated traces: the request that asked for
+            // it, the fetch, and the alert it became.
+            timer.recordCallable { tracing.continuing(job.traceContext, job.type.value) { handler.handle(job) } }
             queue.succeed(job.id)
         } catch (failure: Exception) {
             meters.counter("jobs.failures", "type", job.type.value).increment()

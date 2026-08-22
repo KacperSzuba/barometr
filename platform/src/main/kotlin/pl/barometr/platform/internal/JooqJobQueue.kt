@@ -20,6 +20,7 @@ import java.util.UUID
 class JooqJobQueue(
     private val dsl: DSLContext,
     private val backoff: JobBackoffPolicy,
+    private val tracing: JobTracing,
     private val clock: Clock,
 ) : JobQueue {
 
@@ -38,6 +39,9 @@ class JooqJobQueue(
             .set(JOB.MAX_ATTEMPTS, job.maxAttempts)
             .set(JOB.RUN_AFTER, job.runAfter?.atOffset(ZoneOffset.UTC) ?: now)
             .set(JOB.DEDUP_KEY, job.dedupKey)
+            // Whoever queued this, so the work can be read as part of what they were
+            // doing rather than as a trace that begins nowhere.
+            .set(JOB.TRACE_CONTEXT, tracing.currentContext())
             .set(JOB.CREATED_AT, now)
             .set(JOB.UPDATED_AT, now)
             // Collides only with the partial unique index on `dedup_key`, which
@@ -76,7 +80,9 @@ class JooqJobQueue(
             .set(JOB.ATTEMPTS, JOB.ATTEMPTS.plus(1))
             .set(JOB.UPDATED_AT, now)
             .where(JOB.ID.`in`(claimable))
-            .returningResult(JOB.ID, JOB.TYPE, JOB.PAYLOAD, JOB.ATTEMPTS, JOB.MAX_ATTEMPTS)
+            .returningResult(
+                JOB.ID, JOB.TYPE, JOB.PAYLOAD, JOB.ATTEMPTS, JOB.MAX_ATTEMPTS, JOB.TRACE_CONTEXT,
+            )
             .fetch()
             .map { record ->
                 ClaimedJob(
@@ -85,6 +91,7 @@ class JooqJobQueue(
                     payload = record[JOB.PAYLOAD]?.data() ?: "{}",
                     attempt = record[JOB.ATTEMPTS]!!,
                     maxAttempts = record[JOB.MAX_ATTEMPTS]!!,
+                    traceContext = record[JOB.TRACE_CONTEXT],
                 )
             }
     }

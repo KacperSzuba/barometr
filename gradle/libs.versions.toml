@@ -75,6 +75,23 @@ springBootStarterJdbc = { module = "org.springframework.boot:spring-boot-starter
 springBootStarterJooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
 springBootStarterValidation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 springBootStarterActuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+# Tracing. Boot 4 splits autoconfiguration per technology, so the bridge on its own
+# configures nothing — this starter is what turns Micrometer's observations, which
+# Spring already makes for every request and every outgoing call, into OpenTelemetry
+# spans and ships them.
+springBootStarterOpenTelemetry = { module = "org.springframework.boot:spring-boot-starter-opentelemetry" }
+# The tracing API alone, for the queue: it carries a trace across the gap between
+# queueing a job and running it, and has to keep working in a module test where no
+# bridge and no exporter exist.
+micrometerTracing = { module = "io.micrometer:micrometer-tracing" }
+# The bridge and a real SDK, for the one test that proves a trace survives that gap. A
+# fake propagator would only prove that a fake propagator round-trips.
+micrometerTracingOtel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
+openTelemetrySdk = { module = "io.opentelemetry:opentelemetry-sdk" }
+# Its in-memory exporter: what is asserted is what a collector would have received.
+openTelemetrySdkTesting = { module = "io.opentelemetry:opentelemetry-sdk-testing" }
+# Prometheus scrapes the actuator; without this registry there is nothing at that path.
+micrometerPrometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 # `JavaMailSender`, auto-configured from `spring.mail.*`. Both providers this is aimed
 # at — Postmark and SES — speak SMTP, so the alternative was a hand-written HTTP client
 # for one of them plus a fixture nobody could record without an account.

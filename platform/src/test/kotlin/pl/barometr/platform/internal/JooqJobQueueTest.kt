@@ -27,12 +27,15 @@ class JooqJobQueueTest {
 
     private val dsl: DSLContext = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
+
+    /** Nothing is tracing in a module test, which is a state the queue must work in. */
+    private val untraced = JobTracing(tracer = null, propagator = null, observations = null)
     private lateinit var queue: JooqJobQueue
 
     @BeforeEach
     fun setUp() {
         dsl.deleteFrom(JOB).execute()
-        queue = JooqJobQueue(dsl, JobBackoffPolicy(), clock)
+        queue = JooqJobQueue(dsl, JobBackoffPolicy(), untraced, clock)
     }
 
     @Test
@@ -136,7 +139,7 @@ class JooqJobQueueTest {
                 barrier.await(10, TimeUnit.SECONDS)
                 // A queue of its own, on this class's database: four workers on four
                 // connections is the whole point of the test.
-                JooqJobQueue(dsl, JobBackoffPolicy(), clock)
+                JooqJobQueue(dsl, JobBackoffPolicy(), untraced, clock)
                     .claim(worker = "w$worker", limit = jobCount)
                     .map { it.id }
             }

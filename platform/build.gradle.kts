@@ -39,6 +39,9 @@ dependencies {
     // inherited by accident from the jOOQ starter.
     implementation(libs.springBootStarterJdbc)
     implementation(libs.springBootStarterActuator)
+    // A job runs minutes after it was queued, on another thread and possibly another
+    // machine. Carrying the trace across that gap is the queue's business.
+    implementation(libs.micrometerTracing)
     // Object storage. `implementation`, because nothing outside this module names a
     // storage type — the contexts see `BlobStore` and know nothing of what is behind it.
     implementation(libs.googleCloudStorage)
@@ -47,5 +50,8 @@ dependencies {
 
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersJunit)
+    testImplementation(libs.micrometerTracingOtel)
+    testImplementation(libs.openTelemetrySdk)
+    testImplementation(libs.openTelemetrySdkTesting)
     testImplementation(kotlin("test"))
 }

@@ -90,6 +90,31 @@ Every container is capped at a couple of cores, here and in `compose.yaml`: a da
 that takes every core it can see is why a build feels slow when it is actually the
 editor that is starving.
 
+### Following one document
+
+Every request, job and outgoing call is an observation, and with tracing on that means a
+span. Trace and span ids appear in every log line whether or not anything is exporting,
+which is most of the value on a developer's machine.
+
+The two places a trace would otherwise end are closed deliberately. A job carries the
+`traceparent` of whoever queued it in its own row, because the gap between queueing and
+running is minutes and machines wide and no thread-local survives it. A module listener
+runs after its transaction commits, on another thread, and keeps the context because the
+executor is decorated to carry it — which is also why work inside a job runs in an
+observation rather than only in a span: **the observation is what the next thread
+inherits.**
+
+| Setting | What it does |
+|---|---|
+| `OTLP_ENABLED` | off by default — with exporting on and no collector listening, the exporter retries into a closed port and fills the log |
+| `OTLP_ENDPOINT` | where a collector is, when there is one |
+| `TRACING_SAMPLE` | everything by default: a tenth of a document's journey is a tenth of a story, and at this volume it costs nothing |
+
+`/actuator/prometheus` and `/actuator/metrics` are exposed and, like everything else,
+authenticated. A metrics endpoint states how many users, how many documents and which
+jobs are failing; opening that to the internet because a scraper cannot hold a token is
+a decision for a deployment to make on its own network, not a default shipped here.
+
 ### What runs on a push
 
 [`.github/workflows/backend.yml`](.github/workflows/backend.yml) runs `./gradlew check`

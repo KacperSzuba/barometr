@@ -17,6 +17,29 @@ docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on
 production fallback, deliberately: a missing secret must stop the application rather
 than sign tokens with a known key.
 
+### Sending mail
+
+Digests go out over SMTP, so a provider is `spring.mail.*` and nothing more —
+Postmark and SES both speak it. Without `spring.mail.host` there is no transport at
+all: digests still close and appear in the API, and nothing is lost. That is the right
+default for a developer machine.
+
+| Setting | What it is |
+|---|---|
+| `spring.mail.host` · `.port` · `.username` · `.password` | the provider's SMTP endpoint |
+| `app.alerts.email.from` | the `From:` address; its domain is the one below |
+| `app.alerts.email.unsubscribe-base-url` | where an unsubscribe link points |
+| `app.alerts.email.webhook-secret` | what a provider must present to report a bounce; unset means the webhook refuses everything |
+
+**Three things this code cannot do for you**, and the mail will be filtered without
+them: publish SPF, DKIM and DMARC records for the sending domain; keep alerts on a
+different subdomain from anything marketing goes out on, because sharing a reputation
+is the quickest way to make alerts land in spam; and point the provider's bounce and
+complaint webhooks at `POST /api/v1/alerts/email-events`. That endpoint takes this
+system's own shape — `{"address": …, "event": "bounced"|"complained", "detail": …}` —
+so connecting a provider means a small adapter from theirs, written against a payload
+recorded from the real account.
+
 ```bash
 ./gradlew check                    # tests, module boundaries, modularity
 ./gradlew :<module>:generateJooq   # after any schema change

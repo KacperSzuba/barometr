@@ -24,6 +24,8 @@ dependencies {
 
     implementation(libs.springBootStarter)
     implementation(libs.springBootStarterJooq)
+    // Digests leave as e-mail, over SMTP, which is what both candidate providers speak.
+    implementation(libs.springBootStarterMail)
     implementation(libs.springBootStarterWeb)
     implementation(libs.springBootStarterValidation)
     implementation(libs.jacksonModuleKotlin)
@@ -34,8 +36,14 @@ dependencies {
     implementation(libs.springSecurityCore)
     // The matching run happens once across the deployment, not once per instance.
     implementation(libs.shedlockSpring)
+    // MeterRegistry: what share of digests reaches an inbox is the number that says
+    // whether the sending domain is still trusted, and it is not a query anybody
+    // remembers to run.
+    implementation(libs.springBootStarterActuator)
 
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersJunit)
+    // What a mail server actually received, read back over its own API.
+    testImplementation(libs.springBootStarterRestClient)
     testImplementation(kotlin("test"))
 }

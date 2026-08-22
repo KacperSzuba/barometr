@@ -12,6 +12,8 @@ import pl.barometr.profiles.api.ProfileId
 import pl.barometr.shared.Ids
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.kotlinModule
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -31,7 +33,15 @@ class DigestCloserTest {
     private val notifications = NotificationRepository(dsl, clock)
     private val digests = DigestRepository(dsl, clock)
     private val preferences = DeliveryPreferences(DeliveryPreferenceRepository(dsl, clock))
-    private val closer = DigestCloser(notifications, digests, preferences, DigestSchedule(), clock)
+    private val queue = FakeJobQueue()
+    private val closer = DigestCloser(
+        notifications,
+        digests,
+        preferences,
+        DigestSchedule(),
+        DigestMailQueue(queue, JsonMapper.builder().addModule(kotlinModule()).build()),
+        clock,
+    )
 
     private val ewa = UserId.next()
     private val profile = ProfileId(Ids.next())
@@ -53,6 +63,31 @@ class DigestCloserTest {
     }
 
     /** A mail saying "nothing happened" is the one nobody opens the next time. */
+    /**
+     * Queued in the same transaction as the digest, which is why the queue lives in
+     * Postgres: no window in which a digest exists that nothing will ever send.
+     */
+    @Test
+    fun `closing a window queues exactly one mail for it`() {
+        raise("a-1")
+        raise("a-2")
+
+        closer.closeWindowFor(ewa)
+
+        assertEquals(1, queue.jobs.size)
+        assertEquals(DigestMailQueue.TYPE, queue.jobs.single().type)
+    }
+
+    @Test
+    fun `a window that does not close queues nothing`() {
+        preferences.set(ewa, DeliveryPreference(ewa, DeliveryMode.DAILY, atHour = 8))
+        raise("a-1")
+
+        closer.closeWindowFor(ewa)
+
+        assertTrue(queue.jobs.isEmpty())
+    }
+
     @Test
     fun `an empty buffer closes no window`() {
         assertEquals(false, closer.closeWindowFor(ewa))

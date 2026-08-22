@@ -9,6 +9,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 
 /**
  * Closed windows. SQL only.
@@ -41,6 +42,20 @@ class DigestRepository(
             .fetchOne()
             ?.value1()
             ?.toInstant()
+
+    fun byId(id: UUID): Digest? =
+        dsl.selectFrom(DIGEST)
+            .where(DIGEST.ID.eq(id))
+            .fetchOne { Digest(it.id!!, it.createdAt!!.toInstant()) }
+
+    /** Who it was closed for — the digest itself does not carry it, the table does. */
+    fun ownerOf(id: UUID): UserId? =
+        dsl.select(DIGEST.OWNER_ID)
+            .from(DIGEST)
+            .where(DIGEST.ID.eq(id))
+            .fetchOne()
+            ?.value1()
+            ?.let(::UserId)
 
     fun listFor(owner: UserId, limit: Int): List<Digest> =
         dsl.selectFrom(DIGEST)

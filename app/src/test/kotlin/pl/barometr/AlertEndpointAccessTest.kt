@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.security.test.context.support.WithMockUser
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -173,6 +174,35 @@ class AlertEndpointAccessTest {
         mockMvc.perform(get("$ALERTS/decisions")).andExpect(status().isOk)
         mockMvc.perform(get("$ALERTS/digests")).andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(0))
+    }
+
+    /**
+     * Stopping the mail must not require signing in: somebody who cannot unsubscribe
+     * from the message in front of them presses "spam" instead, and one such press
+     * costs the domain more than the subscription was worth.
+     */
+    @Test
+    fun `unsubscribing needs no account, and an unknown token says the same thing`() {
+        mockMvc.perform(get("$ALERTS/unsubscribe/nie-ma-takiego-tokenu"))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(post("$ALERTS/unsubscribe/nie-ma-takiego-tokenu").with(csrf()))
+            .andExpect(status().isNoContent)
+    }
+
+    /**
+     * The bounce webhook is open to a machine with no account, so the secret is the
+     * whole authorisation — and it is unset here, which must mean "refuse everything"
+     * rather than "let everybody through".
+     */
+    @Test
+    fun `a bounce report without the shared secret changes nothing`() {
+        mockMvc.perform(
+            post("$ALERTS/email-events").contentType(MediaType.APPLICATION_JSON)
+                .content("""{"address":"ewa@example.com","event":"bounced"}"""),
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(content().json("""{"error":"invalid_webhook_secret"}""", false))
     }
 
     private fun createProfile(): String =

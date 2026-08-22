@@ -21,6 +21,7 @@ class DigestCloser(
     private val digests: DigestRepository,
     private val preferences: DeliveryPreferences,
     private val schedule: DigestSchedule,
+    private val mails: DigestMailQueue,
     private val clock: Clock,
 ) {
 
@@ -39,6 +40,10 @@ class DigestCloser(
 
         val digest = digests.open(owner)
         notifications.attachTo(digest, going)
+        // In the same transaction as the digest, which is the whole reason the queue
+        // lives in Postgres: there is no window in which a digest exists and nothing
+        // will ever send it, and none in which a mail goes out for a rolled-back one.
+        mails.queueMail(digest)
         return true
     }
 

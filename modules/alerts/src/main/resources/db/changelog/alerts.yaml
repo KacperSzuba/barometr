@@ -12,3 +12,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/alerts/0003-email-delivery.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/alerts/0004-significance.sql
+      relativeToChangelogFile: false

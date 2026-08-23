@@ -40,7 +40,10 @@ class NotificationController(
                 matchedValue = it.matchedBy.value,
                 profileId = it.profile.value,
                 profileVersion = it.profileVersion,
+                significance = it.significance.score,
+                significanceReasons = it.significance.reasons.map { reason -> reason.wireName },
                 createdAt = it.createdAt.toString(),
+
                 readAt = it.readAt?.toString(),
             )
         }
@@ -76,7 +79,9 @@ class NotificationController(
                         subjectKind = matter.subjectKind,
                         subjectId = matter.subjectId,
                         title = matter.title,
+                        significance = matter.significance,
                         alerts = matter.notifications.map { it.id },
+
                     )
                 },
             )
@@ -106,6 +111,14 @@ class NotificationController(
         val matchedValue: String,
         val profileId: UUID,
         val profileVersion: Int,
+        /** Out of a hundred, frozen at the moment this was decided. */
+        val significance: Int,
+        /**
+         * Why it was ranked there, beyond the matched interest already named above.
+         * Codes rather than sentences: the wording is the frontend's, and its
+         * language is not decided here.
+         */
+        val significanceReasons: List<String>,
         val createdAt: String,
         val readAt: String?,
     )
@@ -122,6 +135,7 @@ class NotificationController(
         val subjectKind: String,
         val subjectId: String,
         val title: String,
+        val significance: Int,
         val alerts: List<UUID>,
     )
 

@@ -1,6 +1,8 @@
 package pl.barometr.alerts.internal
 
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -41,6 +43,8 @@ class AlertRuleController(private val rules: AlertRules) {
                 ProfileId(request.profileId),
                 request.stages,
                 request.urgencyChosen(),
+                request.minimumSignificance,
+
             ),
         )
 
@@ -61,6 +65,8 @@ class AlertRuleController(private val rules: AlertRules) {
                 request.enabled,
                 request.stages,
                 request.urgencyChosen(),
+                request.minimumSignificance,
+
             ),
         )
 
@@ -76,6 +82,8 @@ class AlertRuleController(private val rules: AlertRules) {
         enabled = rule.enabled,
         stages = rule.stages,
         urgency = rule.urgency.wireName,
+        minimumSignificance = rule.minimumSignificance,
+
     )
 
     data class RuleRequest(
@@ -88,6 +96,13 @@ class AlertRuleController(private val rules: AlertRules) {
          * quiet hours. Absent means ordinary, which is what almost everything is.
          */
         val urgency: String? = null,
+        /**
+         * How much a match has to matter before this rule speaks. Zero is the honest
+         * default: somebody who has not asked to hear less has not asked to hear less.
+         */
+        @field:Min(0) @field:Max(HIGHEST_SIGNIFICANCE)
+        val minimumSignificance: Int = 0,
+
     ) {
         fun urgencyChosen(): Urgency = urgencyIn(urgency)
     }
@@ -97,6 +112,13 @@ class AlertRuleController(private val rules: AlertRules) {
         @field:Size(max = MAX_STAGES)
         val stages: Set<String> = emptySet(),
         val urgency: String? = null,
+        /**
+         * How much a match has to matter before this rule speaks. Zero is the honest
+         * default: somebody who has not asked to hear less has not asked to hear less.
+         */
+        @field:Min(0) @field:Max(HIGHEST_SIGNIFICANCE)
+        val minimumSignificance: Int = 0,
+
     ) {
         fun urgencyChosen(): Urgency = urgencyIn(urgency)
     }
@@ -107,6 +129,8 @@ class AlertRuleController(private val rules: AlertRules) {
         val enabled: Boolean,
         val stages: Set<String>,
         val urgency: String,
+        val minimumSignificance: Int,
+
     )
 
     private companion object {
@@ -120,5 +144,8 @@ class AlertRuleController(private val rules: AlertRules) {
          * and a set this size is a client sending something it did not mean.
          */
         const val MAX_STAGES = 40
+
+        /** The top of the scale, as an annotation needs it. */
+        const val HIGHEST_SIGNIFICANCE = Significance.MAXIMUM.toLong()
     }
 }

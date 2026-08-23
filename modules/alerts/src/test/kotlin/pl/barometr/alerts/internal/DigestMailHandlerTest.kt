@@ -170,9 +170,10 @@ class DigestMailHandlerTest {
             ewa,
             ProfileId(Ids.next()),
             1,
-            ResolvedItem("act", UUID.randomUUID().toString(), title, "DU/2024/1", stage = null),
+            ResolvedItem("act", UUID.randomUUID().toString(), title, "DU/2024/1", stage = null, signals = null),
             MatchedInterest(InterestKind.KEYWORD, "prawo"),
             Urgency.NORMAL,
+            Significance(0, emptyList()),
         )
         val digest = digests.open(ewa)
         notifications.attachTo(digest, notifications.waitingFor(ewa))

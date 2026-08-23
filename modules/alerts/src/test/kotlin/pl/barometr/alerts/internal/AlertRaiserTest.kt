@@ -6,6 +6,7 @@ import pl.barometr.alerts.internal.jooq.tables.references.ALERT_DECISION
 import pl.barometr.alerts.internal.jooq.tables.references.ALERT_RULE
 import pl.barometr.alerts.internal.jooq.tables.references.NOTIFICATION
 import pl.barometr.identity.api.UserId
+import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 import pl.barometr.shared.Ids
@@ -28,7 +29,7 @@ class AlertRaiserTest {
     private val notifications = NotificationRepository(dsl, clock)
     private val decisions = AlertDecisionRepository(dsl, clock)
     private val matching = FakeMatching()
-    private val raiser = AlertRaiser(matching, rules, notifications, decisions, clock)
+    private val raiser = AlertRaiser(matching, SignificanceScale(clock), rules, notifications, decisions, clock)
 
     private val ewa = UserId.next()
     private val profile = ProfileId(Ids.next())
@@ -95,6 +96,49 @@ class AlertRaiserTest {
         matching.catches("a-1", profile, ewa)
 
         assertEquals(1, raiser.raiseFor(act("a-1")))
+    }
+
+    /**
+     * "Only the important ones" is a sentence about a rule, not about a profile: what
+     * somebody cares about has not changed, only what they want waking up for.
+     */
+    @Test
+    fun `a rule that asked for only the important ones is not woken by the rest`() {
+        rules.create(ewa, profile, stages = emptySet(), minimumSignificance = 90)
+        matching.catches("a-1", profile, ewa)
+
+        assertEquals(0, raiser.raiseFor(act("a-1")))
+        assertEquals(listOf("below_threshold"), reasons())
+    }
+
+    @Test
+    fun `the same rule is woken by something that clears the bar`() {
+        rules.create(ewa, profile, stages = emptySet(), minimumSignificance = 70)
+        // Published, on a watchlist by name, and a fortnight from applying: about as
+        // much as anything in this system is ever worth.
+        matching.catches("a-1", profile, ewa, kind = InterestKind.ACT, value = "DU/2024/1222")
+
+        assertEquals(1, raiser.raiseFor(act("a-1", inForce = Duration.ofDays(14))))
+    }
+
+    /**
+     * Frozen at the moment of the decision. A list ordered by a number that moved under
+     * it would reshuffle every time it was opened, and last Tuesday's notification would
+     * be ranked by where the draft stands this Thursday.
+     */
+    @Test
+    fun `what somebody was told records how much it mattered, and why`() {
+        rules.create(ewa, profile, emptySet())
+        matching.catches("a-1", profile, ewa)
+
+        raiser.raiseFor(act("a-1", inForce = Duration.ofDays(3)))
+
+        val told = notifications.listFor(ewa, 10).single()
+        assertTrue(told.significance.score > 0)
+        assertEquals(
+            listOf(SignificanceReason.IN_FORCE, SignificanceReason.DEADLINE_IMMINENT),
+            told.significance.reasons,
+        )
     }
 
     /**
@@ -187,10 +231,21 @@ class AlertRaiserTest {
         assertTrue(decisions.listFor(ewa, 10).isEmpty())
     }
 
-    private fun act(id: String) = ResolvedItem("act", id, "Prawo budowlane", "DU/2024/1222", stage = null)
+    /**
+     * An act is at the end of the path by definition, so [inForce] is the only thing
+     * left that changes what it is worth.
+     */
+    private fun act(id: String, inForce: Duration? = null) = ResolvedItem(
+        kind = "act",
+        id = id,
+        title = "Prawo budowlane",
+        eli = "DU/2024/1222",
+        stage = null,
+        signals = LegislativeSignals(1.0, inForce?.let { clock.instant().plus(it) }),
+    )
 
     private fun draft(id: String, stage: String) =
-        ResolvedItem("draft", id, "Projekt ustawy Prawo budowlane", eli = null, stage = stage)
+        ResolvedItem("draft", id, "Projekt ustawy Prawo budowlane", eli = null, stage = stage, signals = null)
 
     /** Decisions oldest first, which is the order they were taken in. */
     private fun reasons() = decisions.listFor(ewa, 10).map { it.reason }.reversed()

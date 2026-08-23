@@ -23,6 +23,9 @@ data class AlertOutcome(val decision: Decision, val reason: String) {
         /** The draft is at a stage this rule does not watch. */
         val STAGE_NOT_WATCHED = withheld("stage_not_watched")
 
+        /** Below the bar this rule set for how much a thing has to matter. */
+        val BELOW_THRESHOLD = withheld("below_threshold")
+
         /** This exact piece of news has already been raised for this person. */
         val ALREADY_TOLD = withheld("already_told")
 

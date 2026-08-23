@@ -203,9 +203,10 @@ class DigestCloserTest {
             owner,
             profile,
             1,
-            ResolvedItem("act", subject, "Prawo budowlane", "DU/2024/$subject", stage = null),
+            ResolvedItem("act", subject, "Prawo budowlane", "DU/2024/$subject", stage = null, signals = null),
             MatchedInterest(InterestKind.KEYWORD, "prawo budowlane"),
             urgency,
+            Significance(0, emptyList()),
         )
     }
 }

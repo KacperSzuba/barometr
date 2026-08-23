@@ -1,12 +1,16 @@
 package pl.barometr.alerts.internal
 
 /**
- * How much it matters that this arrives now.
+ * How much it matters that this arrives *now*.
  *
- * Chosen by the person on the rule, not computed. Nothing here scores significance yet,
- * and a level filled in by a model that does not exist would read as a guarantee. What
- * it decides today is one thing — whether the quiet hours apply — and "wake me for this
- * one" is a sentence somebody can mean about a profile without any model being right.
+ * Distinct from significance, and the two are easy to confuse. Significance is a
+ * judgement this system makes about a matter and uses to order a list; urgency is a
+ * sentence somebody wrote about a profile — "wake me for this one" — and it decides
+ * one thing only: whether the quiet hours apply.
+ *
+ * Chosen by a person rather than computed, deliberately. A model deciding at three in
+ * the morning that something was worth waking somebody for would be making a promise
+ * on their behalf, and no score this system computes is good enough to make it.
  */
 enum class Urgency(val wireName: String) {
     NORMAL("normal"),

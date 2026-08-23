@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
+import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
 import pl.barometr.legislative.api.TrackedDraft
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
@@ -46,6 +47,22 @@ class LegislativeCatalogAdapter(private val dsl: DSLContext) : LegislativeCatalo
 
     override fun draftById(id: DraftId): TrackedDraft? =
         drafts().where(DRAFT.ID.eq(id.value)).fetchOne { toDraft(it, identifiersOf(id)) }
+
+    /**
+     * The status read model, not the history: where the draft stands is a question
+     * with one answer, and recomputing it from every transition for every item in an
+     * alerting batch is the query that makes a batch take an afternoon.
+     */
+    override fun signalsForDraft(id: DraftId): LegislativeSignals? =
+        dsl.select(DRAFT_STATUS.CURRENT_STAGE, DRAFT_STATUS.HARD_DEADLINE_AT)
+            .from(DRAFT_STATUS)
+            .where(DRAFT_STATUS.DRAFT_ID.eq(id.value))
+            .fetchOne { record ->
+                LegislativeSignals(
+                    progress = StageProgress.of(LegislativeStage.of(record.value1()!!)),
+                    hardDeadlineOn = record.value2()?.toInstant(),
+                )
+            }
 
     override fun draftsAfter(after: DraftId?, limit: Int): List<TrackedDraft> {
         val page = drafts()

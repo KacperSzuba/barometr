@@ -8,9 +8,12 @@ import java.time.Instant
  * A draft that moved and then got published is one thing to a reader and two rows to
  * this system, so the grouping is what turns a list into something worth opening.
  *
- * Ordered by recency within and between groups. The specification asks for significance
- * and nothing computes one yet; recency is the honest stand-in, and saying so here is
- * better than a `sortedBy { importance }` over a column of zeroes.
+ * **Ordered by significance between matters, by recency within one.** The two are
+ * different questions. Which matter to read first is a judgement, and the digest is
+ * worth opening only if it makes that judgement well; what happened inside one matter
+ * is a story, and a story runs in time. A matter is as significant as the most
+ * significant thing that happened in it — the draft that reached its third reading
+ * does not become less important because a minor filing followed it.
  */
 data class DigestContents(
     val digest: Digest,
@@ -22,6 +25,8 @@ data class DigestContents(
         val subjectId: String,
         val title: String,
         val latest: Instant,
+        /** The highest score anything in this matter was given. */
+        val significance: Int,
         val notifications: List<Notification>,
     )
 
@@ -37,10 +42,14 @@ data class DigestContents(
                             subjectId = subject.second,
                             title = newest.title,
                             latest = newest.createdAt,
+                            significance = about.maxOf { it.significance.score },
                             notifications = about.sortedByDescending { it.createdAt },
                         )
                     }
-                    .sortedByDescending { it.latest },
+                    // Recency breaks the tie, which is most of a quiet week: nothing
+                    // scored differently, and then the order somebody expects is the
+                    // order it happened in.
+                    .sortedWith(compareByDescending<Matter> { it.significance }.thenByDescending { it.latest }),
             )
     }
 }

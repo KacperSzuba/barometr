@@ -24,6 +24,17 @@ interface LegislativeCatalog {
 
     fun draftById(id: DraftId): TrackedDraft?
 
+    /**
+     * The evidence for how much this draft matters, or null when nothing is recorded
+     * about where it stands.
+     *
+     * A read of its own rather than two more fields on [TrackedDraft], because the two
+     * answer different questions: a draft is what it is called and where it is, and
+     * this is what somebody ranking a list needs on top of that. Search indexes the
+     * first and has no use for the second.
+     */
+    fun signalsForDraft(id: DraftId): LegislativeSignals?
+
     /** Acts after [after], oldest first. Null starts from the beginning. */
     fun actsAfter(after: ActId?, limit: Int): List<PublishedAct>
 

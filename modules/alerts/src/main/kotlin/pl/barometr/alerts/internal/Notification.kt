@@ -22,6 +22,8 @@ data class Notification(
     val subjectId: String,
     val title: String,
     val urgency: Urgency,
+    /** How much it mattered when it was decided, and what made it so. */
+    val significance: Significance,
     val matchedBy: MatchedInterest,
     val createdAt: Instant,
     val readAt: Instant?,

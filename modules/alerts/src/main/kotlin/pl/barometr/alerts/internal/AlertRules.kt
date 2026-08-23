@@ -26,10 +26,11 @@ class AlertRules(
         profile: ProfileId,
         stages: Set<String>,
         urgency: Urgency,
+        minimumSignificance: Int,
     ): AlertRule {
         if (profiles.ownerOf(profile) != owner) throw UnknownProfileException(profile.toString())
 
-        return rules.create(owner, profile, stages, urgency)
+        return rules.create(owner, profile, stages, urgency, minimumSignificance)
             ?: throw DuplicateAlertRuleException(profile.toString())
     }
 
@@ -39,8 +40,16 @@ class AlertRules(
         enabled: Boolean,
         stages: Set<String>,
         urgency: Urgency,
+        minimumSignificance: Int,
     ): AlertRule =
-        rules.update(own(owner, id).copy(enabled = enabled, stages = stages, urgency = urgency))
+        rules.update(
+            own(owner, id).copy(
+                enabled = enabled,
+                stages = stages,
+                urgency = urgency,
+                minimumSignificance = minimumSignificance,
+            ),
+        )
 
     fun delete(owner: UserId, id: AlertRuleId) {
         own(owner, id)

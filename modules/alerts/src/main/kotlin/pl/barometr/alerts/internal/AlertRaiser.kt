@@ -22,6 +22,7 @@ import java.time.Duration
 @Service
 class AlertRaiser(
     private val matching: ProfileMatching,
+    private val scale: SignificanceScale,
     private val rules: AlertRuleRepository,
     private val notifications: NotificationRepository,
     private val decisions: AlertDecisionRepository,
@@ -40,15 +41,20 @@ class AlertRaiser(
 
     private fun judge(interested: InterestedProfile, item: ResolvedItem): Boolean {
         val rule = rules.forProfile(interested.profile)
-        val outcome = decide(rule, interested, item)
+        // Weighed once, before anything is decided: the same number answers whether
+        // this clears the rule bar and where it will sit in the digest.
+        val significance = scale.weigh(item.signals, interested.matchedBy.kind)
+
+        val outcome = decide(rule, interested, item, significance)
 
         decisions.record(interested.owner, interested.profile, item, outcome)
         return outcome.decision == AlertOutcome.Decision.RAISED
     }
 
     /**
-     * The order is the policy. A rule that does not want this at all is asked first,
-     * because it is the cheapest and the most explicit; the window comes before the
+     * The order is the policy. What the rule does not want at all is asked first,
+     * because those answers are the cheapest and the most explicit — what it does not
+     * watch, then what it does not think worth waking for. The window comes before the
      * write, since being told this morning is a better reason to stay quiet than the
      * news being technically new.
      */
@@ -56,12 +62,14 @@ class AlertRaiser(
         rule: AlertRule?,
         interested: InterestedProfile,
         item: ResolvedItem,
+        significance: Significance,
     ): AlertOutcome = when {
         rule == null -> AlertOutcome.NO_RULE
         !rule.enabled -> AlertOutcome.RULE_DISABLED
         !rule.watches(item.stage) -> AlertOutcome.STAGE_NOT_WATCHED
+        significance.score < rule.minimumSignificance -> AlertOutcome.BELOW_THRESHOLD
         toldRecentlyAbout(interested, item) -> AlertOutcome.CASE_RECENTLY_RAISED
-        !raise(rule, interested, item) -> AlertOutcome.ALREADY_TOLD
+        !raise(rule, interested, item, significance) -> AlertOutcome.ALREADY_TOLD
         else -> AlertOutcome.RAISED
     }
 
@@ -72,7 +80,12 @@ class AlertRaiser(
             clock.instant().minus(CASE_WINDOW),
         )
 
-    private fun raise(rule: AlertRule, interested: InterestedProfile, item: ResolvedItem): Boolean =
+    private fun raise(
+        rule: AlertRule,
+        interested: InterestedProfile,
+        item: ResolvedItem,
+        significance: Significance,
+    ): Boolean =
         notifications.raiseIfNew(
             interested.owner,
             interested.profile,
@@ -80,6 +93,8 @@ class AlertRaiser(
             item,
             interested.matchedBy,
             rule.urgency,
+            significance,
+
         )
 
     private companion object {

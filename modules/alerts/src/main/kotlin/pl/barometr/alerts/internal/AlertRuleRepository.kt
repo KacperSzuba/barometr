@@ -34,6 +34,7 @@ class AlertRuleRepository(
         profile: ProfileId,
         stages: Set<String>,
         urgency: Urgency = Urgency.NORMAL,
+        minimumSignificance: Int = 0,
     ): AlertRule? {
         val id = AlertRuleId.next()
         val now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
@@ -44,6 +45,7 @@ class AlertRuleRepository(
             .set(ALERT_RULE.PROFILE_ID, profile.value)
             .set(ALERT_RULE.ENABLED, true)
             .set(ALERT_RULE.URGENCY, urgency.wireName)
+            .set(ALERT_RULE.MINIMUM_SIGNIFICANCE, minimumSignificance)
             .set(ALERT_RULE.CREATED_AT, now)
             .set(ALERT_RULE.UPDATED_AT, now)
             .onConflict(ALERT_RULE.PROFILE_ID)
@@ -52,7 +54,15 @@ class AlertRuleRepository(
         if (created == 0) return null
 
         writeStages(id, stages)
-        return AlertRule(id, owner, profile, enabled = true, stages = stages, urgency = urgency)
+        return AlertRule(
+            id = id,
+            owner = owner,
+            profile = profile,
+            enabled = true,
+            stages = stages,
+            urgency = urgency,
+            minimumSignificance = minimumSignificance,
+        )
     }
 
     @Transactional
@@ -60,6 +70,7 @@ class AlertRuleRepository(
         dsl.update(ALERT_RULE)
             .set(ALERT_RULE.ENABLED, rule.enabled)
             .set(ALERT_RULE.URGENCY, rule.urgency.wireName)
+            .set(ALERT_RULE.MINIMUM_SIGNIFICANCE, rule.minimumSignificance)
             .set(ALERT_RULE.UPDATED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
             .where(ALERT_RULE.ID.eq(rule.id.value))
             .execute()
@@ -97,6 +108,7 @@ class AlertRuleRepository(
             ALERT_RULE.PROFILE_ID,
             ALERT_RULE.ENABLED,
             ALERT_RULE.URGENCY,
+            ALERT_RULE.MINIMUM_SIGNIFICANCE,
             ALERT_RULE_STAGE.STAGE,
         )
             .from(ALERT_RULE)
@@ -113,6 +125,7 @@ class AlertRuleRepository(
                     stages = rows.mapNotNull { it[ALERT_RULE_STAGE.STAGE] }.toSet(),
                     urgency = Urgency.of(head[ALERT_RULE.URGENCY]!!)
                         ?: error("stored urgency '${head[ALERT_RULE.URGENCY]}'"),
+                    minimumSignificance = head[ALERT_RULE.MINIMUM_SIGNIFICANCE]!!,
                 )
             }
 }

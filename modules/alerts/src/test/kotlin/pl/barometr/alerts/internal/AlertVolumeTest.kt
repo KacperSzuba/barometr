@@ -44,7 +44,14 @@ class AlertVolumeTest {
     private val run = AlertMatchRun(
         pending,
         BufferedItemReader(catalog),
-        AlertRaiser(matching, AlertRuleRepository(dsl, clock), notifications, AlertDecisionRepository(dsl, clock), clock),
+        AlertRaiser(
+            matching,
+            SignificanceScale(clock),
+            AlertRuleRepository(dsl, clock),
+            notifications,
+            AlertDecisionRepository(dsl, clock),
+            clock,
+        ),
     )
 
     private val ewa = UserId.next()

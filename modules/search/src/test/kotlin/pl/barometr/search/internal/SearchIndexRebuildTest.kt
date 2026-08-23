@@ -12,6 +12,7 @@ import org.junit.jupiter.api.parallel.ResourceLock
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
+import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
 import pl.barometr.legislative.api.TrackedDraft
 import pl.barometr.shared.Eli
@@ -147,6 +148,9 @@ class SearchIndexRebuildTest {
         override fun actByEli(eli: Eli) = acts.firstOrNull { it.eli == eli }
 
         override fun draftById(id: DraftId) = drafts.firstOrNull { it.id == id }
+
+        /** Nothing here ranks anything; the signals are somebody else's question. */
+        override fun signalsForDraft(id: DraftId): LegislativeSignals? = null
 
         override fun actsAfter(after: ActId?, limit: Int) =
             acts.dropWhile { after != null && it.id.value <= after.value }.take(limit)

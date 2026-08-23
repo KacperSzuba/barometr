@@ -38,6 +38,8 @@ class NotificationRepository(
         item: ResolvedItem,
         matchedBy: MatchedInterest,
         urgency: Urgency,
+        significance: Significance,
+
     ): Boolean =
         dsl.insertInto(NOTIFICATION)
             .set(NOTIFICATION.ID, Ids.next())
@@ -52,6 +54,11 @@ class NotificationRepository(
             .set(NOTIFICATION.EVENT_KEY, AlertKeys.eventOf(item))
             .set(NOTIFICATION.CASE_KEY, AlertKeys.caseOf(item))
             .set(NOTIFICATION.URGENCY, urgency.wireName)
+            .set(NOTIFICATION.SIGNIFICANCE, significance.score)
+            .set(
+                NOTIFICATION.SIGNIFICANCE_REASONS,
+                significance.reasons.map<SignificanceReason, String?> { it.wireName }.toTypedArray(),
+            )
             .set(NOTIFICATION.CREATED_AT, at(clock.instant()))
             .onConflict(NOTIFICATION.OWNER_ID, NOTIFICATION.EVENT_KEY)
             .doNothing()
@@ -126,6 +133,16 @@ class NotificationRepository(
                         // notification, so it fails rather than guesses.
                         InterestKind.of(it.matchedKind!!) ?: error("stored kind '${it.matchedKind}'"),
                         it.matchedValue!!,
+                    ),
+                    significance = Significance(
+                        it.significance!!,
+                        // A reason stored by this system and unknown to it means a
+                        // release dropped one. Skipped rather than fatal, unlike a
+                        // matched kind: this is why something was ranked where it was,
+                        // and a missing line of that is worth less than the alert.
+                        it.significanceReasons.orEmpty().mapNotNull { name ->
+                            name?.let(SignificanceReason::of)
+                        },
                     ),
                     createdAt = it.createdAt!!.toInstant(),
                     readAt = it.readAt?.toInstant(),

@@ -20,6 +20,13 @@ data class AlertRule(
     val stages: Set<String>,
     /** Whether matches from this profile are worth the quiet hours. */
     val urgency: Urgency = Urgency.NORMAL,
+
+    /**
+     * How much a match has to matter before this rule speaks. Zero means everything
+     * the profile catches, which is what somebody who has not narrowed anything asked
+     * for.
+     */
+    val minimumSignificance: Int = 0,
 ) {
 
     /**

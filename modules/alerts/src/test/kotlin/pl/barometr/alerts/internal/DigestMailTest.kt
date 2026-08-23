@@ -86,6 +86,7 @@ class DigestMailTest {
         subjectId = UUID.randomUUID().toString(),
         title = title,
         latest = Instant.parse("2026-08-22T08:00:00Z"),
+        significance = 0,
         notifications = listOf(
             Notification(
                 id = Ids.next(),
@@ -96,6 +97,7 @@ class DigestMailTest {
                 subjectId = UUID.randomUUID().toString(),
                 title = title,
                 urgency = Urgency.NORMAL,
+                significance = Significance(0, emptyList()),
                 matchedBy = MatchedInterest(kind, matched),
                 createdAt = Instant.parse("2026-08-22T08:00:00Z"),
                 readAt = null,

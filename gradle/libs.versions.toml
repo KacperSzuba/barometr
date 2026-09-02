@@ -24,7 +24,7 @@ googleCloudStorage = "2.71.0"
 # Used only by build-logic, which has no Boot BOM to inherit from. Kept in step with
 # the version the Boot 4.1 BOM manages, so the schema the build generates code from is
 # produced by the same engine that migrates production.
-liquibaseBuild = "5.0.3"
+liquibaseBuild = "5.0.4"
 postgresqlBuild = "42.7.13"
 uuidCreator = "6.1.1"
 pgvector = "0.1.6"

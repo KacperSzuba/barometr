@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import pl.barometr.connectors.rcl.api.RclCatalogPage
+import pl.barometr.connectors.rcl.api.RclChangeRegister
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
 import pl.barometr.connectors.rcl.api.RclStage
@@ -231,6 +232,9 @@ class RclCardProjectorTest {
 
         /** Nothing here reads a catalog; a card is the whole of what is projected. */
         override fun readCatalog(page: ByteArray) = RclCatalogPage(emptyList(), emptyList())
+
+        /** No register is read here; what these tests need is the page above it. */
+        override fun readChangeRegister(page: ByteArray) = RclChangeRegister(subject = null, changes = emptyList())
     }
 
     /** Records what the projector announced; nothing here asserts on it yet. */

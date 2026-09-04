@@ -1,5 +1,10 @@
 package pl.barometr.connectors.rcl
 
+import pl.barometr.connectors.rcl.api.RclChange
+import pl.barometr.connectors.rcl.api.RclChangeKind
+import pl.barometr.connectors.rcl.api.RclChangeRegister
+import pl.barometr.connectors.rcl.api.RclRegisterScope
+import pl.barometr.connectors.rcl.api.RclRegisterSubject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 

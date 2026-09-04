@@ -1,4 +1,4 @@
-package pl.barometr.connectors.rcl
+package pl.barometr.connectors.rcl.api
 
 /** What a register entry did, as far as its wording can be trusted. */
 enum class RclChangeKind {

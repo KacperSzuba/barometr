@@ -1,5 +1,7 @@
 package pl.barometr.connectors.rcl
 
+import pl.barometr.connectors.rcl.api.RclChangeKind
+import pl.barometr.connectors.rcl.api.RclRegisterScope
 import pl.barometr.connectors.rcl.api.RclStageState
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -125,11 +127,30 @@ class RclPageParsingTest {
         val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/rcl/project-ustawa-12409051.html"))
             .use { it.readBytes() }
 
-        val throughPort = assertNotNull(JsoupRclPageReader(cards, catalogs).readProjectCard(bytes))
+        val throughPort = assertNotNull(JsoupRclPageReader(cards, catalogs, registers).readProjectCard(bytes))
 
         assertEquals(cards.readProjectCard(fixture("project-ustawa-12409051.html"))?.title, throughPort.title)
         assertEquals("12409051", throughPort.projectId)
         assertTrue(throughPort.title.isNotBlank())
+    }
+
+    /**
+     * The same for the one page that times anything to the minute. It is read through
+     * the port by whatever derives a draft's timeline, and a port that lost the
+     * timestamps would lose the only reason these pages are fetched.
+     */
+    @Test
+    fun `the published reader sees the register's stage transitions too`() {
+        val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/rcl/register-project-12409051.html"))
+            .use { it.readBytes() }
+
+        val throughPort = JsoupRclPageReader(cards, catalogs, registers).readChangeRegister(bytes)
+
+        assertEquals(
+            registers.readChangeRegister(fixture("register-project-12409051.html")).stageTransitions.map { it.newValue },
+            throughPort.stageTransitions.map { it.newValue },
+        )
+        assertEquals(LocalDateTime.of(2026, 4, 9, 15, 26), throughPort.stageTransitions[1].occurredAt)
     }
 
     @Test

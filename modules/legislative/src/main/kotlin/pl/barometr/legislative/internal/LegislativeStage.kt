@@ -21,10 +21,14 @@ enum class LegislativeStage(val wireName: String) {
      * actually support.
      *
      * A card is a checklist: stages with a state each and, on the few that have moved,
-     * a last-modified stamp. That stamp is not the day a stage began, so the finer
-     * stages below wait for the change registers, which time events to the minute.
-     * What the card does state is the day the draft entered the process, and saying
-     * that much is far better than leaving a draft with no position in time at all.
+     * a last-modified stamp. That stamp is not the day a stage began, so this is all a
+     * card can honestly support — the day the draft entered the process, and the fact
+     * that it is in it.
+     *
+     * The finer stages below are dated from the change registers instead, which time
+     * every move to the minute. Both are recorded: this one says a draft is somewhere
+     * in the government's process from the day it was created, and the others say where
+     * — so a draft whose register has not been read yet still has a position in time.
      */
     GOVERNMENT_PROCESS("proces_rzadowy"),
     PROGRAMME_OF_WORK("wykaz_prac"),

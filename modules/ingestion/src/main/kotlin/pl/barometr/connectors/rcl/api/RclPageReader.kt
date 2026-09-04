@@ -14,6 +14,20 @@ interface RclPageReader {
     fun readProjectCard(page: ByteArray): RclProjectCard?
 
     /**
+     * A draft's or a catalog's event log.
+     *
+     * Published for the same reason the two above are, and with a sharper payoff: this
+     * is the only page on the source that times anything to the minute. A card says a
+     * stage was last touched on some date; the register says the draft moved to
+     * "Konsultacje publiczne" at 15:24 that day, which is the difference between a
+     * timeline and a list of dates.
+     *
+     * Returns an empty register rather than null for bytes that are not one, for the
+     * same reason [readCatalog] does: a register with nothing in it is a real answer.
+     */
+    fun readChangeRegister(page: ByteArray): RclChangeRegister
+
+    /**
      * A stage's catalog: its folders and the files in them.
      *
      * Returns an empty page rather than null for bytes that are not a catalog, because

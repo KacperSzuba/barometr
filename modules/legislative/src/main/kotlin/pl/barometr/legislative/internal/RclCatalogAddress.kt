@@ -22,6 +22,9 @@ data class RclCatalogAddress(val projectId: String, val catalogId: String) {
         /** `projekt/ustawa/12409051` — the draft's own card, and the prefix of the rest. */
         private val CARD = Regex("""projekt/[^/]+/([^/]+)""")
 
+        /** `projekt/ustawa/12409051/rejestr` — the draft's event log. */
+        private val CHANGE_REGISTER = Regex("""projekt/[^/]+/([^/]+)/rejestr""")
+
         /** `projekt/ustawa/12409051/katalog/13196866` — a stage's own page. */
         private val CATALOG_PAGE = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)""")
 
@@ -37,6 +40,10 @@ data class RclCatalogAddress(val projectId: String, val catalogId: String) {
          */
         fun projectIn(externalId: ExternalId): String? =
             CARD.matchEntire(externalId.value)?.groupValues?.get(1)
+
+        /** The project whose event log this is, or null when the address is not one. */
+        fun projectInChangeRegister(externalId: ExternalId): String? =
+            CHANGE_REGISTER.matchEntire(externalId.value)?.groupValues?.get(1)
 
         fun ofCatalogPage(externalId: ExternalId): RclCatalogAddress? = read(CATALOG_PAGE, externalId)
 

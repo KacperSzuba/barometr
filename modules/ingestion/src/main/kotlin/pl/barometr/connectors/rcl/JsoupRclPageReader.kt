@@ -2,6 +2,7 @@ package pl.barometr.connectors.rcl
 
 import org.jsoup.Jsoup
 import pl.barometr.connectors.rcl.api.RclCatalogPage
+import pl.barometr.connectors.rcl.api.RclChangeRegister
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
 import java.io.ByteArrayInputStream
@@ -21,6 +22,7 @@ import java.io.ByteArrayInputStream
 class JsoupRclPageReader(
     private val cards: RclProjectCardParser,
     private val catalogs: RclCatalogParser,
+    private val registers: RclChangeRegisterParser,
 ) : RclPageReader {
 
     override fun readProjectCard(page: ByteArray): RclProjectCard? =
@@ -28,6 +30,9 @@ class JsoupRclPageReader(
 
     override fun readCatalog(page: ByteArray): RclCatalogPage =
         catalogs.readCatalog(parse(page))
+
+    override fun readChangeRegister(page: ByteArray): RclChangeRegister =
+        registers.readChangeRegister(parse(page))
 
     private fun parse(page: ByteArray) = ByteArrayInputStream(page).use { bytes ->
         Jsoup.parse(bytes, null, "")

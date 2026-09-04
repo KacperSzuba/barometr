@@ -1,4 +1,4 @@
-package pl.barometr.connectors.rcl
+package pl.barometr.connectors.rcl.api
 
 import java.time.LocalDateTime
 

@@ -25,14 +25,15 @@ import java.time.ZoneOffset
  * consultation, and knowing it exists — its title, its ministry, the number people
  * quote it by — is most of what this product promises before the Sejm ever prints it.
  *
- * **One stage is recorded, and it is deliberately a coarse one.** A card is a
+ * **One stage is recorded here, and it is deliberately a coarse one.** A card is a
  * checklist: eight stages with a state each — not started, current, done — and at most
  * a "last modified" stamp on the few that have moved. That stamp is not the day a
  * stage began, and `stage_transition` exists to answer what the status was on a given
- * day, so the per-stage timeline waits for the change registers, which the connector
- * already archives and which time events to the minute. What the card does state is
- * the day the draft entered the process, and that one dated fact is what gives a
- * government draft a position in time months before the Sejm has heard of it.
+ * day, so the per-stage timeline is read from the change registers instead, by
+ * [RclChangeRegisterProjector], which is the only page on this source that times a move
+ * to the minute. What the card does state is the day the draft entered the process, and
+ * that one dated fact is what gives a government draft a position in time months before
+ * the Sejm has heard of it — and before its register has been read.
  *
  * **The consultation it opens is the one thing here a reader can still act on.** A card
  * showing a public-consultation stage means comments are being taken; when they close

@@ -36,6 +36,7 @@ class RclConnectorConfiguration {
     fun rclPageReader(properties: RclProperties): RclPageReader = JsoupRclPageReader(
         RclProjectCardParser(properties.selectors.projectCard),
         RclCatalogParser(properties.selectors.catalog),
+        RclChangeRegisterParser(properties.selectors.changeRegister),
     )
 
     @Bean

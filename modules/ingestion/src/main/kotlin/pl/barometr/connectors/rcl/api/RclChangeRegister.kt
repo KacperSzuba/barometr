@@ -1,4 +1,4 @@
-package pl.barometr.connectors.rcl
+package pl.barometr.connectors.rcl.api
 
 /**
  * A draft's or a catalog's event log, oldest entry first, as RPL renders it.

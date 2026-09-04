@@ -14,6 +14,7 @@ import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionId
 import pl.barometr.corpus.api.DocumentVersionRecorded
 import pl.barometr.ingestion.api.ExternalId
+import pl.barometr.legislative.internal.jooq.tables.references.CONSULTATION
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.legislative.internal.jooq.tables.references.STAGE_TRANSITION
@@ -54,6 +55,7 @@ class RclCardProjectorTest {
 
     @BeforeEach
     fun setUp() {
+        dsl.deleteFrom(CONSULTATION).execute()
         dsl.deleteFrom(STAGE_TRANSITION).execute()
         dsl.deleteFrom(DRAFT_IDENTIFIER).execute()
         dsl.deleteFrom(DRAFT).execute()
@@ -65,6 +67,7 @@ class RclCardProjectorTest {
             drafts = DraftRepository(dsl, clock),
             identifiers = DraftIdentifierRepository(dsl, clock),
             transitions = StageTransitionRepository(dsl, clock),
+            consultations = ConsultationOpening(ConsultationRepository(dsl, clock)),
             events = RecordingEventPublisher(),
             meters = SimpleMeterRegistry(),
             clock = clock,
@@ -136,6 +139,42 @@ class RclCardProjectorTest {
         assertEquals(1, dsl.fetchCount(DRAFT))
         assertEquals(2, dsl.fetchCount(DRAFT_IDENTIFIER))
         assertEquals(1, dsl.fetchCount(STAGE_TRANSITION), "the same dated fact is not appended twice")
+    }
+
+    /**
+     * The card is where a consultation is announced; the letter that dates it arrives
+     * days later among a dozen other files. So the row is opened empty and waits, and
+     * an empty row is the honest answer to "when do comments close" until a document
+     * says.
+     */
+    @Test
+    fun `a card showing public consultation opens one on that stage's catalog`() {
+        projector.projectGovernmentDraft(archivedCard())
+
+        val consultation = assertNotNull(dsl.selectFrom(CONSULTATION).fetchOne())
+        assertEquals("13196866", consultation.sourceCatalog, "the stage's own catalog id")
+        assertNull(consultation.closesOn, "nothing has stated a term yet")
+        assertNull(consultation.statedBy, "and so nothing is cited")
+    }
+
+    /**
+     * "Uzgodnienia" is ministries agreeing among themselves and "Opiniowanie" is a
+     * named list of institutions being asked. A citizen who files under either has
+     * filed into a process they were not party to, so neither becomes a calendar entry.
+     */
+    @Test
+    fun `the stages that are not public consultation open nothing`() {
+        projector.projectGovernmentDraft(archivedCard())
+
+        assertEquals(1, dsl.fetchCount(CONSULTATION), "three stages on the card, one of them public")
+    }
+
+    @Test
+    fun `a card re-fetched every six hours opens one consultation`() {
+        projector.projectGovernmentDraft(archivedCard())
+        projector.projectGovernmentDraft(archivedCard())
+
+        assertEquals(1, dsl.fetchCount(CONSULTATION))
     }
 
     @Test

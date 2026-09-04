@@ -153,6 +153,11 @@ class RclCardProjectorTest {
 
         val consultation = assertNotNull(dsl.selectFrom(CONSULTATION).fetchOne())
         assertEquals("13196866", consultation.sourceCatalog, "the stage's own catalog id")
+        assertEquals(
+            "projekt/ustawa/12409051",
+            consultation.sourceAddress,
+            "where the card lives, and so where the letter filed under it will be looked for",
+        )
         assertNull(consultation.closesOn, "nothing has stated a term yet")
         assertNull(consultation.statedBy, "and so nothing is cited")
     }

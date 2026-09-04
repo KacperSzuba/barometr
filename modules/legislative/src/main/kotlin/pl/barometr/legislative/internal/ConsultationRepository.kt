@@ -10,6 +10,7 @@ import pl.barometr.legislative.internal.jooq.tables.references.CATALOG_FOLDER
 import pl.barometr.legislative.internal.jooq.tables.references.CONSULTATION
 import pl.barometr.shared.Ids
 import java.time.Clock
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -36,18 +37,71 @@ class ConsultationRepository(
      * against.
      */
     @Transactional
-    fun openConsultation(draftId: DraftId, sourceCatalog: String): ConsultationId {
-        val inserted = dsl.insertInto(CONSULTATION)
+    fun openConsultation(draftId: DraftId, sourceCatalog: String, sourceAddress: String): ConsultationId {
+        val id = dsl.insertInto(CONSULTATION)
             .set(CONSULTATION.ID, Ids.next())
             .set(CONSULTATION.DRAFT_ID, draftId.value)
             .set(CONSULTATION.SOURCE_CATALOG, sourceCatalog)
+            .set(CONSULTATION.SOURCE_ADDRESS, sourceAddress)
             .set(CONSULTATION.KNOWN_AT, now())
-            .onConflictDoNothing()
+            .onConflict(CONSULTATION.DRAFT_ID, CONSULTATION.SOURCE_CATALOG)
+            // The address and nothing else. A card restated every six hours must not
+            // touch the dates or the evidence — those belong to whatever letter stated
+            // them — but a row opened before the column existed has no way to acquire
+            // an address except from a card saying it again.
+            .doUpdate()
+            .set(CONSULTATION.SOURCE_ADDRESS, sourceAddress)
             .returningResult(CONSULTATION.ID)
             .fetchOne()
             ?.value1()
 
-        return ConsultationId(inserted ?: existingConsultation(draftId, sourceCatalog))
+        return ConsultationId(requireNotNull(id) { "upsert of consultation '$sourceCatalog' returned no id" })
+    }
+
+    /**
+     * Consultations nothing has dated, least recently looked for first.
+     *
+     * [sweptSince] holds the sweep off the ones it looked at recently: a consultation
+     * whose documents state no term is a permanent member of this set, and re-reading
+     * its dozen files every half hour for the months it stays open would be most of
+     * what the sweep ever did.
+     *
+     * The ones with no address are left out rather than swept blind — a row opened
+     * before that column existed cannot say where to look, and the next reading of its
+     * card fills it in.
+     */
+    @Transactional(readOnly = true)
+    fun undatedConsultations(limit: Int, sweptSince: Instant): List<UndatedConsultation> =
+        dsl.select(CONSULTATION.ID, CONSULTATION.SOURCE_CATALOG, CONSULTATION.SOURCE_ADDRESS)
+            .from(CONSULTATION)
+            .where(CONSULTATION.CLOSES_ON.isNull)
+            .and(CONSULTATION.SOURCE_ADDRESS.isNotNull)
+            .and(
+                CONSULTATION.SWEPT_AT.isNull
+                    .or(CONSULTATION.SWEPT_AT.lt(OffsetDateTime.ofInstant(sweptSince, ZoneOffset.UTC))),
+            )
+            .orderBy(CONSULTATION.SWEPT_AT.asc().nullsFirst())
+            .limit(limit)
+            .fetch {
+                UndatedConsultation(
+                    id = ConsultationId(it.value1()!!),
+                    sourceCatalog = it.value2()!!,
+                    sourceAddress = it.value3()!!,
+                )
+            }
+
+    /**
+     * Records that the archive was searched, whatever it turned up.
+     *
+     * Written even when a term was found, so that a consultation dated and then
+     * reopened by a ministry does not go to the front of the queue on the strength of
+     * never having been looked at.
+     */
+    fun markSwept(id: ConsultationId) {
+        dsl.update(CONSULTATION)
+            .set(CONSULTATION.SWEPT_AT, now())
+            .where(CONSULTATION.ID.eq(id.value))
+            .execute()
     }
 
     /**
@@ -124,14 +178,6 @@ class ConsultationRepository(
                     .or(CONSULTATION.STATED_DOCUMENT.eq(fact.statedIn.value)),
             )
             .execute() > 0
-
-    private fun existingConsultation(draftId: DraftId, sourceCatalog: String) =
-        dsl.select(CONSULTATION.ID)
-            .from(CONSULTATION)
-            .where(CONSULTATION.DRAFT_ID.eq(draftId.value))
-            .and(CONSULTATION.SOURCE_CATALOG.eq(sourceCatalog))
-            .fetchOne()!!
-            .value1()!!
 
     private fun now() = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
 }

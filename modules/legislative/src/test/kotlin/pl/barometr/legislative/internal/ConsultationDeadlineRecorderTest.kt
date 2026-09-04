@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import pl.barometr.corpus.api.ArchivedDocument
+import pl.barometr.corpus.api.ArchivedVersion
 import pl.barometr.corpus.api.DocumentCatalog
 import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentKind
@@ -70,7 +71,7 @@ class ConsultationDeadlineRecorderTest {
         recorder = ConsultationDeadlineRecorder(
             documents = documents,
             blobs = blobs,
-            letters = ConsultationLetterReader(),
+            terms = ConsultationTerms(ConsultationLetterReader(), SimpleMeterRegistry()),
             consultations = consultations,
             meters = SimpleMeterRegistry(),
         )
@@ -78,7 +79,7 @@ class ConsultationDeadlineRecorderTest {
 
     @Test
     fun `a letter filed in the consultation's folder dates it`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
 
         recorder.recordDeadlineStatedInDocument(extracted(letter(writtenOn = "9 kwietnia 2026")))
@@ -98,7 +99,7 @@ class ConsultationDeadlineRecorderTest {
      */
     @Test
     fun `a term ending on a day off closes on the next working day`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
 
         recorder.recordDeadlineStatedInDocument(extracted(letter(writtenOn = "10 kwietnia 2026")))
@@ -108,7 +109,7 @@ class ConsultationDeadlineRecorderTest {
 
     @Test
     fun `the offsets recorded point at the sentence in the extracted text`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
         val text = letter(writtenOn = "9 kwietnia 2026")
 
@@ -124,7 +125,7 @@ class ConsultationDeadlineRecorderTest {
      */
     @Test
     fun `a document filed under another stage dates nothing`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(OPINION_FOLDER, OTHER_STAGE)
 
         recorder.recordDeadlineStatedInDocument(
@@ -141,7 +142,7 @@ class ConsultationDeadlineRecorderTest {
      */
     @Test
     fun `a document that states no term leaves the consultation undated`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
 
         recorder.recordDeadlineStatedInDocument(
@@ -160,7 +161,7 @@ class ConsultationDeadlineRecorderTest {
      */
     @Test
     fun `a period with no dateline leaves the consultation undated`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
 
         recorder.recordDeadlineStatedInDocument(
@@ -172,7 +173,7 @@ class ConsultationDeadlineRecorderTest {
 
     @Test
     fun `a document that is not RPL's is not looked at`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
 
         recorder.recordDeadlineStatedInDocument(
             extracted(letter(writtenOn = "9 kwietnia 2026"), externalId = ExternalId("term10/print/424")),
@@ -226,10 +227,14 @@ class ConsultationDeadlineRecorderTest {
 
         override fun documentById(id: DocumentId) = archived[id]
 
+        /** Nothing here reads the archive by address; the sweep is what does that. */
+        override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? = null
+
         override fun countByKind() = emptyMap<DocumentKind, Int>()
     }
 
     private companion object {
+        const val CARD = "projekt/ustawa/12409051"
         const val STAGE = "13196866"
         const val LETTERS_FOLDER = "13196868"
         const val OTHER_STAGE = "13196872"

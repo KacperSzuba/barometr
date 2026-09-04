@@ -30,6 +30,21 @@ data class RclCatalogAddress(val projectId: String, val catalogId: String) {
         fun ofFiledDocument(externalId: ExternalId): RclCatalogAddress? = read(FILED_DOCUMENT, externalId)
 
         /**
+         * The same two shapes written rather than read, for a caller going the other
+         * way: it holds a draft's address and a folder, and wants to know what to ask
+         * the archive for.
+         *
+         * Here rather than beside the caller so that the format is stated once on this
+         * side of the boundary — a sweep that spelled an address slightly differently
+         * from the way one is parsed would find nothing, and find it silently.
+         */
+        fun catalogPageAt(draftAddress: String, catalogId: String) =
+            ExternalId("$draftAddress/katalog/$catalogId")
+
+        fun filedDocumentAt(draftAddress: String, catalogId: String, documentId: String) =
+            ExternalId("${catalogPageAt(draftAddress, catalogId).value}/dokument/$documentId")
+
+        /**
          * `matchEntire`, not `find`: a catalog's change register is a catalog page's
          * address with `/rejestr` on the end, and a file's is one with two more
          * segments. A prefix match would read all three as the same thing and hand a

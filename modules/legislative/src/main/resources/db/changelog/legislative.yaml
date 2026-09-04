@@ -30,3 +30,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0008-catalog-folder.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0009-consultation-sweep.sql
+      relativeToChangelogFile: false

@@ -23,11 +23,17 @@ class ConsultationOpening(private val consultations: ConsultationRepository) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun openConsultationsOnCard(draftId: DraftId, card: RclProjectCard) {
+    /**
+     * [cardAddress] is where the card itself lives in the archive. Kept on the row
+     * because it is the only way back to the documents filed under the stage — see
+     * `0009-consultation-sweep.sql` — and the card is the one place this context ever
+     * holds it.
+     */
+    fun openConsultationsOnCard(draftId: DraftId, card: RclProjectCard, cardAddress: String) {
         card.stages
             .filter { ConsultationStages.isPublicConsultation(it.name) }
             .forEach { stage ->
-                val consultation = consultations.openConsultation(draftId, stage.catalogId)
+                val consultation = consultations.openConsultation(draftId, stage.catalogId, cardAddress)
 
                 log.debug("Consultation {} open on catalog {} of draft {}", consultation, stage.catalogId, draftId)
             }

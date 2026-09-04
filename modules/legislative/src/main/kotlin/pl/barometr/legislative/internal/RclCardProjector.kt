@@ -76,10 +76,10 @@ class RclCardProjector(
             return
         }
 
-        record(card, recorded.versionId)
+        record(card, recorded.versionId, recorded.externalId.value)
     }
 
-    private fun record(card: RclProjectCard, statedBy: DocumentVersionId) {
+    private fun record(card: RclProjectCard, statedBy: DocumentVersionId, cardAddress: String) {
         val draft = DraftFromRegister(
             title = card.title,
             // RPL is the government's own legislative process; everything on it is a
@@ -100,7 +100,7 @@ class RclCardProjector(
         // The one stage a reader can still act on. Opened from the card because the
         // card is where a consultation is announced; when it closes is read later, out
         // of the letter filed under it.
-        consultations.openConsultationsOnCard(draftId, card)
+        consultations.openConsultationsOnCard(draftId, card, cardAddress)
 
         // The number a person actually quotes. Absent on a draft filed outside any
         // ministry's programme of work, which is why it is an alias and not the claim.

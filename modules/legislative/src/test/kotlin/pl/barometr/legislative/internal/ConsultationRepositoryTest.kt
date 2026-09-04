@@ -62,8 +62,8 @@ class ConsultationRepositoryTest {
      */
     @Test
     fun `a card read twice opens one consultation`() {
-        val first = consultations.openConsultation(draftId, STAGE)
-        val again = consultations.openConsultation(draftId, STAGE)
+        val first = consultations.openConsultation(draftId, STAGE, CARD)
+        val again = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertEquals(first, again, "the same consultation, not a second one")
         assertEquals(1, dsl.fetchCount(CONSULTATION))
@@ -71,7 +71,7 @@ class ConsultationRepositoryTest {
 
     @Test
     fun `a consultation is opened with no dates and no evidence`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
 
         val row = assertNotNull(dsl.selectFrom(CONSULTATION).fetchOne())
         assertNull(row.closesOn, "a consultation nothing has dated yet")
@@ -81,7 +81,7 @@ class ConsultationRepositoryTest {
 
     @Test
     fun `a document filed in a folder of the stage belongs to its consultation`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
 
         assertEquals(consultation, consultations.consultationInCatalog(LETTERS_FOLDER))
@@ -90,7 +90,7 @@ class ConsultationRepositoryTest {
     /** Some ministries file the letter under the stage itself rather than a folder. */
     @Test
     fun `a document filed under the stage itself belongs to its consultation`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertEquals(consultation, consultations.consultationInCatalog(STAGE))
     }
@@ -103,7 +103,7 @@ class ConsultationRepositoryTest {
      */
     @Test
     fun `a document filed under another stage of the same draft belongs to no consultation`() {
-        consultations.openConsultation(draftId, STAGE)
+        consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordFolder(OPINION_FOLDER, OTHER_STAGE)
 
         assertNull(consultations.consultationInCatalog(OPINION_FOLDER))
@@ -112,7 +112,7 @@ class ConsultationRepositoryTest {
     @Test
     fun `a folder recorded before its consultation was opened still matches`() {
         consultations.recordFolder(LETTERS_FOLDER, STAGE)
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertEquals(
             consultation,
@@ -123,7 +123,7 @@ class ConsultationRepositoryTest {
 
     @Test
     fun `a term read from a letter is recorded with the words it was read from`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertTrue(consultations.recordTerm(consultation, fact()))
 
@@ -143,7 +143,7 @@ class ConsultationRepositoryTest {
      */
     @Test
     fun `a second document does not overwrite the term the first one stated`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
         consultations.recordTerm(consultation, fact())
 
         val second = consultations.recordTerm(
@@ -158,7 +158,7 @@ class ConsultationRepositoryTest {
     /** A ministry replacing its own letter is a correction, and corrections apply. */
     @Test
     fun `a later version of the same document restates the term`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
         val letter = DocumentId(Ids.next())
         consultations.recordTerm(consultation, fact(document = letter))
 
@@ -178,7 +178,7 @@ class ConsultationRepositoryTest {
      */
     @Test
     fun `the database refuses a closing date with nothing behind it`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertFailsWith<DataAccessException> {
             dsl.update(CONSULTATION)
@@ -191,7 +191,7 @@ class ConsultationRepositoryTest {
     /** `ck_consultation_period_counted`: a period with no day to count from is a number. */
     @Test
     fun `the database refuses a period with no day to count it from`() {
-        val consultation = consultations.openConsultation(draftId, STAGE)
+        val consultation = consultations.openConsultation(draftId, STAGE, CARD)
 
         assertFailsWith<DataAccessException> {
             dsl.update(CONSULTATION)
@@ -217,6 +217,7 @@ class ConsultationRepositoryTest {
     )
 
     private companion object {
+        const val CARD = "projekt/ustawa/12409051"
         const val STAGE = "13196866"
         const val LETTERS_FOLDER = "13196868"
         const val OTHER_STAGE = "13196872"

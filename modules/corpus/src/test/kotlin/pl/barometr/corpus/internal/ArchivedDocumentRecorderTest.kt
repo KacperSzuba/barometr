@@ -94,6 +94,39 @@ class ArchivedDocumentRecorderTest {
     }
 
     /**
+     * The way back in for a consumer that cannot follow an event: an address, and the
+     * hashes to read what is at it. Events fire once, so a derivation written after the
+     * archive filled up has no other way to reach what is already in it.
+     */
+    @Test
+    fun `what is archived at an address can be found by that address`() {
+        recorder.recordDocumentVersion(archive(PRINT, print(title = "Ustawa o cenach energii")))
+
+        val archived = assertNotNull(documents.latestVersionAt(PRINT))
+        assertEquals(dsl.selectFrom(DOCUMENT).fetchOne()?.id, archived.documentId.value)
+        assertNull(archived.textHash, "nothing has extracted this version's text")
+    }
+
+    /**
+     * The newest, because that is what a caller re-reading the archive wants: the
+     * ministry's corrected letter rather than the one it replaced.
+     */
+    @Test
+    fun `an address answers with the newest version at it`() {
+        recorder.recordDocumentVersion(archive(PRINT, print(title = "Ustawa o cenach energii")))
+        clock.advanceBy(Duration.ofHours(1))
+        recorder.recordDocumentVersion(archive(PRINT, print(title = "Ustawa o cenach energii (poprawiona)")))
+
+        val newest = dsl.selectFrom(DOCUMENT_VERSION).orderBy(DOCUMENT_VERSION.VERSION_NO.desc()).limit(1).fetchOne()
+        assertEquals(newest?.id, documents.latestVersionAt(PRINT)?.versionId?.value)
+    }
+
+    @Test
+    fun `an address nothing was archived at answers with nothing`() {
+        assertNull(documents.latestVersionAt(ExternalId("term10/print/9999")))
+    }
+
+    /**
      * The version chain is what the whole thing is for: an amended print is a new
      * version of the same document, pointing at the one it replaced, rather than a
      * second document nobody can line up against the first.

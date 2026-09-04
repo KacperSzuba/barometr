@@ -74,7 +74,7 @@ class ConsultationCalendarTest {
      */
     @Test
     fun `a consultation nothing has dated is in no window`() {
-        val undated = consultations.openConsultation(draft("Projekt ustawy o zmianie ustawy"), "13196866")
+        val undated = consultations.openConsultation(draft("Projekt ustawy o zmianie ustawy"), "13196866", CARD)
 
         assertEquals(
             emptyList(),
@@ -125,7 +125,7 @@ class ConsultationCalendarTest {
     }
 
     private fun dated(title: String, closesOn: LocalDate): ConsultationId {
-        val consultation = consultations.openConsultation(draft(title), Ids.next().toString())
+        val consultation = consultations.openConsultation(draft(title), Ids.next().toString(), CARD)
 
         consultations.recordTerm(
             consultation,
@@ -155,6 +155,7 @@ class ConsultationCalendarTest {
     )
 
     private companion object {
+        const val CARD = "projekt/ustawa/12409051"
         const val QUOTE = "proszę o zgłoszenie uwag w terminie 21 dni od dnia otrzymania niniejszego pisma"
     }
 }

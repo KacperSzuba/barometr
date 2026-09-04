@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.corpus.api.ArchivedDocument
+import pl.barometr.corpus.api.ArchivedVersion
 import pl.barometr.corpus.api.DocumentCatalog
 import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentKind
@@ -205,6 +206,9 @@ class ActIdentityMatcherTest {
             title = title,
             publishedAt = PRINT_PUBLISHED_AT,
         )
+
+        /** Identity resolution works from events; only the sweep reads by address. */
+        override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? = null
 
         override fun countByKind() = emptyMap<DocumentKind, Int>()
     }

@@ -15,3 +15,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/corpus/0003-extracted-text.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/corpus/0004-document-by-address.sql
+      relativeToChangelogFile: false

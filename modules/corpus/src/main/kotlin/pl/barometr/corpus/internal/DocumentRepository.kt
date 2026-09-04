@@ -4,6 +4,7 @@ import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import pl.barometr.corpus.api.ArchivedDocument
+import pl.barometr.corpus.api.ArchivedVersion
 import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionId
@@ -145,6 +146,38 @@ class DocumentRepository(
                 )
             }
     }
+
+    /**
+     * The newest version of whatever is archived at this address.
+     *
+     * One statement rather than a document lookup followed by a version lookup: the
+     * caller is walking a list of addresses, and two round trips per address is the
+     * difference between a sweep that finishes and one that is always behind.
+     *
+     * The oldest document wins if an address were ever shared by two sources, which
+     * the port states as its contract — a deterministic answer beats an arbitrary one
+     * even for a case that should not arise.
+     */
+    fun latestVersionAt(externalId: ExternalId): ArchivedVersion? =
+        dsl.select(
+            DOCUMENT.ID,
+            DOCUMENT_VERSION.ID,
+            DOCUMENT_VERSION.CONTENT_HASH,
+            DOCUMENT_VERSION.TEXT_HASH,
+        )
+            .from(DOCUMENT)
+            .join(DOCUMENT_VERSION).on(DOCUMENT_VERSION.DOCUMENT_ID.eq(DOCUMENT.ID))
+            .where(DOCUMENT.EXTERNAL_ID.eq(externalId.value))
+            .orderBy(DOCUMENT.CREATED_AT, DOCUMENT_VERSION.VERSION_NO.desc())
+            .limit(1)
+            .fetchOne { record ->
+                ArchivedVersion(
+                    documentId = DocumentId(record.value1()!!),
+                    versionId = DocumentVersionId(record.value2()!!),
+                    contentHash = ContentHash.ofBytes(record.value3()!!),
+                    textHash = record.value4()?.let(ContentHash::ofBytes),
+                )
+            }
 
     /**
      * Counted in the database rather than by loading rows: this feeds a gauge, and a

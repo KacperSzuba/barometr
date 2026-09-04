@@ -42,6 +42,7 @@ class NotificationController(
                 profileVersion = it.profileVersion,
                 significance = it.significance.score,
                 significanceReasons = it.significance.reasons.map { reason -> reason.wireName },
+                closesOn = it.closesOn?.toString(),
                 createdAt = it.createdAt.toString(),
 
                 readAt = it.readAt?.toString(),
@@ -119,6 +120,11 @@ class NotificationController(
          * language is not decided here.
          */
         val significanceReasons: List<String>,
+        /**
+         * The day comments are due, on an alert raised because a consultation is about
+         * to close. Null on every other kind, which is most of them.
+         */
+        val closesOn: String?,
         val createdAt: String,
         val readAt: String?,
     )

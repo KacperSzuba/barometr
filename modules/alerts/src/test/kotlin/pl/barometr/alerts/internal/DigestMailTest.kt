@@ -6,9 +6,11 @@ import pl.barometr.profiles.api.MatchedInterest
 import pl.barometr.profiles.api.ProfileId
 import pl.barometr.shared.Ids
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -67,6 +69,28 @@ class DigestMailTest {
         assertTrue(message.text.contains("<ustawy> & innych"))
     }
 
+    /**
+     * The one line in this mail that asks the reader to do something, and the reason
+     * the digest is worth opening the day it arrives rather than at the weekend.
+     */
+    @Test
+    fun `a consultation deadline is stated in full, in both renderings`() {
+        val message = compose(
+            listOf(matter("Projekt ustawy o kredycie konsumenckim", "kredyt", closesOn = LocalDate.of(2026, 4, 30))),
+        )
+
+        assertTrue(message.text.contains("Termin zgłaszania uwag: 30.04.2026"), message.text)
+        assertTrue(message.html.contains("Termin zgłaszania uwag: 30.04.2026"), message.html)
+    }
+
+    /** Most matters are news about something that already happened, and carry no date. */
+    @Test
+    fun `a matter with no deadline says nothing about one`() {
+        val message = compose(listOf(matter("Ustawa o dostępie do informacji publicznej", "informacja")))
+
+        assertFalse(message.text.contains("Termin"), message.text)
+    }
+
     private fun subjectFor(matters: Int) =
         compose(List(matters) { matter("Ustawa numer $it", "prawo") }).subject
 
@@ -81,6 +105,7 @@ class DigestMailTest {
         title: String,
         matched: String,
         kind: InterestKind = InterestKind.KEYWORD,
+        closesOn: LocalDate? = null,
     ) = DigestContents.Matter(
         subjectKind = "act",
         subjectId = UUID.randomUUID().toString(),
@@ -99,6 +124,7 @@ class DigestMailTest {
                 urgency = Urgency.NORMAL,
                 significance = Significance(0, emptyList()),
                 matchedBy = MatchedInterest(kind, matched),
+                closesOn = closesOn,
                 createdAt = Instant.parse("2026-08-22T08:00:00Z"),
                 readAt = null,
             ),

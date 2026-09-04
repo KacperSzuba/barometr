@@ -55,6 +55,7 @@ class NotificationRepository(
             .set(NOTIFICATION.CASE_KEY, AlertKeys.caseOf(item))
             .set(NOTIFICATION.URGENCY, urgency.wireName)
             .set(NOTIFICATION.SIGNIFICANCE, significance.score)
+            .set(NOTIFICATION.CLOSES_ON, item.notice?.closesOn)
             .set(
                 NOTIFICATION.SIGNIFICANCE_REASONS,
                 significance.reasons.map<SignificanceReason, String?> { it.wireName }.toTypedArray(),
@@ -144,6 +145,7 @@ class NotificationRepository(
                             name?.let(SignificanceReason::of)
                         },
                     ),
+                    closesOn = it.closesOn,
                     createdAt = it.createdAt!!.toInstant(),
                     readAt = it.readAt?.toInstant(),
                 )

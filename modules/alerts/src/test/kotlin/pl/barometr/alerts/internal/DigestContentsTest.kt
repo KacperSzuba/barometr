@@ -88,6 +88,7 @@ class DigestContentsTest {
         urgency = Urgency.NORMAL,
         significance = Significance(significance, emptyList()),
         matchedBy = MatchedInterest(InterestKind.KEYWORD, "prawo"),
+        closesOn = null,
         createdAt = Instant.parse("2026-08-22T$at:00Z"),
         readAt = null,
     )

@@ -15,3 +15,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/alerts/0004-significance.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/alerts/0005-consultation-deadlines.sql
+      relativeToChangelogFile: false

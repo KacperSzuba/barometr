@@ -43,7 +43,7 @@ class AlertVolumeTest {
 
     private val run = AlertMatchRun(
         pending,
-        BufferedItemReader(catalog),
+        BufferedItemReader(catalog, FakeConsultationCalendar(), clock),
         AlertRaiser(
             matching,
             SignificanceScale(clock),

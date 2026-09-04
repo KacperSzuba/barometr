@@ -4,6 +4,7 @@ import pl.barometr.identity.api.UserId
 import pl.barometr.profiles.api.MatchedInterest
 import pl.barometr.profiles.api.ProfileId
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -25,6 +26,12 @@ data class Notification(
     /** How much it mattered when it was decided, and what made it so. */
     val significance: Significance,
     val matchedBy: MatchedInterest,
+    /**
+     * The day comments are due, on the one kind of notification that is about a date
+     * rather than about news. Null on every other, and frozen here for the reason
+     * significance is: what somebody was told is a record of a moment.
+     */
+    val closesOn: LocalDate?,
     val createdAt: Instant,
     val readAt: Instant?,
 )

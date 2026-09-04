@@ -12,7 +12,7 @@ shedlock = "7.9.0"
 # limiter and no robots.txt parser. Boot 4 does not manage either version.
 resilience4j = "2.4.0"
 crawlerCommons = "1.6"
-jsoup = "1.23.1"
+jsoup = "1.23.2"
 # Text extraction from the files RPL and the BIPs publish. Nothing in Spring or the
 # JDK reads a PDF or a Word document, and the archive is now mostly both.
 tika = "3.3.1"

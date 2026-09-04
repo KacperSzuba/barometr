@@ -117,6 +117,13 @@ class ConsultationLetterReader {
      * would cut the request for comments away from the term it applies to — which is
      * exactly the phrase that tells the two apart.
      *
+     * Neither is the full stop of an abbreviation, for the same reason and at closer
+     * range. A ministry states both readings in one breath — "w terminie 21 dni, tj. do
+     * dnia 30 kwietnia 2026 r." — and a stop taken at `tj.` cuts the date away from the
+     * only words that make it a deadline rather than a number, so the date is dropped
+     * and the reading falls back to the period. Hence the rule below: a stop followed
+     * by a lower-case word is inside a sentence, not at the end of one.
+     *
      * Bounded, because a document whose punctuation did not survive extraction would
      * otherwise quote a whole page.
      */
@@ -124,8 +131,18 @@ class ConsultationLetterReader {
         val floor = (term.first - QUOTE_REACH).coerceAtLeast(0)
         val ceiling = (term.last + QUOTE_REACH).coerceAtMost(text.length - 1)
 
-        var start = text.lastIndexOfAny(SENTENCE_ENDS, term.first).let { if (it < floor) floor else it + 1 }
-        var end = text.indexOfAny(SENTENCE_ENDS, term.last).let { if (it < 0 || it > ceiling) ceiling else it } + 1
+        // Scanned from the floor rather than from the start of the document, and over
+        // the text itself rather than a copy of that window: whether a stop ends a
+        // sentence is decided by what follows it, and a window cut just before the term
+        // would hide exactly the word — "tj. do dnia" — that the rule turns on.
+        val opening = SENTENCE_END.findAll(text, floor)
+            .takeWhile { it.range.last < term.first }
+            .lastOrNull()
+        var start = opening?.let { it.range.last + 1 } ?: floor
+        var end = SENTENCE_END.find(text, term.last)
+            ?.range?.last?.takeIf { it <= ceiling }
+            ?.let { it + 1 }
+            ?: (ceiling + 1)
 
         // The offsets are the citation, so whitespace is dropped by moving them rather
         // than by trimming the text afterwards: a quote that is not exactly what sits
@@ -210,8 +227,13 @@ class ConsultationLetterReader {
          */
         val PLAUSIBLE_DAYS = 1..180
 
-        val DATELINE =
-            Regex("""(?:^|\n)[ \t]*\p{Lu}[\p{L}.-]+(?:[ \t]+\p{Lu}?[\p{L}.-]+)?[ \t]*,[ \t]*$LONG_DATE""")
+        /**
+         * `dnia` is optional because both forms are current and the longer one is the
+         * one a ministry's template prints: "Warszawa, dnia 9 kwietnia 2026 r."
+         */
+        val DATELINE = Regex(
+            """(?:^|\n)[ \t]*\p{Lu}[\p{L}.-]+(?:[ \t]+\p{Lu}?[\p{L}.-]+)?[ \t]*,[ \t]*(?:dnia[ \t]+)?$LONG_DATE""",
+        )
 
         /**
          * What a covering letter does and a statute does not: ask somebody for
@@ -222,7 +244,12 @@ class ConsultationLetterReader {
 
         val EMAIL = Regex("""[\w.+-]+@[\w-]+(?:\.[\w-]+)+""")
 
-        val SENTENCE_ENDS = charArrayOf('.', ';', ':')
+        /**
+         * A semicolon or a colon always ends a clause; a full stop does unless a
+         * lower-case word follows it, which is what "tj.", "art." and "ust." look like
+         * and what the end of a sentence never does.
+         */
+        val SENTENCE_END = Regex("""[;:]|\.(?!\s*\p{Ll})""")
 
         /** Enough for the sentence, short enough to render beside a date. */
         const val QUOTE_REACH = 300

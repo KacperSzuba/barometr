@@ -34,6 +34,11 @@ import java.time.ZoneOffset
  * the day the draft entered the process, and that one dated fact is what gives a
  * government draft a position in time months before the Sejm has heard of it.
  *
+ * **The consultation it opens is the one thing here a reader can still act on.** A card
+ * showing a public-consultation stage means comments are being taken; when they close
+ * is not on the card, so an empty row is opened for the letter filed under that stage
+ * to fill in — see [ConsultationOpening].
+ *
  * **A draft here and the same draft in the Sejm stay two records for now.** Neither
  * register prints the other's number in a form the other shows — the Sejm knows
  * `RM-0610-102-23`, the card shows `12409051` and `UD383` — so joining them means
@@ -48,6 +53,7 @@ class RclCardProjector(
     private val drafts: DraftRepository,
     private val identifiers: DraftIdentifierRepository,
     private val transitions: StageTransitionRepository,
+    private val consultations: ConsultationOpening,
     private val events: ApplicationEventPublisher,
     private val meters: MeterRegistry,
     private val clock: Clock,
@@ -90,6 +96,11 @@ class RclCardProjector(
 
         drafts.restateDraft(draftId, draft)
         recordEntryIntoTheProcess(draftId, card, statedBy)
+
+        // The one stage a reader can still act on. Opened from the card because the
+        // card is where a consultation is announced; when it closes is read later, out
+        // of the letter filed under it.
+        consultations.openConsultationsOnCard(draftId, card)
 
         // The number a person actually quotes. Absent on a draft filed outside any
         // ministry's programme of work, which is why it is an alias and not the claim.

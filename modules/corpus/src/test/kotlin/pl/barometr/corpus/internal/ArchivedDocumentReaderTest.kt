@@ -148,6 +148,34 @@ class ArchivedDocumentReaderTest {
     }
 
     /**
+     * The files themselves, which are most of what this source contributes and which
+     * every one of the four page shapes above merely points at. They were archived as
+     * `unknown` — with a warning apiece — until the reader was taught this shape.
+     */
+    @Test
+    fun `a file filed under a stage is classified as one`() {
+        val filed = rcl.describe(
+            ExternalId("projekt/ustawa/12409051/katalog/13196868/dokument/778141"),
+            ByteArray(0),
+        )
+
+        assertEquals(DocumentKind("rcl-filed-document"), filed.kind)
+        assertNull(filed.title, "a file's name is printed on the page above it, not in its bytes")
+    }
+
+    /**
+     * The two are one segment apart and the catalog's shape is a prefix of the file's,
+     * so a match that was not anchored would read every filed document as the folder it
+     * sits in.
+     */
+    @Test
+    fun `a file is not mistaken for the folder it is filed in`() {
+        val folder = rcl.describe(ExternalId("projekt/ustawa/12409051/katalog/13196868"), ByteArray(0))
+
+        assertEquals(DocumentKind("rcl-catalog"), folder.kind)
+    }
+
+    /**
      * The port stands in for the connector's parser, which is the point of it being a
      * port: this context needs a title out of a page, not a description of RPL's
      * markup.

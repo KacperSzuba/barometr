@@ -220,7 +220,10 @@ class ConsultationDeadlineRecorderTest {
         private val archived = mutableMapOf<DocumentId, ArchivedDocument>()
 
         fun record(id: DocumentId, externalId: ExternalId) {
-            archived[id] = ArchivedDocument(id, externalId, DocumentKind.UNKNOWN, title = null, publishedAt = null)
+            // What corpus classifies a file filed under a stage as. The recorder matches
+            // on the address rather than the kind, but a fixture that said otherwise
+            // would be describing an archive this system does not produce.
+            archived[id] = ArchivedDocument(id, externalId, FILED_DOCUMENT, title = null, publishedAt = null)
         }
 
         fun clear() = archived.clear()
@@ -236,6 +239,7 @@ class ConsultationDeadlineRecorderTest {
     }
 
     private companion object {
+        val FILED_DOCUMENT = DocumentKind("rcl-filed-document")
         const val CARD = "projekt/ustawa/12409051"
         const val STAGE = "13196866"
         const val LETTERS_FOLDER = "13196868"

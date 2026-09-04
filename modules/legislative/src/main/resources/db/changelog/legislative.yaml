@@ -24,3 +24,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0006-withdrawn-drafts.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0007-consultation.sql
+      relativeToChangelogFile: false

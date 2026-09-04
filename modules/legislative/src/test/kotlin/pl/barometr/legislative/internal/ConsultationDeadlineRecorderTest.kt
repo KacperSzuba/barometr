@@ -227,8 +227,10 @@ class ConsultationDeadlineRecorderTest {
 
         override fun documentById(id: DocumentId) = archived[id]
 
-        /** Nothing here reads the archive by address; the sweep is what does that. */
+        /** Nothing here reads the archive back; the sweeps are what do that. */
         override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? = null
+
+        override fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int) = emptyList<ArchivedVersion>()
 
         override fun countByKind() = emptyMap<DocumentKind, Int>()
     }

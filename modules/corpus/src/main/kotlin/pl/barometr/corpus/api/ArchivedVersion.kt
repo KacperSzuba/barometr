@@ -1,5 +1,6 @@
 package pl.barometr.corpus.api
 
+import pl.barometr.ingestion.api.ExternalId
 import pl.barometr.shared.ContentHash
 
 /**
@@ -18,6 +19,12 @@ import pl.barometr.shared.ContentHash
  */
 data class ArchivedVersion(
     val documentId: DocumentId,
+    /**
+     * The address the source knows it by, carried so that a caller enumerating the
+     * archive can tell what it is holding — for several sources the address is the only
+     * place a document's shape is stated at all.
+     */
+    val externalId: ExternalId,
     val versionId: DocumentVersionId,
     val contentHash: ContentHash,
     val textHash: ContentHash?,

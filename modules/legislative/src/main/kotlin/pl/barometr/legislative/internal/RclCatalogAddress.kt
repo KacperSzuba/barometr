@@ -3,8 +3,8 @@ package pl.barometr.legislative.internal
 import pl.barometr.ingestion.api.ExternalId
 
 /**
- * Where in RPL's tree an archived page or file sits, read back out of the address it
- * was archived under.
+ * Where in RPL's tree an archived card, page or file sits, read back out of the
+ * address it was archived under.
  *
  * The address is the only thing that survives into this context. An event says a
  * version of some document exists; whether that document is a consultation letter or
@@ -19,11 +19,24 @@ import pl.barometr.ingestion.api.ExternalId
 data class RclCatalogAddress(val projectId: String, val catalogId: String) {
 
     companion object {
+        /** `projekt/ustawa/12409051` — the draft's own card, and the prefix of the rest. */
+        private val CARD = Regex("""projekt/[^/]+/([^/]+)""")
+
         /** `projekt/ustawa/12409051/katalog/13196866` — a stage's own page. */
         private val CATALOG_PAGE = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)""")
 
         /** `projekt/ustawa/12409051/katalog/13196868/dokument/778141` — a file in a folder. */
         private val FILED_DOCUMENT = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)/dokument/[^/]+""")
+
+        /**
+         * The project a card's address names, or null when the address is not a card's.
+         *
+         * The kind segment is skipped rather than read: `ustawa` and `rozporzadzenie`
+         * partition the archive for counting, and nothing in this context has ever had
+         * a use for which side of it a draft is on.
+         */
+        fun projectIn(externalId: ExternalId): String? =
+            CARD.matchEntire(externalId.value)?.groupValues?.get(1)
 
         fun ofCatalogPage(externalId: ExternalId): RclCatalogAddress? = read(CATALOG_PAGE, externalId)
 

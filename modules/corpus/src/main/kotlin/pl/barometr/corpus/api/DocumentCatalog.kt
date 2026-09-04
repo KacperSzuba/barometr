@@ -35,6 +35,17 @@ interface DocumentCatalog {
      */
     fun latestVersionAt(externalId: ExternalId): ArchivedVersion?
 
+    /**
+     * A page of what the archive holds of one kind, oldest first, each with its newest
+     * version.
+     *
+     * For a derivation that has to go over the archive rather than wait at its edge —
+     * one written after the documents it needs were already stored. Paged by identity
+     * rather than by offset: the identifiers are time-ordered, so `after` walks the
+     * whole kind in order and cannot skip a document stored while the walk was running.
+     */
+    fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int): List<ArchivedVersion>
+
     /** How many documents the corpus holds of each kind. */
     fun countByKind(): Map<DocumentKind, Int>
 }

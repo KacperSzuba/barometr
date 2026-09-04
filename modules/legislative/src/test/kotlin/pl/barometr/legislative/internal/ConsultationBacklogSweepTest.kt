@@ -8,17 +8,12 @@ import pl.barometr.connectors.rcl.api.RclCatalogPage
 import pl.barometr.connectors.rcl.api.RclFiledDocument
 import pl.barometr.connectors.rcl.api.RclPageReader
 import pl.barometr.connectors.rcl.api.RclProjectCard
-import pl.barometr.corpus.api.ArchivedDocument
-import pl.barometr.corpus.api.ArchivedVersion
 import pl.barometr.corpus.api.DocumentId
-import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.corpus.api.DocumentVersionId
-import pl.barometr.ingestion.api.ExternalId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.internal.jooq.tables.references.CATALOG_FOLDER
 import pl.barometr.legislative.internal.jooq.tables.references.CONSULTATION
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
-import pl.barometr.shared.ContentHash
 import pl.barometr.shared.Ids
 import pl.barometr.storage.BlobBucket
 import pl.barometr.storage.internal.FilesystemBlobStore
@@ -46,7 +41,7 @@ class ConsultationBacklogSweepTest {
 
     private val dsl = PostgresTestDatabase.dslFor(javaClass)
     private val clock = TestClock()
-    private val archive = ArchiveByAddress()
+    private val archive = FakeArchive()
 
     private val consultations = ConsultationRepository(dsl, clock)
 
@@ -208,44 +203,6 @@ class ConsultationBacklogSweepTest {
         Uprzejmie przekazuję w załączeniu projekt ustawy z prośbą o zgłoszenie uwag
         w terminie 21 dni od dnia otrzymania niniejszego pisma.
     """.trimIndent()
-
-    /**
-     * The archive, addressed the way a caller going back over it addresses one: by the
-     * id the source knows a document by, because that is the only id such a caller can
-     * reconstruct.
-     */
-    private class ArchiveByAddress : ArchiveStub() {
-        private val versions = mutableMapOf<String, ArchivedVersion>()
-        private val asked = mutableListOf<String>()
-
-        val lookups: List<String> get() = asked.toList()
-
-        fun holds(address: String, contentHash: ContentHash? = null, textHash: ContentHash? = null) {
-            versions[address] = ArchivedVersion(
-                documentId = DocumentId(Ids.next()),
-                versionId = DocumentVersionId(Ids.next()),
-                contentHash = contentHash ?: ContentHash.of(address.toByteArray()),
-                textHash = textHash,
-            )
-        }
-
-        fun clear() {
-            versions.clear()
-            asked.clear()
-        }
-
-        override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? {
-            asked += externalId.value
-            return versions[externalId.value]
-        }
-    }
-
-    /** The two methods the sweep never calls, answered once rather than in every fake. */
-    private abstract class ArchiveStub : pl.barometr.corpus.api.DocumentCatalog {
-        override fun documentById(id: DocumentId): ArchivedDocument? = null
-
-        override fun countByKind(): Map<DocumentKind, Int> = emptyMap()
-    }
 
     /**
      * The stage's page, rendering its whole subtree: the draft, a scan, and the letter

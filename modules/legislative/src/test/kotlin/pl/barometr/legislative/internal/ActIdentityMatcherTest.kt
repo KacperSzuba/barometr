@@ -207,8 +207,10 @@ class ActIdentityMatcherTest {
             publishedAt = PRINT_PUBLISHED_AT,
         )
 
-        /** Identity resolution works from events; only the sweep reads by address. */
+        /** Identity resolution works from events; only the sweeps read the archive back. */
         override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? = null
+
+        override fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int) = emptyList<ArchivedVersion>()
 
         override fun countByKind() = emptyMap<DocumentKind, Int>()
     }

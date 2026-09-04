@@ -6,6 +6,7 @@ import pl.barometr.corpus.api.ArchivedDocument
 import pl.barometr.corpus.api.ArchivedVersion
 import pl.barometr.corpus.api.DocumentCatalog
 import pl.barometr.corpus.api.DocumentId
+import pl.barometr.corpus.api.DocumentKind
 import pl.barometr.ingestion.api.ExternalId
 
 /**
@@ -19,6 +20,9 @@ class DocumentCatalogAdapter(private val documents: DocumentRepository) : Docume
     override fun documentById(id: DocumentId): ArchivedDocument? = documents.byId(id)
 
     override fun latestVersionAt(externalId: ExternalId): ArchivedVersion? = documents.latestVersionAt(externalId)
+
+    override fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int): List<ArchivedVersion> =
+        documents.versionsOfKind(kind, after, limit)
 
     override fun countByKind() = documents.countByKind()
 }

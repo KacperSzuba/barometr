@@ -33,3 +33,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0009-consultation-sweep.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0010-consultations-read-from-card.sql
+      relativeToChangelogFile: false

@@ -8,6 +8,7 @@ import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
+import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.shared.Ids
 import java.time.Clock
 import java.time.OffsetDateTime
@@ -62,6 +63,39 @@ class DraftRepository(
             .set(DRAFT.CLOSED_ON, draft.closedOn)
             .set(DRAFT.OUTCOME, draft.outcome?.wireName)
             .set(DRAFT.UPDATED_AT, now())
+            .where(DRAFT.ID.eq(id.value))
+            .execute()
+    }
+
+    /**
+     * The draft RPL knows by this project id, if its card has never been read for the
+     * stages it puts out to comment.
+     *
+     * Null covers two different answers on purpose — no such draft, or one already
+     * read — because the caller does the same thing with both: walk on. It is the
+     * question a sweep over the archived cards asks of every card it finds, so it is
+     * one indexed lookup rather than two.
+     */
+    @Transactional(readOnly = true)
+    fun draftAwaitingConsultationsFromCard(projectId: String): DraftId? =
+        dsl.select(DRAFT.ID)
+            .from(DRAFT)
+            .join(DRAFT_IDENTIFIER).on(DRAFT_IDENTIFIER.DRAFT_ID.eq(DRAFT.ID))
+            .where(DRAFT_IDENTIFIER.SCHEME.eq(DraftIdentifierScheme.RCL_PROJECT.wireName))
+            .and(DRAFT_IDENTIFIER.VALUE.eq(projectId))
+            .and(DRAFT.CONSULTATIONS_READ_AT.isNull)
+            .fetchOne { DraftId(it.value1()!!) }
+
+    /**
+     * Records that this draft's card has been read for consultation stages.
+     *
+     * Written by the projector as well as the sweep: a card just projected has been
+     * read, and leaving it unmarked would have the sweep fetch and parse it again to
+     * reach the answer it already has.
+     */
+    fun markConsultationsReadFromCard(id: DraftId) {
+        dsl.update(DRAFT)
+            .set(DRAFT.CONSULTATIONS_READ_AT, now())
             .where(DRAFT.ID.eq(id.value))
             .execute()
     }

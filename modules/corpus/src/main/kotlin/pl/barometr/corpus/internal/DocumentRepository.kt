@@ -159,25 +159,63 @@ class DocumentRepository(
      * even for a case that should not arise.
      */
     fun latestVersionAt(externalId: ExternalId): ArchivedVersion? =
-        dsl.select(
-            DOCUMENT.ID,
-            DOCUMENT_VERSION.ID,
-            DOCUMENT_VERSION.CONTENT_HASH,
-            DOCUMENT_VERSION.TEXT_HASH,
-        )
-            .from(DOCUMENT)
-            .join(DOCUMENT_VERSION).on(DOCUMENT_VERSION.DOCUMENT_ID.eq(DOCUMENT.ID))
+        newestVersions()
             .where(DOCUMENT.EXTERNAL_ID.eq(externalId.value))
-            .orderBy(DOCUMENT.CREATED_AT, DOCUMENT_VERSION.VERSION_NO.desc())
+            .orderBy(NEWEST_PER_DOCUMENT)
             .limit(1)
-            .fetchOne { record ->
-                ArchivedVersion(
-                    documentId = DocumentId(record.value1()!!),
-                    versionId = DocumentVersionId(record.value2()!!),
-                    contentHash = ContentHash.ofBytes(record.value3()!!),
-                    textHash = record.value4()?.let(ContentHash::ofBytes),
-                )
-            }
+            .fetchOne(::toArchivedVersion)
+
+    /**
+     * A page of what the archive holds of one kind, oldest first.
+     *
+     * Keyset paging by identity rather than an offset: the identifiers are
+     * time-ordered, so `id > last` walks the whole kind in order and cannot skip a
+     * document another transaction inserted while the walk was running — which an
+     * offset can, and does, exactly while a crawl is going on beside it.
+     */
+    fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int): List<ArchivedVersion> =
+        newestVersions()
+            .where(DOCUMENT.KIND.eq(kind.value))
+            .and(after?.let { DOCUMENT.ID.gt(it.value) } ?: DSL.noCondition())
+            .orderBy(NEWEST_PER_DOCUMENT)
+            .limit(limit)
+            .fetch(::toArchivedVersion)
+
+    /**
+     * Every document, with its newest version beside it.
+     *
+     * `DISTINCT ON` rather than a join to a subquery: Postgres reads the first row of
+     * each document from the index that already orders versions by number, which is
+     * what makes walking a whole kind of the archive one scan rather than one query per
+     * document.
+     *
+     * Its ordering is fixed by Postgres — a `DISTINCT ON` must be ordered by the
+     * expressions it is distinct on — and it happens to be the ordering both callers
+     * want anyway: identity, which is the paging order, and the newest version within
+     * each. Identifiers are time-ordered, so "lowest id" also settles the theoretical
+     * case of two sources sharing an address in favour of the older document.
+     */
+    private fun newestVersions() = dsl.select(
+        DOCUMENT.ID,
+        DOCUMENT.EXTERNAL_ID,
+        DOCUMENT_VERSION.ID,
+        DOCUMENT_VERSION.CONTENT_HASH,
+        DOCUMENT_VERSION.TEXT_HASH,
+    )
+        .distinctOn(DOCUMENT.ID)
+        .from(DOCUMENT)
+        .join(DOCUMENT_VERSION).on(DOCUMENT_VERSION.DOCUMENT_ID.eq(DOCUMENT.ID))
+
+    /** Both callers order by it, and Postgres requires that they do. */
+    private val NEWEST_PER_DOCUMENT = listOf(DOCUMENT.ID.asc(), DOCUMENT_VERSION.VERSION_NO.desc())
+
+    private fun toArchivedVersion(record: org.jooq.Record) = ArchivedVersion(
+        documentId = DocumentId(record.get(DOCUMENT.ID)!!),
+        externalId = ExternalId(record.get(DOCUMENT.EXTERNAL_ID)!!),
+        versionId = DocumentVersionId(record.get(DOCUMENT_VERSION.ID)!!),
+        contentHash = ContentHash.ofBytes(record.get(DOCUMENT_VERSION.CONTENT_HASH)!!),
+        textHash = record.get(DOCUMENT_VERSION.TEXT_HASH)?.let(ContentHash::ofBytes),
+    )
 
     /**
      * Counted in the database rather than by loading rows: this feeds a gauge, and a

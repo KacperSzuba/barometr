@@ -101,6 +101,10 @@ class RclCardProjector(
         // card is where a consultation is announced; when it closes is read later, out
         // of the letter filed under it.
         consultations.openConsultationsOnCard(draftId, card, cardAddress)
+        // Read, and recorded as read: the sweep over archived cards exists for the ones
+        // this listener never sees, and re-parsing a card it has just handled would be
+        // work for an answer already given.
+        drafts.markConsultationsReadFromCard(draftId)
 
         // The number a person actually quotes. Absent on a draft filed outside any
         // ministry's programme of work, which is why it is an alias and not the claim.

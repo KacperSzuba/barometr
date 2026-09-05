@@ -73,6 +73,22 @@ when the build ends — the same container code generation reads. Nine modules e
 starting their own and re-running the same changesets was most of what a test run spent
 its time on.
 
+**Where there is no Docker daemon, point the build at a Postgres that is running:**
+
+```bash
+./gradlew check -Pbarometr.postgres.url=jdbc:postgresql://localhost:5432
+BAROMETR_POSTGRES_URL=jdbc:postgresql://localhost:5432 ./gradlew check   # same thing, for an agent
+```
+
+It has to be Postgres 16 with `pgvector` — the schema declares `vector` columns — and it
+is migrated from nothing by this project's own changelog, so what the generated code and
+the tests see is the schema the migrations produce either way; what differs is who
+started the process. `barometr.postgres.username` and `.password` go with it, and default
+to `postgres`. The template and every per-class copy are dropped and remade on each run,
+because a server that outlives the build still holds the last one's. The tests needing
+something other than Postgres — the search index, the mail server, the storage emulator —
+still need Docker and are the only ones that fail without it.
+
 Inside it, each test class gets **its own database**, copied from the migrated template
 with `CREATE DATABASE … TEMPLATE` — about seventy milliseconds, so a class clearing a
 table is clearing its own copy and classes can run side by side. The methods inside one

@@ -134,9 +134,18 @@ object PostgresTestDatabase {
             database
         }
 
+    /**
+     * A copy of the template, replacing whatever is there under the same name.
+     *
+     * The drop is for a server that outlives the build — one this suite was pointed at
+     * rather than one it started. A container comes up empty every time and the drop is
+     * a no-op; an adopted server still holds last run's copies, and the counter in the
+     * name starts again at one, so the second run collided with the first.
+     */
     private fun clone(database: String) {
         DriverManager.getConnection(urlOf(ADMIN), template.username, template.password)
             .use {
+                it.createStatement().execute("""DROP DATABASE IF EXISTS "$database"""")
                 it.createStatement()
                     .execute("""CREATE DATABASE "$database" TEMPLATE "${template.database}"""")
             }

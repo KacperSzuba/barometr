@@ -1,11 +1,18 @@
 package pl.barometr.alerts.internal
 
-import biweekly.Biweekly
+import biweekly.ICalVersion
 import biweekly.ICalendar
+import biweekly.component.StandardTime
 import biweekly.component.VEvent
+import biweekly.component.VTimezone
+import biweekly.io.TimezoneAssignment
+import biweekly.io.text.ICalWriter
 import biweekly.property.Status
+import biweekly.util.DateTimeComponents
 import biweekly.util.Duration
+import biweekly.util.UtcOffset
 import org.springframework.stereotype.Service
+import java.io.StringWriter
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -63,10 +70,31 @@ class ConsultationCalendarFeed(private val clock: Clock) {
 
         deadlines.forEach { calendar.addEvent(eventFor(it)) }
 
-        // UTC as the writer's timezone, matching how the dates below are built: a
-        // floating date formatted in one zone from a `Date` built in another is the
-        // classic way an all-day event lands on the wrong day.
-        return Biweekly.write(calendar).tz(TimeZone.getTimeZone(ZoneOffset.UTC), false).go()
+        return written(calendar)
+    }
+
+    /**
+     * UTC as the writer's timezone, matching how the dates below are built: a floating
+     * date formatted in one zone from a `Date` built in another is the classic way an
+     * all-day event lands on the wrong day.
+     *
+     * Written through the writer rather than through `Biweekly.write(…).tz(zone, …)`,
+     * and that is not a preference. The convenience method has one implementation of
+     * "which timezone": download the definition from `tzurl.org`, per call, over plain
+     * HTTP. A calendar feed that cannot be produced when a third-party site is blocked,
+     * slow or gone is not a feed anybody can subscribe to — and this deployment's egress
+     * refuses it outright, which is how it was found. The definition of UTC is four
+     * lines and does not change, so it is stated here.
+     */
+    private fun written(calendar: ICalendar): String {
+        val text = StringWriter()
+
+        ICalWriter(text, ICalVersion.V2_0).use { writer ->
+            writer.globalTimezone = UTC
+            writer.write(calendar)
+        }
+
+        return text.toString()
     }
 
     private fun eventFor(deadline: ProfileDeadline): VEvent = VEvent().apply {
@@ -105,6 +133,20 @@ class ConsultationCalendarFeed(private val clock: Clock) {
     private fun midnight(day: LocalDate): Date = Date.from(day.atStartOfDay(ZoneOffset.UTC).toInstant())
 
     private companion object {
+        /** UTC, stated rather than fetched. `STANDARD` with no offset either side is all it is. */
+        val UTC: TimezoneAssignment = TimezoneAssignment(
+            TimeZone.getTimeZone(ZoneOffset.UTC),
+            VTimezone("UTC").apply {
+                addStandardTime(
+                    StandardTime().apply {
+                        setDateStart(DateTimeComponents.parse("19700101T000000"))
+                        setTimezoneOffsetFrom(UtcOffset(0L))
+                        setTimezoneOffsetTo(UtcOffset(0L))
+                    },
+                )
+            },
+        )
+
         const val PRODUCT_ID = "-//Barometr//Konsultacje publiczne//PL"
         const val CALENDAR_NAME = "Barometr — konsultacje publiczne"
 

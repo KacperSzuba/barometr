@@ -9,3 +9,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/taxonomy/0001-item-industry.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/taxonomy/0002-classification-progress.sql
+      relativeToChangelogFile: false

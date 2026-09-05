@@ -152,6 +152,44 @@ from one route, and gone the moment the factor is turned off.
 | `app.identity.geoip.database-path` | a MaxMind `.mmdb` file, if the deployment has one. Unset, the device list shows addresses without a place beside them; set to something unreadable, the application refuses to start |
 | `app.identity.workspace.invitation-base-url` | where an invitation link points |
 
+### Which industries a law concerns
+
+The question the product is sold on: a company says "we are in 41.20.Z", and something
+has to connect that to a bill about building work. Nothing in a title says so in those
+terms, so every act and draft is read against a **lexicon** — a list of Polish phrases
+with the PKD code each one points at, and how much a single occurrence of it is worth as
+evidence. It lives in
+[`pkd-lexicon.json`](modules/taxonomy/src/main/resources/taxonomy/pkd-lexicon.json) and
+is meant to be edited: that file is the knowledge, and the matcher around it is
+deliberately dull.
+
+Terms are written as **stems**, because Polish inflects everything a law is about:
+`transporcie drogow` matches *drogowym* and *drogowego* alike, and a lexicon of whole
+words would have to list every case ending or match nothing. Evidence combines rather
+than adding — `1 - Π(1 - w)` — so two hints are surer than either alone and no pile of
+weak ones ever becomes certainty.
+
+What that buys is a number per code, and the number decides what happens to it:
+
+| Confidence | What it means |
+|---|---|
+| below `app.taxonomy.floor-confidence` | not recorded at all — a lone weak stem is not a question worth putting to anybody |
+| below `app.taxonomy.acceptance-threshold` | recorded as pending: it routes nothing and waits in the review queue at `GET /api/v1/taxonomy/review` |
+| at or above it | accepted, and alerts route on it from that moment |
+
+**A verdict a person has looked at is never re-decided by a machine.** A code somebody
+rejected does not come back accepted on the next reading; that is a `CHECK`-shaped rule
+written into the upsert, and it is what makes the queue worth working through.
+
+**Correcting the lexicon is how coverage improves**, and it costs an edit and a version
+bump: a new `version` in that file has no progress recorded against it, so the walk over
+the archive starts again from the beginning and every act and draft meets the terms that
+have just been fixed. Live documents are classified as they are recorded; the walk exists
+for everything that was already stored, which on the day the classifier ships is all of
+it. `taxonomy.verdicts{status="accepted"|"pending"}` is how much of the archive carries
+an industry at all — a profile watching an industry nothing is tagged with is a
+subscription to silence, and silence is what a working alert engine also looks like.
+
 ### The public API
 
 `/api/v1/public/**` is open. No account, no key, sixty requests an hour by address —
@@ -273,8 +311,8 @@ shared          value types. No Spring, no persistence, no HTTP.
 shared-testing  test harness: a migrated Postgres and a movable clock.
 platform        technical capability with no domain meaning: http · jobs · storage
 modules/        one bounded context each — identity, sources, ingestion (with the
-                connectors that read each source), corpus, legislative, search,
-                profiles, alerts, audit
+                connectors that read each source), corpus, legislative, taxonomy,
+                search, profiles, alerts, audit
 infra/          the Elasticsearch image, which is built rather than pulled: the
                 Polish analyser ships as a plugin Elastic distributes separately
 build-logic/    convention plugins, as an included build

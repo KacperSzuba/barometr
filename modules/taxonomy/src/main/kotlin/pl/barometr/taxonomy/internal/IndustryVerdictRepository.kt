@@ -52,6 +52,12 @@ class IndustryVerdictRepository(private val dsl: DSLContext) {
             .set(ITEM_INDUSTRY.CHAR_END, verdict.charEnd)
             .set(ITEM_INDUSTRY.DECIDED_AT, at(verdict.decidedAt))
             .set(ITEM_INDUSTRY.REVIEWED_AT, verdict.reviewedAt?.let(::at))
+            // Never over a verdict somebody has looked at. The primary key means a
+            // second reading of the same code replaces the first, and once a classifier
+            // runs on a schedule that would quietly undo the review queue: a code a
+            // reviewer rejected would come back accepted on the next pass, routing
+            // alerts a person had refused. A reviewed row is a decision, not a cache.
+            .where(ITEM_INDUSTRY.REVIEWED_AT.isNull)
             .execute()
     }
 
@@ -96,6 +102,23 @@ class IndustryVerdictRepository(private val dsl: DSLContext) {
             .orderBy(ITEM_INDUSTRY.DECIDED_AT)
             .limit(limit)
             .fetch(::toVerdict)
+
+    /**
+     * Whether this lexicon version has already had its say about the subject.
+     *
+     * What keeps a redelivered event and a backlog walk from writing the same verdicts
+     * twice — which would be harmless in content and not in effect, since it resets
+     * `decided_at` and moves the review queue under whoever is working through it.
+     * Asked per version, so correcting the terms makes every subject worth reading
+     * again.
+     */
+    fun hasVerdictFrom(subject: ClassifiedSubject, modelVersion: String): Boolean =
+        dsl.fetchExists(
+            ITEM_INDUSTRY,
+            ITEM_INDUSTRY.SUBJECT_KIND.eq(subject.kind)
+                .and(ITEM_INDUSTRY.SUBJECT_ID.eq(subject.id))
+                .and(ITEM_INDUSTRY.MODEL_VERSION.eq(modelVersion)),
+        )
 
     fun countPending(): Int = dsl.fetchCount(ITEM_INDUSTRY, ITEM_INDUSTRY.STATUS.eq(VerdictStatus.PENDING.wireName))
 

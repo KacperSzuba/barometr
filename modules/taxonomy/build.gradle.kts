@@ -25,6 +25,9 @@ dependencies {
     implementation(libs.springBootStarterJooq)
     implementation(libs.jacksonModuleKotlin)
     implementation(libs.springModulithStarterCore)
+    // Acts and drafts arrive as events from legislative; the register that persists and
+    // redelivers them is wired in :app.
+    implementation(libs.springModulithEventsApi)
     // Recording a verdict and reviewing the queue are operator endpoints. The chain
     // that authenticates them is the application's, so only the annotations are needed.
     implementation(libs.springBootStarterWeb)
@@ -33,6 +36,10 @@ dependencies {
     // How much of the archive carries an industry at all is the number that says
     // whether routing by PKD means anything yet.
     implementation(libs.springBootStarterActuator)
+    // The walk over the archive is scheduled, and two replicas walking it at once would
+    // spend the same budget twice. The lock provider is the application's; only the
+    // annotation is needed here.
+    implementation(libs.shedlockSpring)
 
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersJunit)

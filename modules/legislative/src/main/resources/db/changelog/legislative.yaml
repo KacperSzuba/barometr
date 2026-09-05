@@ -39,3 +39,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0011-draft-continuation.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0012-stage-fact-as-it-stands.sql
+      relativeToChangelogFile: false

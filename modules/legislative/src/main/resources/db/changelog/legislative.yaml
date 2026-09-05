@@ -42,3 +42,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0012-stage-fact-as-it-stands.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0014-latest-statement-wins.sql
+      relativeToChangelogFile: false

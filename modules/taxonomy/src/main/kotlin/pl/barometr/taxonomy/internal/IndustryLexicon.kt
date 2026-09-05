@@ -37,7 +37,10 @@ class IndustryLexicon(val version: String, val terms: List<IndustryTerm>) {
         fun readFrom(source: InputStream, json: ObjectMapper): IndustryLexicon {
             val root = source.use(json::readTree)
             val version = root.path("version").asString()
-            val terms = root.path("terms").map { term ->
+            // `toList()` first, deliberately: `JsonNode` carries a `map` of its own,
+            // which wins over the one every other collection here is read with and
+            // quietly returns a single node instead of a list.
+            val terms = root.path("terms").toList().map { term ->
                 IndustryTerm(
                     code = PkdCode(term.path("code").asString()),
                     stems = TitleTokens.of(term.path("phrase").asString()),

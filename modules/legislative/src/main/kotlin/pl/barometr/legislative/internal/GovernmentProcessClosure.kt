@@ -64,8 +64,11 @@ class GovernmentProcessClosure(
                     until = arrivedAt,
                     ordinal = open.ordinal,
                     // The card's own word for where the draft had got to, kept so the
-                    // correction reads as the same fact restated and not a new one.
-                    sourceLabel = open.sourceLabel,
+                    // correction reads as the same fact restated and not a new one. A
+                    // stage recorded without one is a card that marked nothing as
+                    // current; naming the process itself is what the projector does in
+                    // the same case.
+                    sourceLabel = open.sourceLabel ?: PROCESS_LABEL,
                     isException = open.isException,
                 ),
             ),
@@ -81,4 +84,9 @@ class GovernmentProcessClosure(
 
     private fun skip(reason: String) =
         meters.counter("legislative.government_process.closure", "outcome", reason).increment()
+
+    private companion object {
+        /** The same words [RclCardProjector] uses when a card marks no stage as current. */
+        const val PROCESS_LABEL = "Rządowy proces legislacyjny"
+    }
 }

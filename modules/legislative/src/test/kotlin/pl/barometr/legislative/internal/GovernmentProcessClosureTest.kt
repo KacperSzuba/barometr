@@ -53,6 +53,9 @@ class GovernmentProcessClosureTest {
         inTheGovernmentProcessSince(government, FILED)
         statedBySejm(print, PRINTED)
 
+        // A later reading, as it is in life: the card was read when it was archived
+        // and the join is made when the Sejm's register catches up.
+        clock.advanceBy(Duration.ofDays(1))
         closure.closeOnArrivalInSejm(government, print)
 
         val process = transitions.historyOf(government).single()

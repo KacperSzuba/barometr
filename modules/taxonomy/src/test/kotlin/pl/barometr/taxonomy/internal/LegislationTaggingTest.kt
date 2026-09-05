@@ -120,13 +120,15 @@ class LegislationTaggingTest {
      */
     @Test
     fun `a verdict somebody has decided is not re-decided by the next lexicon`() {
-        val act = catalogue.publish("Ustawa o zmianie ustawy o odnawialnych źródłach energii")
+        // A title that only brushes the industry, so the verdict reaches the queue —
+        // which is the only kind a reviewer ever gets to decide.
+        val act = catalogue.publish("Ustawa o wymaganiach dla budownictwa energooszczędnego")
         val subject = ClassifiedSubject(LegislativeKind.ACT, act.value)
         tagging.tagAct(act)
         val classifications = IndustryClassifications(verdicts, properties, SimpleMeterRegistry(), clock)
-        classifications.reviewVerdict(subject, PkdCode("35"), accept = false)
+        assertTrue(classifications.reviewVerdict(subject, PkdCode("41"), accept = false), "there was one to decide")
 
-        classifications.recordClassification(subject, PkdCode("35"), confidence = 0.99, modelVersion = "pkd-later")
+        classifications.recordClassification(subject, PkdCode("41"), confidence = 0.99, modelVersion = "pkd-later")
 
         val standing = verdicts.verdictsFor(subject).single()
         assertEquals(VerdictStatus.REJECTED, standing.status, "the person's decision stands")

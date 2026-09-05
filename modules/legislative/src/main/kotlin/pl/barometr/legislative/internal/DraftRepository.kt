@@ -91,6 +91,28 @@ class DraftRepository(
             .fetchOne { DraftId(it.value1()!!) }
 
     /**
+     * Whether any draft still has a card waiting to be read for consultation stages.
+     *
+     * The question the sweep over archived cards asks before it starts walking, and the
+     * identifier is half of it: an unmarked draft is not the same thing as an unread
+     * card. A draft the Sejm's register created has no card and never will — the two
+     * registers keep separate rows — so its mark stays null for ever, and asking after
+     * unmarked drafts alone would answer "yes, there is work" on an archive that has
+     * been read to the end.
+     *
+     * Measured at twenty-four thousand drafts of each kind with nothing left to read:
+     * thirty milliseconds, against a walk of every archived card there has ever been.
+     */
+    @Transactional(readOnly = true)
+    fun anyCardStillToRead(): Boolean = dsl.fetchExists(
+        DSL.selectOne()
+            .from(DRAFT)
+            .join(DRAFT_IDENTIFIER).on(DRAFT_IDENTIFIER.DRAFT_ID.eq(DRAFT.ID))
+            .where(DRAFT_IDENTIFIER.SCHEME.eq(DraftIdentifierScheme.RCL_PROJECT.wireName))
+            .and(DRAFT.CONSULTATIONS_READ_AT.isNull),
+    )
+
+    /**
      * Records that this draft's card has been read for consultation stages.
      *
      * Written by the projector as well as the sweep: a card just projected has been

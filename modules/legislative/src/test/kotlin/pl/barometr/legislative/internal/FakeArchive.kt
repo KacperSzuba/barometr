@@ -23,8 +23,12 @@ class FakeArchive : DocumentCatalog {
     private val versions = linkedMapOf<String, ArchivedVersion>()
     private val kinds = mutableMapOf<String, DocumentKind>()
     private val asked = mutableListOf<String>()
+    private var paged = 0
 
     val lookups: List<String> get() = asked.toList()
+
+    /** How many pages of a kind were asked for, which is how a test says a walk happened. */
+    val walks: Int get() = paged
 
     fun holds(
         address: String,
@@ -48,6 +52,7 @@ class FakeArchive : DocumentCatalog {
         versions.clear()
         kinds.clear()
         asked.clear()
+        paged = 0
     }
 
     override fun documentById(id: DocumentId): ArchivedDocument? = null
@@ -64,6 +69,7 @@ class FakeArchive : DocumentCatalog {
      * finish.
      */
     override fun versionsOfKind(kind: DocumentKind, after: DocumentId?, limit: Int): List<ArchivedVersion> {
+        paged++
         val ofKind = versions.values.filter { kinds[it.externalId.value] == kind }
         val remaining = after?.let { id -> ofKind.dropWhile { it.documentId != id }.drop(1) } ?: ofKind
 

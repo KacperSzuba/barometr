@@ -33,6 +33,12 @@ import pl.barometr.storage.BlobStore
  * a card that has been read is marked on its draft, so a second pass steps over it for
  * the price of one indexed lookup, and each run spends its parsing budget further in
  * than the last.
+ *
+ * Which leaves the state this spends almost all of its life in — nothing left to read —
+ * and the walk has no way of recognising it from the inside: its only ending is the end
+ * of the archive, so it would visit every card ever stored, every hour, to discover one
+ * lookup at a time that there is nothing to do. So the question is asked once, of the
+ * drafts rather than of the archive, before any of it starts.
  */
 @Component
 class ArchivedCardSweep(
@@ -48,6 +54,8 @@ class ArchivedCardSweep(
     @Scheduled(fixedDelayString = "\${app.legislative.card-sweep-interval:PT1H}", initialDelay = 180_000)
     @SchedulerLock(name = "legislative-card-sweep")
     fun openConsultationsFromArchivedCards() {
+        if (!drafts.anyCardStillToRead()) return
+
         var after: DocumentId? = null
         var read = 0
 

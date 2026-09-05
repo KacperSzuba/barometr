@@ -76,7 +76,10 @@ class DraftCardController(private val cards: DraftCards) {
     private fun describeCurrent(status: DraftStatus) = StageResponse(
         stage = status.currentStage.wireName,
         since = status.since.toString(),
-        until = null,
+        // Filled only for a draft that has left the register describing it here — a
+        // government draft whose print the Sejm has since taken. `continuedAs` beside
+        // it says where the reader should look next.
+        until = status.until?.toString(),
         sourceLabel = status.sourceLabel,
         isException = false,
     )

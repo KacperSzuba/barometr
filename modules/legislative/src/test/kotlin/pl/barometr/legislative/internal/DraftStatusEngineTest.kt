@@ -117,6 +117,48 @@ class DraftStatusEngineTest {
         assertNull(status.expectedNextBy)
     }
 
+    /**
+     * The failure this stops: a bill the Sejm has been reading for months, reported as
+     * out to public comment and — once the archive can measure that stage — stuck
+     * there. RPL never says a draft left; the coarse period ending is the only place
+     * that is said, and it outranks every finer stage the change register dated.
+     */
+    @Test
+    fun `a government draft that reached the Sejm stands where it left, not where it last was`() {
+        val status = assertNotNull(engine.statusOf(draft(), leftForTheSejm(), governmentPaces()))
+
+        assertEquals(LegislativeStage.GOVERNMENT_PROCESS, status.currentStage)
+        assertEquals(Instant.parse("2024-02-15T00:00:00Z"), status.until)
+    }
+
+    @Test
+    fun `a draft that left the register it is described in is not stalled in it`() {
+        val status = assertNotNull(engine.statusOf(draft(), leftForTheSejm(), governmentPaces()))
+
+        assertNull(status.stalledSince, "it did not get stuck, it moved to another register")
+        assertNull(status.expectedNext, "where it goes next is the Sejm's register to say")
+        assertNull(status.expectedNextBy)
+    }
+
+    /**
+     * The other half of the same rule: a draft the government still has is described by
+     * this register, and sitting in consultation for twice the usual stay is exactly
+     * what a reader wants flagged.
+     */
+    @Test
+    fun `a government draft still in the process is stalled like any other`() {
+        val stillThere = listOf(
+            recorded(LegislativeStage.GOVERNMENT_PROCESS, "2024-01-02", ordinal = 0),
+            recorded(LegislativeStage.PUBLIC_CONSULTATION, "2024-01-10", ordinal = 1),
+        )
+
+        val status = assertNotNull(engine.statusOf(draft(), stillThere, governmentPaces()))
+
+        assertEquals(LegislativeStage.PUBLIC_CONSULTATION, status.currentStage)
+        assertNull(status.until)
+        assertEquals(Instant.parse("2024-01-24T00:00:00Z"), status.stalledSince)
+    }
+
     @Test
     fun `a draft nothing is recorded about has no status at all`() {
         assertNull(engine.statusOf(draft(), history = emptyList(), paces = paces()))
@@ -156,6 +198,16 @@ class DraftStatusEngineTest {
         inForceFrom = inForceFrom,
     )
 
+    /**
+     * A government draft as both RPL sources leave it: the coarse process ended on the
+     * day the Sejm printed it, and a consultation the change register dated and never
+     * closed, because that register never closes anything.
+     */
+    private fun leftForTheSejm() = listOf(
+        recorded(LegislativeStage.GOVERNMENT_PROCESS, "2024-01-02", ordinal = 0, until = "2024-02-15"),
+        recorded(LegislativeStage.PUBLIC_CONSULTATION, "2024-01-10", ordinal = 1),
+    )
+
     private fun history() = listOf(
         recorded(LegislativeStage.FIRST_READING, "2024-01-10", ordinal = 2, until = "2024-02-01"),
         recorded(LegislativeStage.SECOND_READING, "2024-02-01", ordinal = 3),
@@ -176,6 +228,14 @@ class DraftStatusEngineTest {
             else -> stage.wireName
         },
         isException = false,
+    )
+
+    /** Medians for the government's own stages, which exist once such stays close. */
+    private fun governmentPaces(median: Duration = Duration.ofDays(7)) = StagePaces(
+        listOf(
+            StagePace(LegislativeStage.GOVERNMENT_PROCESS, DraftInitiator.GOVERNMENT, median, observations = 40),
+            StagePace(LegislativeStage.PUBLIC_CONSULTATION, DraftInitiator.GOVERNMENT, median, observations = 40),
+        ),
     )
 
     private fun paces(median: Duration = Duration.ofDays(30)) = StagePaces(

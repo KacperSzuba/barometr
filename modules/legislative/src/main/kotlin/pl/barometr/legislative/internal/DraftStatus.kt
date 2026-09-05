@@ -14,6 +14,12 @@ import java.time.Instant
 data class DraftStatus(
     val currentStage: LegislativeStage,
     val since: Instant,
+    /**
+     * The day the draft left this stage, which for a government draft is the day it
+     * left this register altogether. Null while it is still there, which is the answer
+     * for every draft this register is still the one describing.
+     */
+    val until: Instant?,
     /** The source's own word for where the draft is, which may be finer than the model. */
     val sourceLabel: String?,
     /** Null once the draft is closed, or at a stage the process does not lead out of. */

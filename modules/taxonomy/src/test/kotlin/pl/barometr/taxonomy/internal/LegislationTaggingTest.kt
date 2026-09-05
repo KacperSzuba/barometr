@@ -62,6 +62,20 @@ class LegislationTaggingTest {
         assertEquals(LEXICON, recorded.modelVersion, "which reading said so, findable if it was wrong")
     }
 
+    /**
+     * The queue is unworkable without this: "is act 8f3c… about energy" is not a
+     * question a subject id and a number let anybody answer.
+     */
+    @Test
+    fun `the verdict says which words caught it`() {
+        val act = catalogue.publish("Ustawa o zmianie ustawy o odnawialnych źródłach energii")
+
+        tagging.tagAct(act)
+
+        val recorded = verdicts.verdictsFor(ClassifiedSubject(LegislativeKind.ACT, act.value)).single()
+        assertEquals("odnawialnych zrodlach energii", recorded.matchedOn)
+    }
+
     @Test
     fun `a draft that only brushes an industry waits for a person instead of routing`() {
         val draft = catalogue.table("Rozporządzenie w sprawie wymagań dla budownictwa energooszczędnego")

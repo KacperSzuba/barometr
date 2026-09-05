@@ -36,6 +36,7 @@ class IndustryVerdictRepository(private val dsl: DSLContext) {
             .set(ITEM_INDUSTRY.CONFIDENCE, verdict.confidence.toFloat())
             .set(ITEM_INDUSTRY.METHOD, verdict.method.wireName)
             .set(ITEM_INDUSTRY.MODEL_VERSION, verdict.modelVersion)
+            .set(ITEM_INDUSTRY.MATCHED_ON, verdict.matchedOn)
             .set(ITEM_INDUSTRY.DOCUMENT_VERSION_ID, verdict.citedVersion?.value)
             .set(ITEM_INDUSTRY.CHAR_START, verdict.charStart)
             .set(ITEM_INDUSTRY.CHAR_END, verdict.charEnd)
@@ -47,6 +48,7 @@ class IndustryVerdictRepository(private val dsl: DSLContext) {
             .set(ITEM_INDUSTRY.CONFIDENCE, verdict.confidence.toFloat())
             .set(ITEM_INDUSTRY.METHOD, verdict.method.wireName)
             .set(ITEM_INDUSTRY.MODEL_VERSION, verdict.modelVersion)
+            .set(ITEM_INDUSTRY.MATCHED_ON, verdict.matchedOn)
             .set(ITEM_INDUSTRY.DOCUMENT_VERSION_ID, verdict.citedVersion?.value)
             .set(ITEM_INDUSTRY.CHAR_START, verdict.charStart)
             .set(ITEM_INDUSTRY.CHAR_END, verdict.charEnd)
@@ -157,6 +159,7 @@ class IndustryVerdictRepository(private val dsl: DSLContext) {
         confidence = record[ITEM_INDUSTRY.CONFIDENCE]!!.toDouble(),
         method = VerdictMethod.of(record[ITEM_INDUSTRY.METHOD]!!) ?: error("stored method"),
         modelVersion = record[ITEM_INDUSTRY.MODEL_VERSION],
+        matchedOn = record[ITEM_INDUSTRY.MATCHED_ON],
         citedVersion = record[ITEM_INDUSTRY.DOCUMENT_VERSION_ID]?.let(::DocumentVersionId),
         charStart = record[ITEM_INDUSTRY.CHAR_START],
         charEnd = record[ITEM_INDUSTRY.CHAR_END],

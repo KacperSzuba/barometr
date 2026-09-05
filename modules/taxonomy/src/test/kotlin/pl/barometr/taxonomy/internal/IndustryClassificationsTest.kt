@@ -160,6 +160,27 @@ class IndustryClassificationsTest {
         }
     }
 
+    /**
+     * A person read the law and decided; they matched no phrase. Recording one against
+     * their verdict would be this system inventing a reason on somebody else's behalf.
+     */
+    @Test
+    fun `a person's judgement cannot carry a phrase a classifier matched`() {
+        assertFailsWith<DataAccessException> {
+            dsl.insertInto(ITEM_INDUSTRY)
+                .set(ITEM_INDUSTRY.SUBJECT_KIND, LegislativeKind.ACT)
+                .set(ITEM_INDUSTRY.SUBJECT_ID, Ids.next())
+                .set(ITEM_INDUSTRY.PKD, "41.20.Z")
+                .set(ITEM_INDUSTRY.STATUS, VerdictStatus.ACCEPTED.wireName)
+                .set(ITEM_INDUSTRY.CONFIDENCE, 1.0f)
+                .set(ITEM_INDUSTRY.METHOD, VerdictMethod.MANUAL.wireName)
+                .set(ITEM_INDUSTRY.MATCHED_ON, "prawo budowlane")
+                .set(ITEM_INDUSTRY.DECIDED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .set(ITEM_INDUSTRY.REVIEWED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .execute()
+        }
+    }
+
     @Test
     fun `a model verdict has to name its model`() {
         assertFailsWith<DataAccessException> {

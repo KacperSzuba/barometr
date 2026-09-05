@@ -84,6 +84,10 @@ class LegislationTagging(
                 code = match.code,
                 confidence = match.confidence,
                 modelVersion = classifier.version,
+                // Why this code and not another. The queue is unworkable without it:
+                // "is act 8f3c… about construction" is not a question a subject id and
+                // a number let anybody answer.
+                matchedOn = match.reasons.joinToString(" · "),
             )
         }
 

@@ -28,6 +28,13 @@ class PendingItemRepositoryTest {
     }
 
     /**
+     * Everything that has stopped moving, which is what a run judges. The cut-off is
+     * the clock's own instant, so anything recorded on this clock counts as settled —
+     * the one test below moves the cut-off instead.
+     */
+    private fun settled() = pending.waiting(10, clock.instant())
+
+    /**
      * Every crawl re-derives what it read, so one act restated four times a day arrives
      * here four times. Judging it four times would reach the same answer four times.
      */
@@ -36,7 +43,7 @@ class PendingItemRepositoryTest {
         assertTrue(pending.append(LegislativeKind.ACT, "a-1"))
         assertFalse(pending.append(LegislativeKind.ACT, "a-1"))
 
-        assertEquals(1, pending.waiting(10).size)
+        assertEquals(1, settled().size)
     }
 
     /**
@@ -47,12 +54,33 @@ class PendingItemRepositoryTest {
     @Test
     fun `the same thing arriving after it was judged waits again`() {
         pending.append(LegislativeKind.DRAFT, "d-1")
-        pending.markJudged(pending.waiting(10).single().id)
+        pending.markJudged(settled().single().id)
 
         clock.advanceBy(Duration.ofDays(7))
 
         assertTrue(pending.append(LegislativeKind.DRAFT, "d-1"))
-        assertEquals(1, pending.waiting(10).size)
+        assertEquals(1, settled().size)
+    }
+
+    /**
+     * The race this exists to lose. What a judgement reads — which industries an act
+     * concerns, where a draft stands — is written by listeners on the same event that
+     * buffered it, so an item judged the instant it lands is judged against whichever
+     * of them finished first, marked judged, and never looked at again.
+     */
+    @Test
+    fun `something that has only just arrived is not judged yet`() {
+        pending.append(LegislativeKind.ACT, "a-1")
+
+        assertEquals(0, pending.waiting(10, clock.instant().minus(Duration.ofMinutes(1))).size)
+    }
+
+    @Test
+    fun `once it has stopped moving it is judged`() {
+        pending.append(LegislativeKind.ACT, "a-1")
+        clock.advanceBy(Duration.ofMinutes(2))
+
+        assertEquals(1, pending.waiting(10, clock.instant().minus(Duration.ofMinutes(1))).size)
     }
 
     /**
@@ -73,7 +101,7 @@ class PendingItemRepositoryTest {
         pending.append(LegislativeKind.ACT, "1")
         pending.append(LegislativeKind.DRAFT, "1")
 
-        assertEquals(2, pending.waiting(10).size)
+        assertEquals(2, settled().size)
     }
 
     @Test
@@ -82,17 +110,17 @@ class PendingItemRepositoryTest {
         clock.advanceBy(Duration.ofMinutes(5))
         pending.append(LegislativeKind.ACT, "a-2")
 
-        assertEquals(listOf("a-1", "a-2"), pending.waiting(10).map { it.subjectId })
+        assertEquals(listOf("a-1", "a-2"), settled().map { it.subjectId })
 
-        pending.markJudged(pending.waiting(10).first().id)
-        assertEquals(listOf("a-2"), pending.waiting(10).map { it.subjectId })
+        pending.markJudged(settled().first().id)
+        assertEquals(listOf("a-2"), settled().map { it.subjectId })
     }
 
     /** A judged row is kept: it is the evidence that a run saw the thing at all. */
     @Test
     fun `judging keeps the row`() {
         pending.append(LegislativeKind.ACT, "a-1")
-        pending.markJudged(pending.waiting(10).single().id)
+        pending.markJudged(settled().single().id)
 
         assertEquals(1, dsl.fetchCount(PENDING_ITEM))
     }

@@ -52,6 +52,10 @@ class AlertVolumeTest {
             AlertDecisionRepository(dsl, clock),
             clock,
         ),
+        // Nothing settles here: what a run waits for in life is other listeners
+        // finishing, and this test writes everything it judges itself.
+        AlertMatchProperties(settleDelay = Duration.ZERO),
+        clock,
     )
 
     private val ewa = UserId.next()
@@ -100,6 +104,42 @@ class AlertVolumeTest {
         // and every followed draft at least once.
         assertTrue(told.size >= MATCHED_ACTS + MATCHED_DRAFTS, "only ${told.size} notifications")
         assertEquals(MATCHED_ACTS, told.count { it.subjectKind == LegislativeKind.ACT })
+    }
+
+    /**
+     * The race a run must lose rather than win by luck.
+     *
+     * Which industries an act concerns is written by a listener on the same event that
+     * buffered it, beside this one on the same executor. A run that judged the item as
+     * it landed would decide it against half of what it rests on — and mark it judged,
+     * so no later run would look again. Nothing here proves the ordering; what it
+     * proves is that the run waits at all.
+     */
+    @Test
+    fun `something that has only just arrived waits for the next run`() {
+        val settling = AlertMatchRun(
+            pending,
+            BufferedItemReader(catalog, FakeConsultationCalendar(), clock),
+            AlertRaiser(
+                matching,
+                SignificanceScale(clock),
+                AlertRuleRepository(dsl, clock),
+                notifications,
+                AlertDecisionRepository(dsl, clock),
+                clock,
+            ),
+            AlertMatchProperties(settleDelay = Duration.ofMinutes(1)),
+            clock,
+        )
+        pending.append(LegislativeKind.ACT, acts.first().value.toString())
+
+        settling.raiseWaitingAlerts()
+        assertEquals(0, notifications.listFor(ewa, 10).size, "judged before the derivations landed")
+
+        clock.advanceBy(Duration.ofMinutes(2))
+        settling.raiseWaitingAlerts()
+
+        assertEquals(1, notifications.listFor(ewa, 10).size)
     }
 
     /** What a cycle actually does: re-derive everything it read, changed or not. */

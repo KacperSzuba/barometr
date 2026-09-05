@@ -32,6 +32,7 @@ class DraftIdentityMatcher(
     private val drafts: DraftRepository,
     private val continuations: DraftContinuationRepository,
     private val candidates: DraftMatchCandidateRepository,
+    private val governmentProcess: GovernmentProcessClosure,
     private val properties: LegislativeProperties,
     private val meters: MeterRegistry,
 ) {
@@ -99,7 +100,11 @@ class DraftIdentityMatcher(
         confidence: Double?,
     ) {
         val (government, sejm) = pairOf(draftId, counterpartId, register)
-        continuations.recordContinuation(government, sejm, method, confidence)
+        if (!continuations.recordContinuation(government, sejm, method, confidence)) return
+
+        // The one thing the join makes knowable that neither register states alone:
+        // the government's process ended when the Sejm printed the draft.
+        governmentProcess.closeOnArrivalInSejm(government, sejm)
     }
 
     /**

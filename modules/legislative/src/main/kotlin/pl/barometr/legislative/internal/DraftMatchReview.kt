@@ -18,6 +18,7 @@ import java.util.UUID
 class DraftMatchReview(
     private val candidates: DraftMatchCandidateRepository,
     private val continuations: DraftContinuationRepository,
+    private val governmentProcess: GovernmentProcessClosure,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -66,6 +67,11 @@ class DraftMatchReview(
 
             else -> throw DraftAlreadyJoinedException(match.governmentDraftId.toString())
         }
+
+        // Whichever of the two branches got here, the pair now stands, and the same
+        // thing follows from it as from a join the matcher made on its own: the
+        // government's process ended when the Sejm printed the draft.
+        governmentProcess.closeOnArrivalInSejm(match.governmentDraftId, match.sejmDraftId)
 
         return match
     }

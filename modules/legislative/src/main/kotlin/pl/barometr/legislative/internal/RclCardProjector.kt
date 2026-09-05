@@ -129,7 +129,9 @@ class RclCardProjector(
      * and — as far as this source can say — still is.
      *
      * An open period, because a card never states that a draft left: it leaves by
-     * arriving in the Sejm, which is a different register saying so.
+     * arriving in the Sejm, which is a different register saying so — and
+     * [GovernmentProcessClosure] is where that word is taken, once the two registers
+     * have been joined.
      */
     private fun recordEntryIntoTheProcess(draftId: DraftId, card: RclProjectCard, statedBy: DocumentVersionId) {
         val started = card.createdOn ?: return

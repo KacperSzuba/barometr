@@ -3,15 +3,19 @@ package pl.barometr.legislative.internal
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import pl.barometr.corpus.api.DocumentVersionId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.DraftRecorded
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_CONTINUATION
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_MATCH_CANDIDATE
+import pl.barometr.legislative.internal.jooq.tables.references.STAGE_TRANSITION
+import pl.barometr.shared.Ids
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -33,11 +37,13 @@ class DraftIdentityMatcherTest {
     private val identifiers = DraftIdentifierRepository(dsl, clock)
     private val continuations = DraftContinuationRepository(dsl, clock)
     private val candidates = DraftMatchCandidateRepository(dsl, clock)
+    private val transitions = StageTransitionRepository(dsl, clock)
 
     private lateinit var meters: SimpleMeterRegistry
 
     @BeforeEach
     fun setUp() {
+        dsl.deleteFrom(STAGE_TRANSITION).execute()
         dsl.deleteFrom(DRAFT_MATCH_CANDIDATE).execute()
         dsl.deleteFrom(DRAFT_CONTINUATION).execute()
         dsl.deleteFrom(DRAFT_IDENTIFIER).execute()
@@ -183,12 +189,64 @@ class DraftIdentityMatcherTest {
         assertEquals(0, dsl.fetchCount(DRAFT_MATCH_CANDIDATE))
     }
 
+    /**
+     * The one fact the join makes knowable that neither register states on its own. A
+     * card cannot say a draft left the government's process — it leaves by arriving in
+     * the Sejm — so until the two are joined the period stays open for ever.
+     */
+    @Test
+    fun `joining ends the government process on the day the print arrived`() {
+        val government = governmentDraft(CARD_TITLE)
+        val print = sejmDraft(PRINT_TITLE)
+        inTheGovernmentProcessSince(government, CARD_CREATED_ON)
+        arrivedInTheSejmOn(print, PRINT_STARTED_ON)
+
+        matcher(joinsAbove = 0.5).joinDraftAcrossRegisters(DraftRecorded(print, clock.instant()))
+
+        val governmentProcess = transitions.historyOf(government)
+            .single { it.stage == LegislativeStage.GOVERNMENT_PROCESS }
+        assertEquals(PRINT_STARTED_ON.atStartOfDay(ZoneOffset.UTC).toInstant(), governmentProcess.until)
+    }
+
     // ——— Harness ————————————————————————————————————————————————————————————
+
+    private fun inTheGovernmentProcessSince(draft: DraftId, day: LocalDate) = transitions.recordFacts(
+        draftId = draft,
+        facts = listOf(
+            StageFact(
+                stage = LegislativeStage.GOVERNMENT_PROCESS,
+                from = day.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                until = null,
+                ordinal = 0,
+                sourceLabel = "Konsultacje publiczne",
+                isException = false,
+            ),
+        ),
+        statedBy = DocumentVersionId(Ids.next()),
+        knownAt = clock.instant(),
+    )
+
+    private fun arrivedInTheSejmOn(draft: DraftId, day: LocalDate) = transitions.recordFacts(
+        draftId = draft,
+        facts = listOf(
+            StageFact(
+                stage = LegislativeStage.SUBMITTED_TO_SEJM,
+                from = day.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                until = null,
+                ordinal = 0,
+                sourceLabel = "Wpłynął do Sejmu",
+                isException = false,
+            ),
+        ),
+        statedBy = DocumentVersionId(Ids.next()),
+        knownAt = clock.instant(),
+    )
 
     private fun matcher(joinsAbove: Double) = DraftIdentityMatcher(
         drafts = drafts,
         continuations = continuations,
         candidates = candidates,
+        governmentProcess = GovernmentProcessClosure(drafts, transitions, meters, clock),
         properties = LegislativeProperties(automaticJoinAbove = joinsAbove, reviewJoinAbove = 0.35),
         meters = meters,
     )

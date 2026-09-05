@@ -1,5 +1,6 @@
 package pl.barometr.legislative.internal
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.legislative.api.DraftId
@@ -7,6 +8,7 @@ import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_CONTINUATION
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_MATCH_CANDIDATE
+import pl.barometr.legislative.internal.jooq.tables.references.STAGE_TRANSITION
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.time.LocalDate
@@ -27,10 +29,16 @@ class DraftMatchReviewTest {
     private val identifiers = DraftIdentifierRepository(dsl, clock)
     private val continuations = DraftContinuationRepository(dsl, clock)
     private val candidates = DraftMatchCandidateRepository(dsl, clock)
-    private val review = DraftMatchReview(candidates, continuations)
+    private val transitions = StageTransitionRepository(dsl, clock)
+    private val review = DraftMatchReview(
+        candidates,
+        continuations,
+        GovernmentProcessClosure(drafts, transitions, SimpleMeterRegistry(), clock),
+    )
 
     @BeforeEach
     fun setUp() {
+        dsl.deleteFrom(STAGE_TRANSITION).execute()
         dsl.deleteFrom(DRAFT_MATCH_CANDIDATE).execute()
         dsl.deleteFrom(DRAFT_CONTINUATION).execute()
         dsl.deleteFrom(DRAFT_IDENTIFIER).execute()

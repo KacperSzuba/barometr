@@ -99,6 +99,25 @@ class StageTransitionRepository(
             }
             .sortedWith(compareBy({ it.since }, { it.ordinal }))
 
+    /**
+     * The document version behind the first thing this register said about the draft.
+     *
+     * Asked when a fact about one draft is established by the *other* register — the
+     * government process ends because the Sejm printed the draft — so that the
+     * correction carries the evidence for itself rather than appearing from nowhere.
+     * Null when the register stated no dated stage at all, which is the answer for a
+     * process whose stages are all undated.
+     */
+    @Transactional(readOnly = true)
+    fun firstStatedBy(draftId: DraftId): DocumentVersionId? =
+        dsl.select(STAGE_TRANSITION_LATEST.SOURCE_DOCUMENT_VERSION_ID)
+            .from(STAGE_TRANSITION_LATEST)
+            .where(STAGE_TRANSITION_LATEST.DRAFT_ID.eq(draftId.value))
+            .and(STAGE_TRANSITION_LATEST.SOURCE_DOCUMENT_VERSION_ID.isNotNull)
+            .orderBy(STAGE_TRANSITION_LATEST.VALID_FROM, STAGE_TRANSITION_LATEST.ORDINAL)
+            .limit(1)
+            .fetchOne { DocumentVersionId(it.value1()!!) }
+
     /** `[from, until)`, with an open end while the draft is still there. */
     private fun periodOf(fact: StageFact): OffsetDateTimeRange = OffsetDateTimeRange.offsetDateTimeRange(
         OffsetDateTime.ofInstant(fact.from, ZoneOffset.UTC),

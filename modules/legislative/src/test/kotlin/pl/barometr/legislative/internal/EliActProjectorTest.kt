@@ -147,6 +147,21 @@ class EliActProjectorTest {
         assertEquals(0, dsl.fetchCount(ACT))
     }
 
+    /**
+     * The link everything downstream of a comparison needs. The projector is handed the
+     * document it is reading and used to drop it; keeping it is what lets a card ask
+     * corpus what changed without any context reconstructing an address.
+     */
+    @Test
+    fun `an act remembers which archived document it was read from`() {
+        val archived = archivedAct()
+
+        projector.projectPublishedAct(archived)
+
+        val document = dsl.select(ACT.SOURCE_DOCUMENT_ID).from(ACT).fetchOne()?.value1()
+        assertEquals(archived.documentId.value, document, "the card has nothing to ask corpus about without it")
+    }
+
     private fun archivedAct(): DocumentVersionRecorded {
         val payload = requireNotNull(javaClass.getResourceAsStream("/fixtures/isap/act-with-prints.json"))
             .use { it.readBytes() }

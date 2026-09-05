@@ -55,7 +55,7 @@ class EliActProjector(
             return
         }
 
-        val actId = acts.actFor(act)
+        val actId = acts.actFor(act, recorded.documentId)
         identifiers.pointAtAct(IdentifierScheme.ELI, act.eli.value, actId, MatchMethod.EXACT, confidence = 1.0)
 
         // Stated by the publisher on the act itself, so it outranks anything a title

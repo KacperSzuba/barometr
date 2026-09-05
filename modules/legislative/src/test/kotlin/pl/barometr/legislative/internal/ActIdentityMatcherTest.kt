@@ -196,6 +196,7 @@ class ActIdentityMatcherTest {
                 references = emptyList(),
                 unmappedLabels = emptyList(),
             ),
+            DocumentId(Ids.next()),
         )
 
     private class FakeDocumentCatalog(private val title: String) : DocumentCatalog {

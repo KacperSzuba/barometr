@@ -65,6 +65,14 @@ class ActCardController(private val cards: ActCards) {
             IdentifierResponse(it.scheme.wireName, it.value, it.resolvedBy)
         },
         draftId = card.draft?.value,
+        latestChange = card.latestChange?.let { diff ->
+            TextChangeResponse(
+                documentId = diff.documentId.value,
+                changes = diff.changeCount,
+                substantiveChanges = diff.substantiveChanges,
+                comparedAt = diff.computedAt.toString(),
+            )
+        },
     )
 
     private fun describe(citation: ActCitation) = CitationResponse(
@@ -87,6 +95,24 @@ class ActCardController(private val cards: ActCards) {
 
     data class IdentifierResponse(val scheme: String, val value: String, val resolvedBy: String)
 
+    /**
+     * What changed when the journal last published a new text of this act, and where to
+     * read it: `GET /api/v1/corpus/documents/{documentId}/changes` pages the changes
+     * themselves. The counts are here because they are the whole of what a card shows —
+     * a redrafted act has thousands of changes and loading them to count them is the
+     * read that would make this page slow.
+     *
+     * `substantiveChanges` is the number worth reading: a consolidated text moves
+     * hundreds of units that say the same thing, and the ones that do not are what a
+     * reader is looking for.
+     */
+    data class TextChangeResponse(
+        val documentId: UUID,
+        val changes: Int,
+        val substantiveChanges: Int,
+        val comparedAt: String,
+    )
+
     data class ActCardResponse(
         val id: UUID,
         val eli: String,
@@ -100,5 +126,7 @@ class ActCardController(private val cards: ActCards) {
         val changedBy: List<CitationResponse>,
         val identifiers: List<IdentifierResponse>,
         val draftId: UUID?,
+        /** Null for an act with one text, which is most of them. */
+        val latestChange: TextChangeResponse?,
     )
 }

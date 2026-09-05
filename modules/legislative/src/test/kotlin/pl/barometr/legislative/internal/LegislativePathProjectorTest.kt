@@ -195,6 +195,7 @@ class LegislativePathProjectorTest {
                 references = emptyList(),
                 unmappedLabels = emptyList(),
             ),
+            DocumentId(Ids.next()),
         )
         actIdentifiers.pointAtAct(IdentifierScheme.ELI, "DU/2023/2730", actId, MatchMethod.EXACT, 1.0)
 

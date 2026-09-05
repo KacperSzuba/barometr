@@ -1,5 +1,6 @@
 package pl.barometr.legislative.internal
 
+import pl.barometr.corpus.api.VersionDiff
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.PublishedAct
 
@@ -32,4 +33,13 @@ data class ActCard(
     val identifiers: List<ActIdentifierValue>,
     /** The draft it was, when the identity matching found one. Closes the loop. */
     val draft: DraftId?,
+    /**
+     * What changed when the journal last published a new text of this act.
+     *
+     * Corpus's own account of it, not a copy: the header says how much moved and how
+     * much of that was substantive, and the changes themselves are paged out of corpus
+     * behind it. Null for an act with one text, which is most of them — and for one
+     * nothing has projected, which has no document to compare.
+     */
+    val latestChange: VersionDiff?,
 )

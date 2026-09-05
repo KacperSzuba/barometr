@@ -3,6 +3,8 @@ package pl.barometr.legislative.internal
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.shared.Eli
@@ -29,10 +31,11 @@ class ActRepository(
      * the row is a description of the act now, not a history of our readings of it.
      * The history is in the archive.
      */
-    fun actFor(metadata: EliActMetadata): ActId {
+    fun actFor(metadata: EliActMetadata, sourceDocumentId: DocumentId): ActId {
         val id = dsl.insertInto(ACT)
             .set(ACT.ID, Ids.next())
             .set(ACT.ELI, metadata.eli.value)
+            .set(ACT.SOURCE_DOCUMENT_ID, sourceDocumentId.value)
             .set(ACT.TITLE, metadata.title)
             .set(ACT.TITLE_NORMALISED, ActTitles.normalise(metadata.title))
             .set(ACT.ACT_TYPE, metadata.type)
@@ -52,12 +55,30 @@ class ActRepository(
             .set(ACT.ACT_TYPE, DSL.excluded(ACT.ACT_TYPE))
             .set(ACT.ANNOUNCED_ON, DSL.excluded(ACT.ANNOUNCED_ON))
             .set(ACT.IN_FORCE_FROM, DSL.excluded(ACT.IN_FORCE_FROM))
+            // The document the act was last read from, which is the one whose newest
+            // comparison answers "what changed": ISAP restates an act as a new document
+            // only when it publishes a consolidated text.
+            .set(ACT.SOURCE_DOCUMENT_ID, DSL.excluded(ACT.SOURCE_DOCUMENT_ID))
             .set(ACT.UPDATED_AT, now())
             .returningResult(ACT.ID)
             .fetchOne()
 
         return ActId(requireNotNull(id?.value1()) { "upsert of act ${metadata.eli} returned no id" })
     }
+
+    /**
+     * The archived document this act was last read from, or null for one nothing has
+     * projected — an act created by identity matching from a print, before the journal
+     * published it.
+     */
+    @Transactional(readOnly = true)
+    fun sourceDocumentOf(id: ActId): DocumentId? =
+        dsl.select(ACT.SOURCE_DOCUMENT_ID)
+            .from(ACT)
+            .where(ACT.ID.eq(id.value))
+            .fetchOne()
+            ?.value1()
+            ?.let(::DocumentId)
 
     /**
      * The act whose title is closest to [normalisedTitle], if any is close enough.

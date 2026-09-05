@@ -98,6 +98,7 @@ class ActMatchReviewTest {
             references = emptyList(),
             unmappedLabels = emptyList(),
         ),
+        DocumentId(Ids.next()),
     )
 
     private fun queuedMatch(actId: ActId): UUID {

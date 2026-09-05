@@ -45,3 +45,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0014-latest-statement-wins.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0015-act-source-document.sql
+      relativeToChangelogFile: false

@@ -65,6 +65,32 @@ abstract class BlobStoreContract {
         assertFalse(store.exists(BlobBucket.DERIVED, stored.contentHash))
     }
 
+    /**
+     * The two buckets that are allowed to forget: an export whose retention has run out,
+     * and derived data being recomputed. Nothing deletes from the raw bucket, which is
+     * the archive.
+     */
+    @Test
+    fun `an object can be deleted, and deleting it twice is not an error`() {
+        val stored = store.store(BlobBucket.EXPORTS, "moje dane".toByteArray(), "application/json")
+
+        assertTrue(store.delete(BlobBucket.EXPORTS, stored.contentHash))
+        assertFalse(store.exists(BlobBucket.EXPORTS, stored.contentHash))
+        assertNull(store.read(BlobBucket.EXPORTS, stored.contentHash))
+        assertFalse(store.delete(BlobBucket.EXPORTS, stored.contentHash), "there was nothing left to delete")
+    }
+
+    @Test
+    fun `deleting from one bucket leaves the same content in another`() {
+        val payload = "moje dane".toByteArray()
+        val exported = store.store(BlobBucket.EXPORTS, payload, "application/json")
+        store.store(BlobBucket.DERIVED, payload, "application/json")
+
+        store.delete(BlobBucket.EXPORTS, exported.contentHash)
+
+        assertTrue(store.exists(BlobBucket.DERIVED, exported.contentHash))
+    }
+
     @Test
     fun `reading an unknown hash returns null rather than failing`() {
         assertNull(store.read(BlobBucket.RAW, ContentHash.of(payload("nigdy nie zapisane"))))

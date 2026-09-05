@@ -23,6 +23,21 @@ interface BlobStore {
     fun exists(bucket: BlobBucket, contentHash: ContentHash): Boolean
 
     /**
+     * Removes an object. `false` when there was nothing at that address.
+     *
+     * Deliberately narrow in what it is for. The raw bucket is the archive and nothing
+     * deletes from it; what this exists for is the two buckets that are allowed to
+     * forget — an export somebody downloaded and no longer has a right to keep on our
+     * disk, and derived data being recomputed.
+     *
+     * Content addressing has one consequence worth stating: two callers storing
+     * identical bytes share an object, so deleting one deletes the other's too. In the
+     * buckets this is used for, identical bytes mean the same document by construction —
+     * an export carries the account it is about.
+     */
+    fun delete(bucket: BlobBucket, contentHash: ContentHash): Boolean
+
+    /**
      * Storage key for a hash. Sharded on the first two hex pairs, because a flat
      * namespace of millions of objects is painful in every filesystem and in some
      * S3 console tooling.

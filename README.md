@@ -152,6 +152,75 @@ from one route, and gone the moment the factor is turned off.
 | `app.identity.geoip.database-path` | a MaxMind `.mmdb` file, if the deployment has one. Unset, the device list shows addresses without a place beside them; set to something unreadable, the application refuses to start |
 | `app.identity.workspace.invitation-base-url` | where an invitation link points |
 
+### The public API
+
+`/api/v1/public/**` is open. No account, no key, sixty requests an hour by address —
+enough to try it from a terminal, which is the only way anybody ever evaluates an API:
+
+```bash
+curl -s https://api.barometr.example/api/v1/public/consultations | jq '.consultations[0]'
+```
+
+A key raises the rate and nothing else. Every tier sees the same data — that is what makes
+it public — and what differs is how fast it may be asked for: 600 an hour for a registered
+key, 3 000 for a newsroom, 30 000 for a partner. Make one under `/api/v1/me/api-keys`
+while signed in; it is shown once and stored as a hash.
+
+```python
+import httpx
+
+r = httpx.get(
+    "https://api.barometr.example/api/v1/public/consultations",
+    headers={"X-Api-Key": "brmtr_..."},
+)
+print(r.headers["X-RateLimit-Remaining"], "left this hour")
+```
+
+Every response carries `X-RateLimit-Limit`, `-Remaining` and `-Reset`, refused or not, and
+`X-Attribution` — **the one condition of use: say where the data came from.** Whole-dataset
+downloads (`/consultations/csv`) need a key with the `bulk` scope, because that is where
+serving a public API stops being cheap.
+
+The limiter is a token bucket in Postgres rather than in memory or in Redis: a bucket held
+in a process is a bucket per replica, and at these volumes one indexed upsert per request
+is not the bottleneck. The trade is written down in
+[the migration](platform/src/main/resources/db/changelog/platform/0006-rate-limit.sql).
+
+### Your data, and getting rid of it
+
+Two rights this implements rather than describes, both under `/api/v1/me`.
+
+**A copy of everything** is `POST /api/v1/me/export`: a job reads every context that
+holds anything about the account, writes one JSON file per request into the exports
+bucket, and the account downloads it once. It expires after a week and the sweep deletes
+the file with the row — an export is the most concentrated collection of somebody's data
+this system ever produces, and leaving it behind a URL for ever would mean exercising a
+right made the data easier to take. Nothing that proves anything is in it: no password
+hash, no TOTP secret, no token hashes.
+
+**Closing the account** is `DELETE /api/v1/me`, with the password again. Every context
+that holds personal data implements
+[`PersonalDataStore`](shared/src/main/kotlin/pl/barometr/shared/PersonalDataStore.kt) and
+Spring hands all of them to one orchestrator, so a context added next year is included by
+existing rather than by somebody remembering to add a line. It runs in one transaction:
+half a deletion is worse than either outcome.
+
+What survives is named in the response rather than left to be discovered — the audit
+trail, whose entries are hash-chained and cannot be removed without breaking the chain for
+everybody else's, and the suppression list, which exists to honour an earlier "stop
+mailing me". `AccountClosureTest` closes an account with data in three schemas and counts
+what is left in the database itself, which is the only honest way to check this.
+
+The search index is deliberately not in that list: it holds acts and drafts, and no
+profile, keyword or address ever reaches it. That is worth stating because an index is the
+usual place data survives a deletion.
+
+| Setting | What it does |
+|---|---|
+| `app.identity.privacy.export-retention` | how long a finished export can be downloaded — a week |
+| `app.identity.privacy.credential-retention` | how long a revoked session or spent token stays on record — ninety days |
+| `app.alerts.retention.notifications` · `.decisions` | two years for what somebody was told, one for why they were not |
+
 ### The API contract
 
 Every route lives under `/api/v1`, signing in included, and the contract is generated

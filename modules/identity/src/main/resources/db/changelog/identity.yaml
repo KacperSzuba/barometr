@@ -27,3 +27,9 @@ databaseChangeLog:
   - include:
       file: db/changelog/identity/0007-workspace.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0008-data-export.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0009-api-key.sql
+      relativeToChangelogFile: false

@@ -63,6 +63,9 @@ class FilesystemBlobStore(root: Path) : BlobStore {
     override fun exists(bucket: BlobBucket, contentHash: ContentHash): Boolean =
         Files.exists(pathFor(bucket, contentHash))
 
+    override fun delete(bucket: BlobBucket, contentHash: ContentHash): Boolean =
+        Files.deleteIfExists(pathFor(bucket, contentHash))
+
     private fun pathFor(bucket: BlobBucket, contentHash: ContentHash): Path =
         root.resolve(bucket.bucketName).resolve(keyOf(contentHash))
 }

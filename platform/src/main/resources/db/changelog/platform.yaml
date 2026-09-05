@@ -21,3 +21,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/platform/0005-job-trace-context.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/platform/0006-rate-limit.sql
+      relativeToChangelogFile: false

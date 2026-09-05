@@ -64,6 +64,9 @@ class GcsBlobStore(
     override fun exists(bucket: BlobBucket, contentHash: ContentHash): Boolean =
         storage.get(idOf(bucket, contentHash)) != null
 
+    override fun delete(bucket: BlobBucket, contentHash: ContentHash): Boolean =
+        storage.delete(idOf(bucket, contentHash))
+
     /**
      * Creates the three buckets if they are not there.
      *

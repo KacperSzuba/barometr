@@ -50,6 +50,11 @@ class ApplicationSecurityConfig(private val trail: AuditTrail) {
                 // subscription was worth. The token in the link is the authorisation,
                 // it is random, and all it can do is stop mail.
                 .requestMatchers("/api/v1/alerts/unsubscribe/**").permitAll()
+                // The public API. Anybody may read it — that is what makes it public —
+                // and what it costs is decided by `PublicApiGate`: a key or an address,
+                // a rate, and a line saying who to credit. Authentication here would be
+                // the one thing that stops a researcher trying it from a terminal.
+                .requestMatchers("/api/v1/public/**").permitAll()
                 // A calendar client subscribes once and then fetches from a
                 // server-side scheduler for years: there is nowhere to put a bearer
                 // token and nobody at the keyboard to be prompted for one. The random

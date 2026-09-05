@@ -37,11 +37,13 @@ class SmtpEmailTransport(
         helper.setSubject(message.subject)
         helper.setText(message.text, message.html)
 
-        mime.setHeader(LIST_UNSUBSCRIBE, "<${message.unsubscribeUrl}>")
-        // What lets a mail client offer one-click unsubscribe rather than opening the
-        // link and hoping. Gmail and Outlook both require it before they will show the
-        // button at all.
-        mime.setHeader(ONE_CLICK, "List-Unsubscribe=One-Click")
+        message.unsubscribeUrl?.let { url ->
+            mime.setHeader(LIST_UNSUBSCRIBE, "<$url>")
+            // What lets a mail client offer one-click unsubscribe rather than opening
+            // the link and hoping. Gmail and Outlook both require it before they will
+            // show the button at all.
+            mime.setHeader(ONE_CLICK, "List-Unsubscribe=One-Click")
+        }
 
         return mime
     }

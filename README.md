@@ -115,6 +115,60 @@ authenticated. A metrics endpoint states how many users, how many documents and 
 jobs are failing; opening that to the internet because a scraper cannot hold a token is
 a decision for a deployment to make on its own network, not a default shipped here.
 
+### Signing in
+
+A password, a rotating refresh token, and — for an account that asks for it — a second
+factor. Three things are worth knowing before reading the code.
+
+**A session is a refresh-token family.** One login issues one family; every token
+descending from it belongs to the same device, and `identity.session` is what that
+family looks like to the person who owns it: user agent as sent, address, last seen.
+`GET /api/v1/sessions` lists them and marks the one the request came on, from the `sid`
+claim in the caller's own token. Ending one revokes the family, so it stops working on
+every instance at once — the access token already issued keeps working until it expires,
+at most fifteen minutes, because there is deliberately no revocation list for those.
+
+**A workspace may insist on things.** An organisation's account has seats, three roles
+and invitations; two of its settings change how signing in works for its members. When it
+requires a second factor, a member who has not enrolled is signed in with a token marked
+`enrol` and reaches the enrolment routes and nothing else — refusing them outright would
+leave them, and the administrator who turned the policy on, with no way to comply. When it
+asks for shorter sessions, the strictest timeout among somebody's workspaces wins over the
+deployment default.
+
+**The second factor is TOTP, and turning it on is two steps.** `POST /api/v1/auth/2fa`
+hands back a secret and an `otpauth://` URI; nothing about signing in changes until a
+code from it comes back to `/2fa/confirmation`, which is also when the ten recovery codes
+are shown — once. A password then buys `202` and a challenge rather than tokens, and the
+challenge plus a code buys the tokens. A device that answered the factor may be remembered
+for thirty days and sign in with the password alone — a deliberate weakening, revocable
+from one route, and gone the moment the factor is turned off.
+
+| Setting | What it does |
+|---|---|
+| `TOTP_KEY` | encrypts the shared secrets. Unset, the application refuses to enrol anybody rather than storing second factors in the clear |
+| `TOTP_SALT` | derives the key from it. Not a secret, and it must not change once anybody is enrolled |
+| `app.identity.session.idle-timeout` | how long a device may go quiet before it has to sign in again — fourteen days by default, and overridden by any workspace that asks for less |
+| `app.identity.geoip.database-path` | a MaxMind `.mmdb` file, if the deployment has one. Unset, the device list shows addresses without a place beside them; set to something unreadable, the application refuses to start |
+| `app.identity.workspace.invitation-base-url` | where an invitation link points |
+
+### The API contract
+
+Every route lives under `/api/v1`, signing in included, and the contract is generated
+from the controllers by springdoc rather than written beside them — a document written
+by hand is a second description of the same thing, and the two disagree the first time
+somebody adds a field in a hurry. `GET /v3/api-docs` serves it, behind authentication
+like everything else.
+
+`OpenApiContractTest` writes it to `app/build/openapi/openapi.json` while the suite
+runs, and CI uploads that file from every run, so a pull request that changes the API is
+reviewable as a diff of its contract. The web application generates its TypeScript
+response types from the same file; nothing on either side is typed twice by hand.
+
+The change policy is the ordinary one and worth stating: **a field may be added without
+a new version, and removed only after a transition period in which it is documented as
+going.** The `v1` in the path changes when a response stops meaning what it meant.
+
 ### What runs on a push
 
 [`.github/workflows/backend.yml`](.github/workflows/backend.yml) runs `./gradlew check`

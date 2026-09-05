@@ -2,12 +2,16 @@ package pl.barometr.profiles.internal
 
 import org.springframework.stereotype.Service
 import pl.barometr.identity.api.UserId
+import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.LegislativeKind
 import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
 import pl.barometr.search.api.TitleSearch
+import pl.barometr.shared.PkdCode
+import pl.barometr.taxonomy.api.ClassifiedSubject
+import pl.barometr.taxonomy.api.IndustryClassification
 import pl.barometr.shared.Eli
 import java.util.UUID
 
@@ -24,6 +28,7 @@ class ProfileMatchPreview(
     private val profiles: InterestProfiles,
     private val catalog: LegislativeCatalog,
     private val titles: TitleSearch,
+    private val industries: IndustryClassification,
 ) {
 
     fun preview(owner: UserId, id: ProfileId): ProfilePreview {
@@ -66,9 +71,11 @@ class ProfileMatchPreview(
 
                 InterestKind.DRAFT -> listOf(LegislativeKind.DRAFT to interest.value)
 
-                // An act is refused by address above; the other two are partitioned out
-                // as dormant before anything gets here.
-                InterestKind.ACT, InterestKind.PKD, InterestKind.REGION -> emptyList()
+                InterestKind.PKD -> classifiedUnder(interest).map { it.kind to it.id.toString() }
+
+                // An act is refused by address above; a place is partitioned out as
+                // dormant before anything gets here.
+                InterestKind.ACT, InterestKind.REGION -> emptyList()
             }
         }.toSet()
 
@@ -86,9 +93,32 @@ class ProfileMatchPreview(
         InterestKind.KEYWORD -> titles.titlesMatching(interest.value, PER_KEYWORD)
             .map { ProfileMatch(interest, it.kind, it.id, it.title, it.eli) }
 
+        // Asked of taxonomy rather than of the index: what a bill is *about* is a
+        // recorded verdict, and no amount of searching its title finds it.
+        InterestKind.PKD -> classifiedUnder(interest).mapNotNull { named(interest, it) }
+
         // Partitioned out above; reaching here would mean the two lists disagree.
-        InterestKind.PKD, InterestKind.REGION -> error("${interest.kind} is dormant")
+        InterestKind.REGION -> error("${interest.kind} is dormant")
     }
+
+    private fun classifiedUnder(interest: Interest): List<ClassifiedSubject> =
+        industries.classifiedUnder(PkdCode(interest.value), PER_INDUSTRY)
+
+    /**
+     * A classified subject with the title it is known by, or nothing when the catalog
+     * no longer holds it.
+     *
+     * Dropped rather than shown as an identifier: a preview exists so that somebody can
+     * recognise what they are about to subscribe to.
+     */
+    private fun named(interest: Interest, subject: ClassifiedSubject): ProfileMatch? =
+        when (subject.kind) {
+            LegislativeKind.ACT -> catalog.actById(ActId(subject.id))
+                ?.let { ProfileMatch(interest, LegislativeKind.ACT, it.id.value.toString(), it.title, it.eli.value) }
+
+            else -> catalog.draftById(DraftId(subject.id))
+                ?.let { ProfileMatch(interest, LegislativeKind.DRAFT, it.id.value.toString(), it.title, null) }
+        }
 
     private companion object {
         /**
@@ -103,12 +133,17 @@ class ProfileMatchPreview(
          */
         const val PER_KEYWORD = 10
 
+        /** As many classified subjects as an industry preview shows, for the reason above. */
+        const val PER_INDUSTRY = 10
+
         /**
-         * The kinds nothing can match yet: what an act is *about* is not recorded
-         * anywhere until impact analysis assigns it, and neither an industry code nor a
-         * place appears in a title often enough to fake it with a text search. Stated
-         * here once, so the preview and the response mean the same thing by it.
+         * The kind nothing can match yet: where a law applies is not recorded anywhere,
+         * and a place does not appear in a title often enough to fake it with a text
+         * search. Stated here once, so the preview and the response mean the same thing
+         * by it.
+         *
+         * An industry left this list when taxonomy began recording what a law is about.
          */
-        val DORMANT_KINDS = setOf(InterestKind.PKD, InterestKind.REGION)
+        val DORMANT_KINDS = setOf(InterestKind.REGION)
     }
 }

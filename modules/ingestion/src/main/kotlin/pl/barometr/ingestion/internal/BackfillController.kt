@@ -17,7 +17,7 @@ import kotlin.math.round
  * Operator endpoints for the archive: start a replay, and check whether it holds
  * everything the source says it should.
  *
- * The module owns its own routes, the way identity owns `/auth`. Authentication
+ * The module owns its own routes, the way identity owns `/api/v1/auth`. Authentication
  * comes from the application's filter chain; authorisation is stated here, because
  * only this module knows what these endpoints cost. Being merely authenticated is
  * not enough: registration is open, so without the role below anyone who signs up

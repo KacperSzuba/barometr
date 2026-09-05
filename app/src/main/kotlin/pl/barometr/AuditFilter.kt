@@ -28,7 +28,10 @@ import pl.barometr.audit.api.AuditTrail
  * somebody is looking for under a hundred thousand that answer nothing.
  */
 @Component
-@Order(Ordered.LOWEST_PRECEDENCE)
+// One step outside [TwoFactorEnrolmentGate], which is innermost: a request that gate
+// refuses has to be recorded, and a filter only sees what the filters inside it let
+// through.
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 class AuditFilter(private val trail: AuditTrail) : OncePerRequestFilter() {
 
     override fun doFilterInternal(

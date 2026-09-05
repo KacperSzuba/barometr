@@ -6,6 +6,7 @@ import pl.barometr.identity.api.UserId
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
+import pl.barometr.legislative.api.LegislativeKind
 import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
 import pl.barometr.legislative.api.TrackedDraft
@@ -15,6 +16,7 @@ import pl.barometr.search.api.TitleMatch
 import pl.barometr.search.api.TitleSearch
 import pl.barometr.shared.Eli
 import pl.barometr.shared.Ids
+import pl.barometr.taxonomy.api.ClassifiedSubject
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.time.LocalDate
@@ -38,7 +40,8 @@ class ProfileMatchPreviewTest {
 
     private val catalog = FakeCatalog()
     private val titles = FakeTitleSearch()
-    private val preview = ProfileMatchPreview(profiles, catalog, titles)
+    private val industries = FakeIndustries()
+    private val preview = ProfileMatchPreview(profiles, catalog, titles, industries)
 
     private val ewa = UserId.next()
 
@@ -81,22 +84,66 @@ class ProfileMatchPreviewTest {
     }
 
     /**
-     * An industry and a place are not silent, they are dormant: nothing records what an
-     * act is about until impact analysis does, and telling somebody their code matched
-     * nothing would be an answer we have not earned.
+     * A place is not silent, it is dormant: nothing records where a law applies, and
+     * telling somebody their region matched nothing would be an answer we have not
+     * earned. An industry left this category when taxonomy began recording what a law
+     * is about.
      */
     @Test
-    fun `an industry and a place are reported dormant rather than silent`() {
+    fun `a place is reported dormant rather than silent`() {
+        val profile = profiles.create(ewa, "Mazowieckie", listOf(Interest(InterestKind.REGION, "14")))
+
+        val found = preview.preview(ewa, profile.id)
+
+        assertEquals(listOf("14"), found.dormant.map { it.value })
+        assertEquals(emptyList(), found.silent)
+    }
+
+    @Test
+    fun `an industry catches what has been classified beneath it`() {
+        catalog.holds(BUILDING_ACT)
+        industries.classifies(ClassifiedSubject(LegislativeKind.ACT, BUILDING_ACT.id.value), "41.20.Z")
+
+        val profile = profiles.create(ewa, "Budowlanka", listOf(Interest(InterestKind.PKD, "41")))
+
+        val found = preview.preview(ewa, profile.id)
+
+        assertEquals(listOf("Prawo budowlane"), found.matches.map { it.title })
+        assertEquals(emptyList(), found.silent)
+        assertEquals(emptyList(), found.dormant)
+    }
+
+    /**
+     * An industry nothing carries is silent rather than dormant, and the difference is
+     * the whole point of the distinction: "nobody has tagged anything in your industry
+     * yet" is a true answer this system can now give, where "we do not record that at
+     * all" was the true answer before.
+     */
+    @Test
+    fun `an industry nothing has been classified under is silent`() {
+        val profile = profiles.create(ewa, "Rybactwo", listOf(Interest(InterestKind.PKD, "03.11.Z")))
+
+        val found = preview.preview(ewa, profile.id)
+
+        assertEquals(emptyList(), found.matches)
+        assertEquals(listOf("03.11.Z"), found.silent.map { it.value })
+    }
+
+    @Test
+    fun `an excluded industry removes what it covers`() {
+        catalog.holds(BUILDING_ACT)
+        industries.classifies(ClassifiedSubject(LegislativeKind.ACT, BUILDING_ACT.id.value), "41.20.Z")
+        titles.finds("budowlane", TitleMatch("act", BUILDING_ACT.id.value.toString(), "Prawo budowlane", "DU/2024/1222"))
+
         val profile = profiles.create(
             ewa,
             "Budowlanka",
-            listOf(Interest(InterestKind.PKD, "41.20.Z"), Interest(InterestKind.REGION, "14")),
+            listOf(keyword("budowlane"), Interest(InterestKind.PKD, "41", excluded = true)),
         )
 
         val found = preview.preview(ewa, profile.id)
 
-        assertEquals(listOf("41.20.Z", "14"), found.dormant.map { it.value }.sortedDescending())
-        assertEquals(emptyList(), found.silent)
+        assertEquals(emptyList(), found.matches)
     }
 
     @Test

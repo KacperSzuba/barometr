@@ -1,0 +1,7 @@
+# The item before the new one ends in a semicolon rather than a full stop now: a real
+# change to the text, and exactly the kind that must not count as substantive.
+added=1
+removed=0
+modified=1
+moved=0
+substantive=1

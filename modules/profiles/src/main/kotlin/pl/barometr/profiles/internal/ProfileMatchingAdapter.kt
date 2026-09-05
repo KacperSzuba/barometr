@@ -16,6 +16,10 @@ import pl.barometr.profiles.api.ProfileMatching
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.profiles.internal.jooq.tables.references.PROFILE_INTEREST
 import pl.barometr.search.api.TextAnalysis
+import pl.barometr.shared.PkdCode
+import pl.barometr.taxonomy.api.ClassifiedSubject
+import pl.barometr.taxonomy.api.IndustryClassification
+import java.util.UUID
 
 /**
  * The push direction: one item, every profile that asked for it.
@@ -31,19 +35,41 @@ class ProfileMatchingAdapter(
     private val dsl: DSLContext,
     private val stems: KeywordStemRepository,
     private val analysis: TextAnalysis,
+    private val industries: IndustryClassification,
 ) : ProfileMatching {
 
     @Transactional
     override fun profilesInterestedIn(item: LegislativeItem): List<InterestedProfile> {
         val titleStems = analysis.stemsOf(item.title)
+        val industryLevels = industryLevelsOf(item)
         stemPendingKeywords()
 
-        val excluded = profilesMatching(item, titleStems, excluded = true)
+        val excluded = profilesMatching(item, titleStems, industryLevels, excluded = true)
             .map { it.profile }
             .toSet()
 
-        return profilesMatching(item, titleStems, excluded = false)
+        return profilesMatching(item, titleStems, industryLevels, excluded = false)
             .filterNot { it.profile in excluded }
+    }
+
+    /**
+     * Every industry code a profile could have chosen and still catch this item.
+     *
+     * The expansion is what keeps the match an equality lookup: an act tagged `62.01.Z`
+     * is also in `62.01`, `62.0` and `62`, so the four are compared against an indexed
+     * column instead of every stored interest being pattern-matched against the tag.
+     *
+     * An item nothing has classified expands to nothing and matches no industry, which
+     * is the honest answer — and the counter in taxonomy is what says how often it is
+     * the answer.
+     */
+    private fun industryLevelsOf(item: LegislativeItem): List<String> {
+        val id = runCatching { UUID.fromString(item.id) }.getOrNull() ?: return emptyList()
+
+        return industries.industriesOf(ClassifiedSubject(item.kind, id))
+            .flatMap(PkdCode::ancestry)
+            .map(PkdCode::value)
+            .distinct()
     }
 
     /**
@@ -59,6 +85,7 @@ class ProfileMatchingAdapter(
     private fun profilesMatching(
         item: LegislativeItem,
         titleStems: List<String>,
+        industryLevels: List<String>,
         excluded: Boolean,
     ): List<InterestedProfile> =
         dsl.select(
@@ -73,7 +100,7 @@ class ProfileMatchingAdapter(
             .on(PROFILE_INTEREST.PROFILE_ID.eq(INTEREST_PROFILE.ID))
             .and(PROFILE_INTEREST.VERSION.eq(INTEREST_PROFILE.CURRENT_VERSION))
             .where(PROFILE_INTEREST.EXCLUDED.eq(excluded))
-            .and(caughtBy(item, titleStems))
+            .and(caughtBy(item, titleStems, industryLevels))
             .fetch {
                 InterestedProfile(
                     profile = ProfileId(it[INTEREST_PROFILE.ID]!!),
@@ -87,12 +114,18 @@ class ProfileMatchingAdapter(
     private fun kindOf(stored: String): InterestKind =
         InterestKind.of(stored) ?: error("stored kind '$stored'")
 
-    private fun caughtBy(item: LegislativeItem, titleStems: List<String>): Condition =
+    private fun caughtBy(
+        item: LegislativeItem,
+        titleStems: List<String>,
+        industryLevels: List<String>,
+    ): Condition =
         DSL.or(
             listOfNotNull(
                 item.eli?.let { isInterest(InterestKind.ACT, PROFILE_INTEREST.VALUE.eq(it)) },
                 isInterest(InterestKind.DRAFT, PROFILE_INTEREST.VALUE.eq(item.id))
                     .takeIf { item.kind == LegislativeKind.DRAFT },
+                industryLevels.takeIf { it.isNotEmpty() }
+                    ?.let { isInterest(InterestKind.PKD, PROFILE_INTEREST.VALUE.`in`(it)) },
                 keywordCarriedBy(titleStems),
             ),
         )

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import pl.barometr.identity.api.UserId
 import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.ProfileId
+import pl.barometr.shared.PkdCode
 
 /**
  * What a subscriber may do to their own profiles.

@@ -30,6 +30,7 @@
             <option value="$PROJECT_DIR$/modules/profiles" />
             <option value="$PROJECT_DIR$/modules/search" />
             <option value="$PROJECT_DIR$/modules/sources" />
+            <option value="$PROJECT_DIR$/modules/taxonomy" />
             <option value="$PROJECT_DIR$/platform" />
             <option value="$PROJECT_DIR$/shared" />
             <option value="$PROJECT_DIR$/shared-testing" />

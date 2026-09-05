@@ -12,5 +12,11 @@ data class UserSessionsRevoked(
 
         /** A refresh token was replayed outside the race window — assume theft. */
         TOKEN_REUSE_DETECTED,
+
+        /** Ended from the account's device list, on purpose, from somewhere else. */
+        REMOTE_LOGOUT,
+
+        /** Nobody has used it for long enough that leaving it open is the greater risk. */
+        IDLE,
     }
 }

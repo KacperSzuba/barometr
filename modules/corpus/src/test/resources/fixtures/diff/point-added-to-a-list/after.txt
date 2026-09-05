@@ -1,0 +1,4 @@
+Art. 5. Ewidencja obejmuje:
+1) nazwę i kod odpadu;
+2) masę odpadu wyrażoną w tonach;
+3) datę przekazania odpadu następnemu posiadaczowi.

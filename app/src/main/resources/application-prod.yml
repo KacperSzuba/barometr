@@ -21,6 +21,14 @@ app:
   jwt:
     # No fallback: the application must refuse to start without a real secret.
     secret: ${JWT_SECRET}
+  identity:
+    two-factor:
+      # No fallback either, and for the same reason: a TOTP secret stored in the clear
+      # is a second factor that a database dump defeats. Unset, the application refuses
+      # to enrol anybody rather than quietly storing secrets in plain text — the salt is
+      # not a secret, but it must not change once anybody is enrolled.
+      encryption-key: ${TOTP_KEY:}
+      encryption-salt: ${TOTP_SALT:}
   storage:
     # Object storage by default, and that is the recommendation rather than a
     # preference: the archive is the one thing here that cannot be recomputed, and a

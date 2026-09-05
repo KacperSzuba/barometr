@@ -50,6 +50,10 @@ databaseChangeLog:
       relativeToChangelogFile: false
       errorIfMissing: false
   - include:
+      file: db/changelog/taxonomy.yaml
+      relativeToChangelogFile: false
+      errorIfMissing: false
+  - include:
       file: db/changelog/alerts.yaml
       relativeToChangelogFile: false
       errorIfMissing: false

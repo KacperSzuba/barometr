@@ -71,6 +71,13 @@ tasks.withType<Test>().configureEach {
     // test tasks side by side, and inside each one the classes run concurrently against
     // databases of their own, which is where the time was.
 
+    // Gradle gives a test JVM 512 MB by default, which was enough until the application's
+    // suite started booting a Spring context beside a Postgres, an Elasticsearch client
+    // and several Testcontainers clients — with test classes running concurrently, that
+    // ceiling arrives as an `OutOfMemoryError` in the middle of an unrelated test rather
+    // than as anything that names the cause.
+    maxHeapSize = "2g"
+
     testLogging {
         events(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         exceptionFormat = TestExceptionFormat.FULL

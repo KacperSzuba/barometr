@@ -4,6 +4,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.InMemoryRefreshTokens
+import pl.barometr.identity.api.UserId
+import pl.barometr.identity.internal.user.InMemorySessions
+import pl.barometr.identity.internal.workspace.Workspace
+import pl.barometr.identity.internal.workspace.WorkspaceId
+import pl.barometr.identity.internal.workspace.InMemoryWorkspaces
+import pl.barometr.identity.internal.workspace.WorkspacePolicies
+import pl.barometr.identity.internal.user.SignedInSession
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
@@ -27,13 +34,16 @@ class RefreshTokenServiceTest {
 
     private val clock = TestClock()
     private val tokens = InMemoryRefreshTokens()
+    private val sessions = InMemorySessions()
+    private val workspaces = InMemoryWorkspaces()
+    private val policies = WorkspacePolicies(workspaces)
     private val userId = Ids.next()
 
     private lateinit var service: RefreshTokenService
 
     @BeforeEach
     fun setUp() {
-        service = RefreshTokenService(tokens, properties(), clock)
+        service = RefreshTokenService(tokens, sessions, policies, properties(), SessionProperties(), clock)
     }
 
     @Test
@@ -143,6 +153,115 @@ class RefreshTokenServiceTest {
         val stored = tokens.all.single()
         assertNotEquals(issued.raw, stored.tokenHash)
         assertEquals(64, stored.tokenHash.length, "a SHA-256 in hex")
+    }
+
+    /**
+     * A device nobody has used for longer than a session may go quiet ends at the
+     * moment it tries to come back — which is the moment it matters, because the
+     * refresh is the only thing that would have revived it.
+     */
+    @Test
+    fun `a session that has gone quiet for too long cannot refresh its way back`() {
+        val issued = service.issue(userId)
+        sessions.open(
+            SignedInSession(
+                familyId = issued.familyId,
+                userId = userId,
+                userAgent = "Mozilla/5.0",
+                clientIp = "203.0.113.7",
+                createdAt = clock.instant(),
+                lastSeenAt = clock.instant(),
+            ),
+        )
+
+        clock.advanceBy(Duration.ofDays(15))
+
+        assertFailsWith<InvalidRefreshTokenException> { service.rotate(issued.raw) }
+        assertTrue(tokens.live().isEmpty(), "the family goes with the session")
+        assertNotNull(sessions.byFamily(issued.familyId)?.revokedAt)
+    }
+
+    @Test
+    fun `a refresh moves the session's last-seen mark and the address with it`() {
+        val issued = service.issue(userId)
+        sessions.open(
+            SignedInSession(
+                familyId = issued.familyId,
+                userId = userId,
+                userAgent = "Mozilla/5.0",
+                clientIp = "203.0.113.7",
+                createdAt = clock.instant(),
+                lastSeenAt = clock.instant(),
+            ),
+        )
+
+        clock.advanceBy(Duration.ofDays(1))
+        service.rotate(issued.raw, ClientFingerprint("Mozilla/5.0", "198.51.100.9"))
+
+        val session = assertNotNull(sessions.byFamily(issued.familyId))
+        assertEquals(clock.instant(), session.lastSeenAt)
+        assertEquals("198.51.100.9", session.clientIp, "a laptop does travel")
+    }
+
+    @Test
+    fun `logging out closes the session as well as the tokens`() {
+        val issued = service.issue(userId)
+        sessions.open(
+            SignedInSession(
+                familyId = issued.familyId,
+                userId = userId,
+                userAgent = null,
+                clientIp = null,
+                createdAt = clock.instant(),
+                lastSeenAt = clock.instant(),
+            ),
+        )
+
+        service.revokeFamilyOf(issued.raw)
+
+        assertNotNull(sessions.byFamily(issued.familyId)?.revokedAt)
+        assertEquals(emptyList(), sessions.liveFor(userId))
+    }
+
+    /**
+     * The institutional customer's second question, answered: "can we have sessions that
+     * end sooner than your default". The deployment says fourteen days; this workspace
+     * says eight hours, and eight hours is what the session gets.
+     */
+    @Test
+    fun `a workspace that asks for shorter sessions gets them`() {
+        val workspace = workspaces.create(
+            Workspace(
+                id = WorkspaceId(Ids.next()),
+                name = "Kancelaria Nowak",
+                seats = 5,
+                requireTwoFactor = false,
+                sessionIdleTimeout = Duration.ofHours(8),
+                createdAt = clock.instant(),
+            ),
+            UserId(userId),
+            clock.instant(),
+        )
+        assertEquals(Duration.ofHours(8), workspace.sessionIdleTimeout)
+
+        val issued = service.issue(userId)
+        sessions.open(
+            SignedInSession(
+                familyId = issued.familyId,
+                userId = userId,
+                userAgent = "Mozilla/5.0",
+                clientIp = null,
+                createdAt = clock.instant(),
+                lastSeenAt = clock.instant(),
+            ),
+        )
+
+        // Well inside the deployment's fourteen days, and well past the workspace's eight
+        // hours.
+        clock.advanceBy(Duration.ofHours(9))
+
+        assertFailsWith<InvalidRefreshTokenException> { service.rotate(issued.raw) }
+        assertTrue(tokens.live().isEmpty())
     }
 
     private fun properties() = JwtProperties(

@@ -39,6 +39,12 @@ spring:
 
 server:
   port: 8080
+  # The browser never reaches this service directly — Next.js proxies every call — so
+  # `remoteAddr` would otherwise be the proxy on every request, and the address in
+  # somebody's device list would be the same one for every device they own. Spring
+  # resolves the forwarded chain itself; parsing `X-Forwarded-For` by hand is a second,
+  # worse implementation of a header with real corner cases.
+  forward-headers-strategy: framework
   error:
     # Never leak stack traces or internal messages to a client.
     include-message: never

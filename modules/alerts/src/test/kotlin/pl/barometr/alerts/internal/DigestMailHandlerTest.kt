@@ -84,7 +84,10 @@ class DigestMailHandlerTest {
         handler.handle(jobFor(second))
 
         assertEquals(post.sent.first().unsubscribeUrl, post.sent.last().unsubscribeUrl)
-        assertTrue(post.sent.first().unsubscribeUrl.startsWith("https://barometr.example/api/v1/alerts/unsubscribe/"))
+        assertTrue(
+            post.sent.first().unsubscribeUrl!!.startsWith("https://barometr.example/api/v1/alerts/unsubscribe/"),
+            "a digest always carries the way out; only a security warning does not",
+        )
     }
 
     /**

@@ -42,7 +42,7 @@ class ApplicationSecurityConfig(private val trail: AuditTrail) {
         .cors { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
-            it.requestMatchers("/auth/**").permitAll()
+            it.requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 // Stopping the mail must not require signing in. Somebody who cannot
                 // unsubscribe from the message in front of them presses "spam"
@@ -50,6 +50,12 @@ class ApplicationSecurityConfig(private val trail: AuditTrail) {
                 // subscription was worth. The token in the link is the authorisation,
                 // it is random, and all it can do is stop mail.
                 .requestMatchers("/api/v1/alerts/unsubscribe/**").permitAll()
+                // A calendar client subscribes once and then fetches from a
+                // server-side scheduler for years: there is nowhere to put a bearer
+                // token and nobody at the keyboard to be prompted for one. The random
+                // token in the URL is the authorisation, it can be revoked, and all it
+                // reaches is one profile's view of deadlines that are public anyway.
+                .requestMatchers("/api/v1/alerts/calendar/feed/**").permitAll()
                 // The mail provider reporting a bounce has no account here. It
                 // authenticates with a shared secret the endpoint checks itself, and
                 // refuses everything while that secret is unset.

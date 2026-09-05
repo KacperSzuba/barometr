@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":legislative"))
     implementation(project(":search"))
     implementation(project(":profiles"))
+    implementation(project(":taxonomy"))
     implementation(project(":audit"))
     implementation(project(":alerts"))
 
@@ -25,6 +26,10 @@ dependencies {
     implementation(libs.springBootStarterOpenTelemetry)
     runtimeOnly(libs.micrometerPrometheus)
     implementation(libs.jacksonModuleKotlin)
+    // The API contract, generated from the controllers. The application declares it
+    // because only the application knows every context's routes — the same reason the
+    // security chain lives here.
+    implementation(libs.springdocWebmvc)
 
     implementation(libs.springModulithStarterCore)
     // Persists every published event to `event_publication` and retries delivery,
@@ -42,6 +47,10 @@ dependencies {
     testImplementation(libs.springBootStarterWebmvcTest)
     testImplementation(libs.springBootSecurityTest)
     testImplementation(libs.archunitJunit5)
+    // The end-to-end second-factor test plays the part of the authenticator app: it has
+    // to produce the code a phone would show, which is the one thing a caller of this
+    // API cannot be given by the API.
+    testImplementation(libs.javaOtp)
     // The one test that starts the real context needs a real database, and the
     // schema it starts against must be the one the migrations produce.
     testImplementation(project(":shared-testing"))

@@ -52,6 +52,20 @@ jobs:
         # that are the only thing enforcing them since each context became one module.
         run: ./gradlew check --build-cache --stacktrace
 
+      - name: API contract
+        # Written by `OpenApiContractTest` while the suite runs, so the document that
+        # gets published is one a booted application actually served rather than one a
+        # generator guessed at. The web app builds its TypeScript types from this file;
+        # uploaded from every run, because a pull request that changes the contract
+        # should be reviewable as a diff of it.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi
+          path: app/build/openapi/openapi.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Test reports
         # The reason a run failed is in these, and a red pipeline nobody can diagnose
         # is a pipeline people start ignoring.

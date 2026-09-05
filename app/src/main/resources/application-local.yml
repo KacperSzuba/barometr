@@ -21,6 +21,24 @@ app:
     # working directory, so `./.data` quietly resolved to `app/.data` and the blobs
     # ended up somewhere nobody would look for them.
     root: ${user.home}/.barometr/blobs
+  identity:
+    workspace:
+      # Where an invitation link points. Local only, like the calendar's: a link handed
+      # out pointing at localhost is an invitation nobody outside this machine can take.
+      invitation-base-url: http://localhost:3000
+    two-factor:
+      # Development values so a local run can enrol an authenticator. The prod profile
+      # has none: a TOTP secret stored in the clear is a second factor a database dump
+      # defeats, and the application refuses to enrol anybody without a key.
+      encryption-key: ${TOTP_KEY:barometr-local-development-totp-key}
+      encryption-salt: ${TOTP_SALT:5c0744940b5c369b}
+  alerts:
+    calendar:
+      # Where a calendar client would reach this API. Local only: on a deployment the
+      # feed URL has to name the host Outlook can actually fetch from, and a URL
+      # handed out pointing at localhost is a subscription that silently never
+      # updates.
+      base-url: http://localhost:8080
   jobs:
     poll-interval: 1000
   ingestion:

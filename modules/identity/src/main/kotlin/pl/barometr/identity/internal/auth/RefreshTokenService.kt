@@ -5,6 +5,9 @@ import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.RefreshToken
 import pl.barometr.identity.internal.user.RefreshTokens
+import pl.barometr.identity.internal.user.Sessions
+import pl.barometr.identity.api.UserId
+import pl.barometr.identity.internal.workspace.WorkspacePolicies
 import pl.barometr.shared.Ids
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -17,7 +20,10 @@ import java.util.UUID
 @Service
 class RefreshTokenService(
     private val tokens: RefreshTokens,
+    private val sessions: Sessions,
+    private val policies: WorkspacePolicies,
     private val properties: JwtProperties,
+    private val sessionProperties: SessionProperties,
     private val clock: Clock,
 ) {
 
@@ -69,7 +75,7 @@ class RefreshTokenService(
      * still propagates; only the rollback is suppressed.
      */
     @Transactional(noRollbackFor = [RefreshTokenReuseException::class])
-    fun rotate(rawToken: String): RotationResult {
+    fun rotate(rawToken: String, from: ClientFingerprint = ClientFingerprint.UNKNOWN): RotationResult {
         val now = clock.instant()
 
         val stored = tokens.byTokenHashForUpdate(sha256Hex(rawToken))
@@ -89,19 +95,45 @@ class RefreshTokenService(
             throw RefreshTokenReuseException()
         }
 
+        // The device this login was made on has gone quiet for longer than a session
+        // may. Ended here rather than by a sweep, because this is the moment it matters:
+        // the refresh is the only thing that would have brought it back to life.
+        //
+        // How long "may" is belongs to the account's workspaces when any of them has an
+        // opinion — an institutional customer asking for shorter sessions is asking for
+        // exactly this — and to the deployment when none has.
+        val idleTimeout = policies.idleTimeoutFor(UserId(stored.userId), sessionProperties.idleTimeout)
+        val session = sessions.byFamily(stored.familyId)
+        if (session != null && Duration.between(session.lastSeenAt, now) > idleTimeout) {
+            sessions.revoke(stored.familyId, now)
+            tokens.revokeFamily(stored.familyId, now)
+            throw InvalidRefreshTokenException()
+        }
+
         // Only the first use marks the token spent: `used_at` is when the window
         // opened, not when the latest caller arrived, or a token presented every
         // second would keep its own window open indefinitely.
         if (usedAt == null) tokens.markUsed(stored.id, now)
 
+        // The session is still in use, and possibly from somewhere new: a laptop does
+        // travel, and the address a person is shown should be where it last was.
+        sessions.markSeen(stored.familyId, now, from.clientIp)
+
         return RotationResult(stored.userId, issue(stored.userId, stored.familyId, stored.id))
     }
 
-    /** Logout: kills the whole family, so every descendant of that login dies too. */
+    /**
+     * Logout: kills the whole family, so every descendant of that login dies too — and
+     * closes the session row, so the device stops appearing in the account's list.
+     */
     @Transactional
     fun revokeFamilyOf(rawToken: String): UUID? {
         val stored = tokens.byTokenHashForUpdate(sha256Hex(rawToken)) ?: return null
-        tokens.revokeFamily(stored.familyId, clock.instant())
+        val now = clock.instant()
+
+        tokens.revokeFamily(stored.familyId, now)
+        sessions.revoke(stored.familyId, now)
+
         return stored.userId
     }
 

@@ -15,3 +15,15 @@ databaseChangeLog:
   - include:
       file: db/changelog/identity/0003-user-roles.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0004-session.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0005-two-factor.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0006-trusted-device.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/identity/0007-workspace.sql
+      relativeToChangelogFile: false

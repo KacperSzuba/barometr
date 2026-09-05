@@ -8,6 +8,8 @@ import pl.barometr.profiles.api.InterestKind
 import pl.barometr.profiles.api.LegislativeItem
 import pl.barometr.profiles.internal.jooq.tables.references.INTEREST_PROFILE
 import pl.barometr.search.api.TextAnalysis
+import pl.barometr.shared.Ids
+import pl.barometr.taxonomy.api.ClassifiedSubject
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
 import java.util.UUID
@@ -32,7 +34,8 @@ class ProfileMatchingAdapterTest {
     )
 
     private val analysis = FakeAnalysis()
-    private val matching = ProfileMatchingAdapter(dsl, KeywordStemRepository(dsl), analysis)
+    private val industries = FakeIndustries()
+    private val matching = ProfileMatchingAdapter(dsl, KeywordStemRepository(dsl), analysis, industries)
 
     private val ewa = UserId.next()
     private val marek = UserId.next()
@@ -171,6 +174,66 @@ class ProfileMatchingAdapterTest {
         profiles.create(ewa, "Budowlanka", listOf(Interest(InterestKind.KEYWORD, "prawo budowlane")))
 
         assertTrue(matching.profilesInterestedIn(act("DU/2024/99", "o w na")).isEmpty())
+    }
+
+    @Test
+    fun `an industry catches a bill classified beneath it`() {
+        val profile = profiles.create(ewa, "Budowlanka", listOf(Interest(InterestKind.PKD, "41")))
+        val bill = classifiedDraft("Projekt ustawy o wyrobach budowlanych", "41.20.Z")
+
+        val interested = matching.profilesInterestedIn(bill).single()
+
+        assertEquals(profile.id, interested.profile)
+        assertEquals(InterestKind.PKD, interested.matchedBy.kind)
+        // The interest as the subscriber wrote it, not the code the bill was tagged
+        // with: "you watch construction" is the reason, and `41.20.Z` is the evidence.
+        assertEquals("41", interested.matchedBy.value)
+    }
+
+    @Test
+    fun `an industry catches nothing in a neighbouring one`() {
+        profiles.create(ewa, "Budowlanka", listOf(Interest(InterestKind.PKD, "41")))
+
+        val fisheries = classifiedDraft("Projekt ustawy o rybołówstwie", "03.11.Z")
+
+        assertEquals(emptyList(), matching.profilesInterestedIn(fisheries))
+    }
+
+    /**
+     * Until something records what a bill is about, an industry catches nothing — and
+     * that is the honest answer rather than a title search pretending to be one.
+     */
+    @Test
+    fun `a bill nothing has classified is caught by no industry`() {
+        profiles.create(ewa, "Budowlanka", listOf(Interest(InterestKind.PKD, "41")))
+
+        val unclassified = LegislativeItem(LegislativeKind.DRAFT, Ids.next().toString(), "Projekt ustawy")
+
+        assertEquals(emptyList(), matching.profilesInterestedIn(unclassified))
+    }
+
+    @Test
+    fun `an excluded industry keeps a profile out of what its keyword would have caught`() {
+        profiles.create(
+            ewa,
+            "Budowlanka",
+            listOf(
+                Interest(InterestKind.KEYWORD, "projekt ustawy"),
+                Interest(InterestKind.PKD, "41", excluded = true),
+            ),
+        )
+
+        val bill = classifiedDraft("Projekt ustawy o wyrobach budowlanych", "41.20.Z")
+
+        assertEquals(emptyList(), matching.profilesInterestedIn(bill))
+    }
+
+    /** A draft the taxonomy has tagged, addressed the way the alert run addresses one. */
+    private fun classifiedDraft(title: String, vararg codes: String): LegislativeItem {
+        val id = Ids.next()
+        industries.classifies(ClassifiedSubject(LegislativeKind.DRAFT, id), *codes)
+
+        return LegislativeItem(LegislativeKind.DRAFT, id.toString(), title)
     }
 
     private fun act(eli: String, title: String) = LegislativeItem(LegislativeKind.ACT, eli, title, eli)

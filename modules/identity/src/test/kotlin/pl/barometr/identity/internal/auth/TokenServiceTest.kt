@@ -10,6 +10,7 @@ import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
+import java.util.UUID
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -24,6 +25,9 @@ import kotlin.test.assertTrue
  */
 class TokenServiceTest {
 
+    /** The session every minted token names; the claim is asserted below. */
+    private val session: UUID = Ids.next()
+
     // Real time, not a fixed instant: Nimbus validates `exp` against the system
     // clock, which no test can hand it. What the injected clock controls here is
     // when the token claims to have been issued.
@@ -36,7 +40,7 @@ class TokenServiceTest {
     fun `the access token carries the claims the resource server checks`() {
         val user = user(roles = setOf(Role.USER, Role.OPERATOR))
 
-        val token = service.createAccessToken(user)
+        val token = service.createAccessToken(user, session)
         val decoded = config.jwtDecoder().decode(token.value)
 
         assertEquals(user.id.toString(), decoded.subject)
@@ -46,11 +50,26 @@ class TokenServiceTest {
         assertEquals(listOf("barometr-web"), decoded.audience)
         assertEquals(user.email, decoded.getClaimAsString(JwtClaims.EMAIL))
         assertEquals(listOf("USER", "OPERATOR"), decoded.getClaimAsStringList(JwtClaims.ROLES))
+        assertEquals(session.toString(), decoded.getClaimAsString(JwtClaims.SESSION))
+        assertEquals(false, decoded.getClaimAsBoolean(JwtClaims.ENROLMENT_REQUIRED))
+    }
+
+    /**
+     * The claim the application's filter chain acts on: a caller whose workspace insists
+     * on a second factor they have not set up reaches the enrolment routes and nothing
+     * else. It is a claim rather than a lookup because the alternative is a database read
+     * on every request.
+     */
+    @Test
+    fun `a token can say that its holder still has to set a second factor up`() {
+        val token = service.createAccessToken(user(), session, mustEnrolTwoFactor = true)
+
+        assertEquals(true, config.jwtDecoder().decode(token.value).getClaimAsBoolean(JwtClaims.ENROLMENT_REQUIRED))
     }
 
     @Test
     fun `the token expires after the configured lifetime`() {
-        val token = service.createAccessToken(user())
+        val token = service.createAccessToken(user(), session)
         val decoded = config.jwtDecoder().decode(token.value)
 
         assertEquals(properties.accessTtl.seconds, token.expiresInSeconds)
@@ -69,7 +88,7 @@ class TokenServiceTest {
     fun `a token minted for another audience is rejected`() {
         val otherAudience = properties.copy(audience = "some-other-service")
         val foreign = TokenService(JwtConfig(otherAudience).jwtEncoder(), otherAudience, clock)
-            .createAccessToken(user())
+            .createAccessToken(user(), session)
 
         val failure = assertFailsWith<JwtValidationException> {
             config.jwtDecoder().decode(foreign.value)
@@ -81,7 +100,7 @@ class TokenServiceTest {
     fun `a token signed with another secret is rejected`() {
         val foreignKey = properties.copy(secret = "a-completely-different-secret-of-enough-length")
         val foreign = TokenService(JwtConfig(foreignKey).jwtEncoder(), foreignKey, clock)
-            .createAccessToken(user())
+            .createAccessToken(user(), session)
 
         assertFailsWith<org.springframework.security.oauth2.jwt.BadJwtException> {
             config.jwtDecoder().decode(foreign.value)

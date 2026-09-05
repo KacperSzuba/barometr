@@ -64,6 +64,7 @@ listOf(
     "legislative",
     "search",
     "profiles",
+    "taxonomy",
     "alerts",
     "audit",
 ).forEach { context ->

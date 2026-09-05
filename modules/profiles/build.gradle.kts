@@ -21,6 +21,10 @@ dependencies {
     // to say, and what a phrase finds is the index's.
     implementation(project(":legislative"))
     implementation(project(":search"))
+    // Which industries a law concerns is taxonomy's answer, not a guess made from a
+    // title here: the preview somebody watches while typing a code and the run that
+    // sends the alert have to mean the same thing by it.
+    implementation(project(":taxonomy"))
 
     implementation(libs.springBootStarter)
     implementation(libs.springBootStarterJooq)

@@ -10,7 +10,7 @@ description: HTTP API and security rules for barometr — controllers and DTOs, 
 ## Shape of an endpoint
 
 1. **Controllers live in the owning context's `internal` package** and own their
-   routes — identity owns `/auth`, ingestion owns `/api/v1/ingestion`. The application
+   routes — identity owns `/api/v1/auth`, ingestion owns `/api/v1/ingestion`. The application
    does not collect other contexts' controllers.
 2. **A controller goes through a service or a published port, never a repository.**
    `MeController` reads through `UserLookup`, the module's own read port, so the day

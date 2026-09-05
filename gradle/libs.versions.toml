@@ -16,6 +16,40 @@ jsoup = "1.23.2"
 # Text extraction from the files RPL and the BIPs publish. Nothing in Spring or the
 # JDK reads a PDF or a Word document, and the archive is now mostly both.
 tika = "3.3.1"
+# Myers diff over arbitrary lists, for the word-level half of a version comparison.
+# Neither the JDK nor Spring ships a diff algorithm, and the naive alternative — longest
+# common subsequence written here — is the part of this feature least worth owning: the
+# domain knowledge is which units are the same unit, not how two token lists align.
+javaDiffUtils = "4.17"
+# iCalendar (RFC 5545) output for the subscribable consultation calendar. Nothing in
+# Spring or the JDK writes the format, and the parts that get hand-written wrong are
+# exactly its dull ones: folding at 75 octets, escaping commas and semicolons inside
+# TEXT, and the half-open end date of an all-day event.
+#
+# biweekly rather than ical4j: ical4j 4 pulls Groovy, a parser-combinator library and a
+# cache to do it, which is a great deal of machinery for emitting a few VEVENTs.
+# biweekly has no dependencies at all, and an unmaintained library is a different risk
+# for a frozen 2009 format than it would be for an HTTP client.
+biweekly = "0.6.8"
+# The OpenAPI contract, generated from the controllers rather than written beside them.
+# springdoc 3 is the line that targets Spring Boot 4; 2.x is built against Boot 3 and
+# does not start here. Not managed by the Boot BOM either way.
+springdoc = "3.1.0"
+# TOTP (RFC 6238) for the second factor. Neither Spring Security nor the JDK implements
+# it, and the parts that are easy to get wrong are the ones that matter: the counter
+# derived from the clock, the truncation, and comparing codes without leaking timing.
+# java-otp is a few classes with no runtime dependencies at all.
+javaOtp = "1.0.0"
+# Reads a MaxMind `.mmdb` file, which is how an address becomes "Warszawa, PL" without
+# asking anybody: the alternative — a lookup service at request time — would mean sending
+# every customer's address to a third party, which is a processor relationship this
+# product is not going to enter for a label in a list.
+#
+# The low-level reader rather than the `geoip2` client: that one pulls Jackson 2 into an
+# application running Jackson 3, for a convenience layer over the same file. This has no
+# runtime dependencies at all. The database itself is not shipped — it is licensed
+# separately and a deployment supplies the path.
+maxmindDb = "4.1.0"
 testcontainers = "1.21.4"
 # The archive is the product. Keeping it on a container's disk means one instance and a
 # volume nobody backs up, so it goes to object storage — Google's, with the client that
@@ -166,6 +200,26 @@ tikaCore = { module = "org.apache.tika:tika-core", version.ref = "tika" }
 # a `.docx` that is really a PDF is a thing ministries file.
 tikaParserPdf = { module = "org.apache.tika:tika-parser-pdf-module", version.ref = "tika" }
 tikaParserMicrosoft = { module = "org.apache.tika:tika-parser-microsoft-module", version.ref = "tika" }
+
+# ——— Addresses ———————————————————————————————————————————————————————————
+maxmindDb = { module = "com.maxmind.db:maxmind-db", version.ref = "maxmindDb" }
+
+# ——— Second factor ———————————————————————————————————————————————————————
+javaOtp = { module = "com.eatthepath:java-otp", version.ref = "javaOtp" }
+
+# ——— API contract ————————————————————————————————————————————————————————
+# The `-api` artifact, not `-ui`: what this is for is the `openapi.json` the web app
+# generates its types from, and a bundled Swagger page would be a webjar and a route to
+# secure for a reader nobody has asked for yet.
+springdocWebmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc" }
+
+# ——— Calendars ——————————————————————————————————————————————————————————
+biweekly = { module = "net.sf.biweekly:biweekly", version.ref = "biweekly" }
+
+# ——— Text comparison ————————————————————————————————————————————————————
+# Deltas between two lists, with positions on both sides — which is exactly what a
+# word-level diff inside one editorial unit needs, once the units have been aligned.
+javaDiffUtils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "javaDiffUtils" }
 
 liquibaseCore = { module = "org.liquibase:liquibase-core" }
 postgresql = { module = "org.postgresql:postgresql" }

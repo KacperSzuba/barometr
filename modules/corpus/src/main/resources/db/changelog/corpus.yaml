@@ -21,3 +21,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/corpus/0005-classify-rcl-filed-documents.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/corpus/0006-version-diff.sql
+      relativeToChangelogFile: false

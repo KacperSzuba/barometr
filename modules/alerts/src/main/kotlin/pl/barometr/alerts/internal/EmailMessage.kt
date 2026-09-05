@@ -18,6 +18,11 @@ data class EmailMessage(
      * Not decoration: mail providers rank a sender partly on whether unsubscribing is
      * easy, and the ones who cannot find the link press "spam" instead — which costs
      * far more than the subscription did.
+     *
+     * Null for a message nobody may unsubscribe from. There is exactly one kind — a
+     * warning that somebody has signed in on a device this account has not used —
+     * because "stop telling me when my password is used elsewhere" is not a preference
+     * this product offers, and offering it in a header would be offering it.
      */
-    val unsubscribeUrl: String,
+    val unsubscribeUrl: String? = null,
 )

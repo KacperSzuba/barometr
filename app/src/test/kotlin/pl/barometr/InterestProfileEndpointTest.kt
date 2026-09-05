@@ -138,9 +138,13 @@ class InterestProfileEndpointTest {
 
     /**
      * The preview, through the assembled application — which is the only place that
-     * shows an industry code coming back as dormant rather than as a match nobody
-     * found. No keyword here, so nothing asks the index: a preview of exact addresses
-     * needs only the catalog, and this test would otherwise need a running node.
+     * shows a region coming back as dormant rather than as a match nobody found. No
+     * keyword here, so nothing asks the index: a preview of exact addresses needs only
+     * the catalog, and this test would otherwise need a running node.
+     *
+     * An industry is in the other list, and the difference is the point: nothing in
+     * this test's archive is classified, so `41.20.Z` matches nothing *yet* — where a
+     * region cannot match at all, because nowhere is it recorded where a law applies.
      */
     @Test
     @WithMockUser(username = EWA, roles = ["USER"])
@@ -149,6 +153,7 @@ class InterestProfileEndpointTest {
             """
             {"name":"Budowlanka","interests":[
               {"kind":"pkd","value":"41.20.Z"},
+              {"kind":"region","value":"14"},
               {"kind":"act","value":"DU/2024/1222"}
             ]}
             """.trimIndent(),
@@ -157,10 +162,12 @@ class InterestProfileEndpointTest {
         mockMvc.perform(get("$PROFILES/$id/matches"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matches.length()").value(0))
-            // The archive in this test holds no acts, so a correct address finds nothing.
-            .andExpect(jsonPath("$.silent[0].value").value("DU/2024/1222"))
-            .andExpect(jsonPath("$.dormant[0].interest.value").value("41.20.Z"))
-            .andExpect(jsonPath("$.dormant[0].reason").value("no_subject_tags"))
+            // The archive in this test holds no acts and nothing is classified, so a
+            // correct address and an industry both find nothing.
+            .andExpect(jsonPath("$.silent.length()").value(2))
+            .andExpect(jsonPath("$.dormant.length()").value(1))
+            .andExpect(jsonPath("$.dormant[0].interest.value").value("14"))
+            .andExpect(jsonPath("$.dormant[0].reason").value("no_place_recorded"))
     }
 
     /**

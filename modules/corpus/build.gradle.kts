@@ -22,8 +22,21 @@ dependencies {
     // Derivation listens to ingestion through the event register, so it needs the
     // annotation; the register itself is wired in :app.
     implementation(libs.springModulithEventsApi)
+    // The changes of a document are read over HTTP, and queueing a comparison is an
+    // operator's. The chain that authenticates either is the application's, so only the
+    // annotations are needed here.
+    implementation(libs.springBootStarterWeb)
+    implementation(libs.springSecurityCore)
+    // The backlog sweep runs once across the deployment rather than once per
+    // instance: a second copy would queue the same pairs the first already did, and
+    // the dedup key would absorb it silently while the work was done twice.
+    implementation(libs.shedlockSpring)
     // MeterRegistry: a payload that cannot be derived is counted, not only logged.
     implementation(libs.springBootStarterActuator)
+
+    // Word-level deltas inside an editorial unit, once alignment has decided which
+    // unit is which. The alignment is ours; the token diff is a solved algorithm.
+    implementation(libs.javaDiffUtils)
 
     // Plain text out of what ministries file. Nothing in Spring or the JDK reads a
     // PDF or a Word document, and every downstream promise starts from the text.

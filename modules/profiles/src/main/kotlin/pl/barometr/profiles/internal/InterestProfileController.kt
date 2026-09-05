@@ -124,7 +124,7 @@ class InterestProfileController(
             dormant = found.dormant.map {
                 DormantPayload(
                     InterestPayload(it.kind.wireName, it.value, it.excluded),
-                    NO_SUBJECT_TAGS,
+                    NO_PLACE_RECORDED,
                 )
             },
         )
@@ -220,11 +220,14 @@ class InterestProfileController(
         const val MAX_INTERESTS = 200
 
         /**
-         * Why an industry or a place matches nothing yet: an act's subject is not
-         * recorded until the impact analysis that assigns it exists. A code rather than
-         * a sentence, because the sentence belongs to whichever language the reader
-         * chose.
+         * Why a kept interest cannot match: nowhere in this system is it recorded where
+         * a law applies, so a region catches nothing until it is. A code rather than a
+         * sentence, because the sentence belongs to whichever language the reader chose.
+         *
+         * An industry used to be here too, and is not since taxonomy began recording
+         * what a law is about: a code nothing has been classified under is now silent —
+         * matchable, matching nothing yet — which is a different and truer answer.
          */
-        const val NO_SUBJECT_TAGS = "no_subject_tags"
+        const val NO_PLACE_RECORDED = "no_place_recorded"
     }
 }

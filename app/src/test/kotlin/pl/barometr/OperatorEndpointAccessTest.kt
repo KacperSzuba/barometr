@@ -10,9 +10,12 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import pl.barometr.testing.PostgresTestDatabase
+import java.util.UUID
 
 /**
  * That the endpoints only an operator may call are only callable by an operator.
@@ -58,6 +61,29 @@ class OperatorEndpointAccessTest {
         mockMvc.perform(post("$SEARCH_INDEX/rebuild")).andExpect(status().isForbidden)
     }
 
+    /**
+     * A verdict here decides who is told about a bill. Somebody who could write one
+     * could put a competitor's industry on an act and change what lands in their inbox,
+     * and registration is open.
+     */
+    @Test
+    @WithMockUser(roles = ["USER"])
+    fun `an ordinary account cannot decide what industry a law concerns`() {
+        mockMvc.perform(get("$TAXONOMY/review")).andExpect(status().isForbidden)
+
+        mockMvc.perform(
+            put("$TAXONOMY/subjects/draft/${UUID.randomUUID()}/industries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"industries":[{"pkd":"41.20.Z"}]}"""),
+        ).andExpect(status().isForbidden)
+    }
+
+    @Test
+    @WithMockUser(roles = ["OPERATOR"])
+    fun `an operator reads the industry review queue`() {
+        mockMvc.perform(get("$TAXONOMY/review")).andExpect(status().isOk)
+    }
+
     @Test
     fun `an anonymous caller is refused before authorization is even considered`() {
         mockMvc.perform(get(ACT_MATCHES)).andExpect(status().isUnauthorized)
@@ -73,6 +99,7 @@ class OperatorEndpointAccessTest {
         private const val ACT_MATCHES = "/api/v1/legislative/act-matches"
         private const val INGESTION = "/api/v1/ingestion"
         private const val SEARCH_INDEX = "/api/v1/search/index"
+        private const val TAXONOMY = "/api/v1/taxonomy"
 
         @JvmStatic
         @DynamicPropertySource

@@ -33,6 +33,8 @@ dependencies {
     // The buffer fills from legislative's events; the register that persists and
     // redelivers them is wired in :app.
     implementation(libs.springModulithEventsApi)
+    // The consultation calendar leaves as an iCalendar feed a client subscribes to.
+    implementation(libs.biweekly)
     implementation(libs.springSecurityCore)
     // The matching run happens once across the deployment, not once per instance.
     implementation(libs.shedlockSpring)

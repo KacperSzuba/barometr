@@ -86,6 +86,14 @@ abstract class GenerateJooqSources : DefaultTask() {
                                     .withUserType("org.jooq.postgres.extensions.types.OffsetDateTimeRange")
                                     .withBinding("org.jooq.postgres.extensions.bindings.OffsetDateTimeRangeBinding")
                                     .withIncludeTypes("tstzrange"),
+                                // `inet` holds the address a session signed in from.
+                                // Unmapped it generates as `Any?`, which is a column
+                                // nothing can read without a cast and nothing can write
+                                // without a raw SQL fragment.
+                                ForcedType()
+                                    .withUserType("org.jooq.postgres.extensions.types.Inet")
+                                    .withBinding("org.jooq.postgres.extensions.bindings.InetBinding")
+                                    .withIncludeTypes("inet"),
                             ),
                     )
                     .withGenerate(

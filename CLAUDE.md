@@ -14,8 +14,8 @@ that covers what you are touching before writing code**, and run
 done.
 
 The reasoning behind them, including every known defect and the refactoring roadmap,
-is in [docs/backend-review.md](docs/backend-review.md). Work in progress: a pass
-over naming.
+is in [docs/backend-review.md](docs/backend-review.md) — the first pass and a second
+one that records what building on top of it found.
 
 ## Non-negotiables
 

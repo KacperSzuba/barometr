@@ -66,6 +66,13 @@ delivers at-least-once semantics with nothing extra to operate.
 15. **Intervals come from configuration with a default in the property placeholder**
     (`\${app.jobs.poll-interval:1000}`), and the properties class documents what the
     number means.
+16. **A run that reads what another listener writes waits for it.** Listeners on one
+    event run beside each other in no order anybody chose, so a batch that judges an
+    item the moment it lands judges it against whichever of them finished first — and
+    then marks it judged, which makes the failure silent and permanent. Alerts take
+    what has been waiting longer than `app.alerts.settle-delay` for exactly this
+    reason (review F-2). Asking the other context "are you done with this one" is not
+    the fix: "nothing to say about it" and "not read yet" are the same absence.
 
 ## Patterns to copy
 

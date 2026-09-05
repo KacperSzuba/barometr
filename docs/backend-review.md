@@ -491,3 +491,127 @@ while the table was empty, which is the only time it is free.
 
 Tranche 4 depends on 1–3 only for where the files live, not for what it changes; if
 the structural work is deferred, 4 can run first against the current layout.
+
+---
+
+## Second pass — 2026-09-05
+
+Date: 2026-09-05 · Scope: joining the two registers, classifying what a law is about,
+and everything that fell out of running the suite.
+
+The findings below were not looked for. Each one turned up while building something
+else, which is worth saying because it is the argument for the method rather than for
+the findings: every one of them was invisible from the code that contained it and
+obvious from the code that used it.
+
+### F-1 · A view that picks the latest by time ties, and the tie is silent
+
+`stage_transition` is append-only: a stage whose period turns out to be different is
+recorded again with a later `known_at`, beside the fact it corrects. Nothing read it
+that way. `historyOf` returned every statement ever made, so a draft read twice carried
+its first reading twice on the card — one of the two still claiming the draft never left
+it — and `RecordedStage` has no `known_at` for a caller to tell them apart with. The
+medians were hit from the other side: a stay whose end was corrected counted as two
+completed stays, so re-reading a process could push a stage over the five-observation
+threshold and buy an estimate the archive had not earned.
+
+`stage_transition_latest` states once which statement stands, and both readers go
+through it. Then the view itself had the same defect one level down: a correction made
+in the same reading that prompted it carries the same `known_at` by construction, and
+`DISTINCT ON` kept whichever row the scan reached first. The row's own identifier breaks
+the tie now, and it means something — a UUIDv7 sorts by when it was made.
+
+**Rule derived.** A view that resolves "the latest" needs a total order, not a mostly
+total one. `database-schema` carries it.
+
+### F-2 · Listeners on one event race each other, and the loser is silent
+
+An act reaching the archive publishes one event and three listeners take it at once:
+alerts writes down that something moved, taxonomy works out which industries it
+concerns, legislative records where it stands. The match run then judged whatever was
+waiting, immediately — so an act judged before its industries were written was matched
+on keywords alone, a profile watching construction heard nothing about a construction
+bill, and the item was marked judged, which means no later run looks at it again.
+
+There was nothing to lose the race against until a classifier existed, which is why the
+code could stand as it was. A run now takes what has stopped moving: buffered longer ago
+than `app.alerts.settle-delay`, a minute against a cadence of five.
+
+The alternative — asking taxonomy whether a subject had been classified — cannot be
+answered: a law about income tax carries no industries and neither does one nobody has
+read yet, and those are the same absence.
+
+**Rule derived.** A consumer that reads what another listener on the same event writes
+waits for it. `jobs-scheduling` carries it.
+
+### F-3 · A library reaching the network to render a response
+
+Every calendar subscription wrote its iCalendar through `Biweekly.write(…).tz(zone,
+false)`, and that convenience method has one implementation of "which timezone": fetch
+the definition from `tzurl.org`, over plain HTTP, per call. A feed a client polls every
+six hours cannot rest on a third-party site being reachable. It surfaced as eight test
+failures behind an egress policy that refuses the request — which is the same failure a
+blocked or slow tzurl.org would be in production, arriving as a 500.
+
+UTC is four lines and has not changed since it was named, so it is stated in the code.
+
+### F-4 · A verdict a person decided, overwritten by a machine
+
+`item_industry` upserts on its primary key, so a second reading of the same code
+replaces the first. That was right while nothing read automatically and wrong the moment
+a classifier ran on a schedule: a code a reviewer rejected would come back accepted on
+the next pass, routing alerts a person had refused, invisibly. The update now refuses
+any row that has been reviewed.
+
+### F-5 · A queue nobody could work through
+
+A pending verdict reached its reviewer as a subject id, a PKD code and a number. "Is act
+8f3c… about construction" is not a question anybody can answer from that, and the
+classifier fills that queue a thousand rows at a time. What caught it now travels on the
+verdict — `matched_on`, in the lexicon's own words — and what the law is called is
+fetched beside it from legislative rather than copied into taxonomy.
+
+### F-6 · A walk whose only ending is the end of the archive
+
+The sweep over archived RPL cards restarts from the beginning every run and stops when
+it runs out of archive, which is the right design for clearing a backlog and has no
+ending: once every card has been read it still pages through everything hourly to
+discover, one indexed lookup at a time, that there is nothing to do. It asks the drafts
+first now — and the first version of that question was useless, because a draft the
+Sejm's register created has no card and never will, so "any unmarked draft" answers yes
+for ever. Measured at twenty-four thousand drafts of each kind: thirty milliseconds to
+establish there is nothing to do.
+
+### F-7 · Tags that could be written and not read
+
+Everything inside the system routed on industries — the profile preview, the alert run,
+the coverage gauge — and nothing outside could ask. A reader shown an act had no way to
+see why it had reached them. The port that answers it had existed the whole time; it had
+no door.
+
+### F-8 · A build that cannot run where there is no Docker daemon
+
+Not a defect in the product, and it cost more than several that were: with no daemon
+nothing compiles, because the generated jOOQ classes come from a container. Thirteen
+commits were written before any of them could be built once, and the first run found two
+that did not compile, one test asserting the wrong thing, and F-1's second half.
+
+The service takes a URL now and adopts a server that is already running. Everything
+downstream is unchanged — the same changelog into a fresh template, the same per-class
+copies — because the rule that matters is that the schema under test is the schema the
+migrations produce, not who started the process.
+
+---
+
+## What the second pass built
+
+| Change | What it closes |
+|---|---|
+| The two registers joined — `draft_continuation`, exact by shared number and fuzzy by title, with a review queue | RPL and the Sejm were two rows nobody could follow between |
+| The government process ended on the day the Sejm printed the draft | A card cannot state a departure; the join is where the other register's word arrives |
+| The first classifier — a stemmed Polish lexicon over titles, evidence combined rather than added | `item_industry` was empty, so every industry code was a subscription to silence |
+| A designed digest, an industry lookup, a review queue with names and reasons | The output somebody actually reads |
+
+Coverage is the number to watch next: `taxonomy.verdicts{status}` says how much of the
+archive carries an industry at all, and the lexicon is a file to correct rather than a
+release to cut.

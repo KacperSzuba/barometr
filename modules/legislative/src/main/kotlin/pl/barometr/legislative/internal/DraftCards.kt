@@ -24,6 +24,7 @@ class DraftCards(
     private val drafts: DraftRepository,
     private val transitions: StageTransitionRepository,
     private val paces: StagePaceRepository,
+    private val continuations: DraftContinuationRepository,
     private val engine: DraftStatusEngine,
 ) {
 
@@ -35,6 +36,34 @@ class DraftCards(
             draft = draft,
             status = engine.statusOf(draft, history, paces.measure()),
             history = history,
+            otherRegister = otherRegisterOf(draftId),
+        )
+    }
+
+    /**
+     * The joined draft, read but never merged into the one asked for.
+     *
+     * Two registers, two histories, and they are kept apart on purpose: the status
+     * above is a judgement about *this* register's record, and folding six months of
+     * government process into a print's timeline would change what "where is it now"
+     * means without anybody asking for that. The reader gets both, labelled, and can
+     * see the whole passage without being told a merged story.
+     */
+    private fun otherRegisterOf(draftId: DraftId): JoinedDraft? {
+        val continuation = continuations.continuationOf(draftId) ?: return null
+        val counterpartId = continuation.counterpartOf(draftId) ?: return null
+        val counterpart = drafts.summaryOf(counterpartId) ?: return null
+
+        return JoinedDraft(
+            draft = counterpart,
+            register = if (counterpartId == continuation.governmentDraftId) {
+                DraftRegister.GOVERNMENT
+            } else {
+                DraftRegister.SEJM
+            },
+            joinedBy = continuation.joinedBy,
+            confidence = continuation.confidence,
+            history = transitions.historyOf(counterpartId),
         )
     }
 }

@@ -34,11 +34,35 @@ data class LegislativeProperties(
      * this would not be the floor that governs.
      */
     val reviewMatchAbove: Double = 0.35,
+
+    /**
+     * Title similarity at or above which a government draft in RPL and a print in the
+     * Sejm are recorded as one case unasked.
+     *
+     * Higher than [automaticMatchAbove], and the two numbers are not comparable: a
+     * print and the act it became are two different documents describing the same law,
+     * while two registers describing the *same draft* differ by little more than the
+     * word "Rządowy" at the front. A correct join here scores far above a correct
+     * match there, so the same threshold would be lax rather than consistent.
+     *
+     * The failure this guards against is specific: a ministry files a dozen
+     * near-identically titled amendments of one act over a decade, and joining the
+     * wrong one shows a reader a consultation that closed years before the draft they
+     * are looking at existed.
+     */
+    val automaticJoinAbove: Double = 0.75,
+
+    /** Below this, no pair is proposed at all. See [reviewMatchAbove] for the floor Postgres imposes underneath it. */
+    val reviewJoinAbove: Double = 0.45,
 ) {
     init {
         require(reviewMatchAbove <= automaticMatchAbove) {
             "The review floor must not sit above the automatic threshold: " +
                 "$reviewMatchAbove > $automaticMatchAbove"
+        }
+        require(reviewJoinAbove <= automaticJoinAbove) {
+            "The join review floor must not sit above the automatic threshold: " +
+                "$reviewJoinAbove > $automaticJoinAbove"
         }
     }
 }

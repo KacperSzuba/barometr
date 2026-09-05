@@ -1,16 +1,20 @@
 package pl.barometr.legislative.internal
 
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Record
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
+import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_CONTINUATION
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.shared.Ids
 import java.time.Clock
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -166,4 +170,150 @@ class DraftRepository(
             .fetchOne()
             ?.value1()
             ?.let(::DraftId)
+
+    /**
+     * What a draft is called, when its register says it began, and every number it is
+     * quoted by — the whole of what deciding a join needs.
+     *
+     * Two queries rather than one with an aggregate: a draft carries a handful of
+     * identifiers, and joining them onto the row would return the title once per
+     * number for the sake of saving a round trip nobody is counting.
+     */
+    @Transactional(readOnly = true)
+    fun identityOf(id: DraftId): DraftIdentity? {
+        val draft = dsl.select(DRAFT.TITLE, DRAFT.TITLE_NORMALISED, DRAFT.STARTED_ON)
+            .from(DRAFT)
+            .where(DRAFT.ID.eq(id.value))
+            .fetchOne() ?: return null
+
+        val identifiers = dsl.select(DRAFT_IDENTIFIER.SCHEME, DRAFT_IDENTIFIER.VALUE)
+            .from(DRAFT_IDENTIFIER)
+            .where(DRAFT_IDENTIFIER.DRAFT_ID.eq(id.value))
+            .fetch { record ->
+                DraftIdentifierScheme.entries
+                    .firstOrNull { it.wireName == record.value1() }
+                    ?.let { DraftIdentifierValue(it, record.value2()!!) }
+            }
+            .filterNotNull()
+
+        return DraftIdentity(
+            id = id,
+            title = draft.value1()!!,
+            normalisedTitle = draft.value2()!!,
+            startedOn = draft.value3(),
+            identifiers = identifiers,
+        )
+    }
+
+    /**
+     * A draft in the other register quoting one of these numbers, and not already
+     * joined to something.
+     *
+     * This is the join both registers make possible without anyone guessing: the
+     * Sejm's register prints the Council of Ministers' number, and a card that carries
+     * the same number under its own scheme is the same draft. It stays a search rather
+     * than a lookup because which scheme the counterpart files a number under is the
+     * other register's business, not ours.
+     */
+    @Transactional(readOnly = true)
+    fun unjoinedDraftQuoting(numbers: Collection<String>, register: DraftRegister, excluding: DraftId): DraftId? {
+        if (numbers.isEmpty()) return null
+
+        return dsl.select(DRAFT.ID)
+            .from(DRAFT)
+            .where(claimedBy(register))
+            .and(DRAFT.ID.ne(excluding.value))
+            .and(notJoined(register))
+            .and(
+                DSL.exists(
+                    DSL.selectOne()
+                        .from(DRAFT_IDENTIFIER)
+                        .where(DRAFT_IDENTIFIER.DRAFT_ID.eq(DRAFT.ID))
+                        .and(DRAFT_IDENTIFIER.VALUE.`in`(numbers)),
+                ),
+            )
+            // A number quoted by two drafts in one register is a mistake somewhere, and
+            // taking the older one keeps this deterministic rather than pretending the
+            // ambiguity is not there. It is counted where it is decided, not here.
+            .orderBy(DRAFT.CREATED_AT)
+            .limit(1)
+            .fetchOne { DraftId(it.value1()!!) }
+    }
+
+    /**
+     * The closest title in the other register, among drafts nothing has been joined to
+     * yet and whose own start is on the right side of this one's.
+     *
+     * That last bound is what keeps the fallback honest. Ministries file a dozen
+     * near-identically titled amendments of the same act over a decade, and without it
+     * the nearest title is regularly the one from three years ago: a government draft
+     * cannot have started after the print it became, and a print cannot have started
+     * before the draft it came from. A draft whose register never stated a start is
+     * still considered — an unknown date is not evidence against a join.
+     */
+    @Transactional(readOnly = true)
+    fun closestUnjoinedByTitle(
+        normalisedTitle: String,
+        register: DraftRegister,
+        atLeast: Double,
+        startedNoLaterThan: LocalDate? = null,
+        startedNoEarlierThan: LocalDate? = null,
+        excluding: DraftId,
+    ): DraftTitleMatch? {
+        // `similarity()` is pg_trgm's and `%` is what lets the GIN index narrow the
+        // search before it is computed; neither has a jOOQ DSL equivalent, so the
+        // operator is a template with bound values — never concatenated text. `%`
+        // applies Postgres's own threshold of 0.3 first, which is why [atLeast] is
+        // documented as needing to stay above it.
+        val similarity = DSL.field(
+            "similarity({0}, {1})",
+            Double::class.java,
+            DRAFT.TITLE_NORMALISED,
+            DSL.value(normalisedTitle),
+        )
+        val indexable = DSL.condition("{0} % {1}", DRAFT.TITLE_NORMALISED, DSL.value(normalisedTitle))
+
+        return dsl.select(DRAFT.ID, DRAFT.TITLE, similarity)
+            .from(DRAFT)
+            .where(claimedBy(register))
+            .and(DRAFT.ID.ne(excluding.value))
+            .and(notJoined(register))
+            .and(indexable)
+            .and(similarity.ge(atLeast))
+            .and(startedNoLaterThan?.let { DRAFT.STARTED_ON.isNull.or(DRAFT.STARTED_ON.le(it)) } ?: DSL.noCondition())
+            .and(startedNoEarlierThan?.let { DRAFT.STARTED_ON.isNull.or(DRAFT.STARTED_ON.ge(it)) } ?: DSL.noCondition())
+            .orderBy(similarity.desc())
+            .limit(1)
+            .fetchOne { record ->
+                DraftTitleMatch(
+                    draftId = DraftId(record.value1()!!),
+                    title = record.value2()!!,
+                    similarity = record.value3()!!,
+                )
+            }
+    }
+
+    /** A draft belongs to the register whose key it was claimed under. */
+    private fun claimedBy(register: DraftRegister): Condition = DSL.exists(
+        DSL.selectOne()
+            .from(DRAFT_IDENTIFIER)
+            .where(DRAFT_IDENTIFIER.DRAFT_ID.eq(DRAFT.ID))
+            .and(DRAFT_IDENTIFIER.SCHEME.eq(register.claimedBy.wireName)),
+    )
+
+    /**
+     * Nothing has been joined to this draft yet, checked against the column its own
+     * register occupies: a government draft is spent once something is its print, and
+     * a print once something became it.
+     */
+    private fun notJoined(register: DraftRegister): Condition = DSL.notExists(
+        DSL.selectOne()
+            .from(DRAFT_CONTINUATION)
+            .where(
+                when (register) {
+                    DraftRegister.GOVERNMENT -> DRAFT_CONTINUATION.GOVERNMENT_DRAFT_ID.eq(DRAFT.ID)
+                    DraftRegister.SEJM -> DRAFT_CONTINUATION.SEJM_DRAFT_ID.eq(DRAFT.ID)
+                },
+            ),
+    )
 }

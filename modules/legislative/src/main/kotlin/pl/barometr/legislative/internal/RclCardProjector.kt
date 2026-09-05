@@ -40,12 +40,13 @@ import java.time.ZoneOffset
  * is not on the card, so an empty row is opened for the letter filed under that stage
  * to fill in — see [ConsultationOpening].
  *
- * **A draft here and the same draft in the Sejm stay two records for now.** Neither
- * register prints the other's number in a form the other shows — the Sejm knows
- * `RM-0610-102-23`, the card shows `12409051` and `UD383` — so joining them means
- * following RPL's own resolver or matching titles, and both are their own piece of
- * work. The identifiers each register does state are recorded, which is what makes
- * that join possible later.
+ * **A draft here and the same draft in the Sejm are two rows, joined rather than
+ * merged.** Neither register prints the other's number in a form the other shows — the
+ * Sejm knows `RM-0610-102-23`, the card shows `12409051` and `UD383` — so the numbers
+ * recorded here are what [DraftIdentityMatcher] joins the two by when they happen to
+ * coincide, and a title comparison is what it falls back on when they do not. The pair
+ * is recorded in `draft_continuation` and each row keeps its own id, because by the
+ * time the join can be made at all, alerts and the search index are holding both.
  */
 @Service
 class RclCardProjector(

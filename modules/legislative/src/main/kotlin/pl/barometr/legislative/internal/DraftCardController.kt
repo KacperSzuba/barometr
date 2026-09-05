@@ -52,8 +52,26 @@ class DraftCardController(private val cards: DraftCards) {
             },
             stalledSince = card.status?.stalledSince?.toString(),
             history = card.history.map(::describe),
+            // The same draft in the other register, under the name that says which
+            // direction the reader is travelling. Both fields are never filled at
+            // once: a draft has one predecessor or one continuation, not both.
+            precededBy = card.otherRegister?.takeIf { it.register == DraftRegister.GOVERNMENT }?.let(::describeJoined),
+            continuedAs = card.otherRegister?.takeIf { it.register == DraftRegister.SEJM }?.let(::describeJoined),
         )
     }
+
+    private fun describeJoined(joined: JoinedDraft) = JoinedDraftResponse(
+        id = joined.draft.id.value,
+        title = joined.draft.title,
+        startedOn = joined.draft.startedOn?.toString(),
+        closedOn = joined.draft.closedOn?.toString(),
+        // How the two were tied together, because a join by title is a claim and a
+        // number both registers print is a fact, and a reader acting on a consultation
+        // is entitled to know which of the two they have.
+        joinedBy = joined.joinedBy.wireName,
+        confidence = joined.confidence,
+        history = joined.history.map(::describe),
+    )
 
     private fun describeCurrent(status: DraftStatus) = StageResponse(
         stage = status.currentStage.wireName,
@@ -84,6 +102,22 @@ class DraftCardController(private val cards: DraftCards) {
         val expectedNext: ExpectedNextResponse?,
         val hardDeadline: HardDeadlineResponse?,
         val stalledSince: String?,
+        val history: List<StageResponse>,
+        /** The government's draft this print came from, once the two have been joined. */
+        val precededBy: JoinedDraftResponse?,
+        /** The print this government draft became, once the two have been joined. */
+        val continuedAs: JoinedDraftResponse?,
+    )
+
+    /** The other register's record of the same draft, with its own timeline. */
+    data class JoinedDraftResponse(
+        val id: UUID,
+        val title: String,
+        val startedOn: String?,
+        val closedOn: String?,
+        val joinedBy: String,
+        /** The title similarity that carried the join; absent when a number or a person did. */
+        val confidence: Double?,
         val history: List<StageResponse>,
     )
 

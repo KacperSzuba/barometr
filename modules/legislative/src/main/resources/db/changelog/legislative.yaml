@@ -36,3 +36,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0010-consultations-read-from-card.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0011-draft-continuation.sql
+      relativeToChangelogFile: false

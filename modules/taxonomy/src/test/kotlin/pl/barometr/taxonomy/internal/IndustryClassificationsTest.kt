@@ -104,6 +104,30 @@ class IndustryClassificationsTest {
         assertEquals(emptyList(), classifications.pendingReview())
     }
 
+    /**
+     * What a reader is shown beside a law. A verdict nobody has confirmed is a question
+     * for a person, and showing it here would make the two look alike.
+     */
+    @Test
+    fun `a subject reads back with the industries somebody stands behind, and no others`() {
+        val draft = subject()
+        classifications.recordJudgement(draft, PkdCode("41.20.Z"))
+        classifications.recordClassification(
+            draft,
+            PkdCode("35"),
+            confidence = 0.9,
+            modelVersion = "pkd-v1",
+            matchedOn = "odnawialnych zrodlach energii",
+        )
+        classifications.recordClassification(draft, PkdCode("62"), confidence = 0.2, modelVersion = "pkd-v1")
+
+        val shown = classifications.industriesOf(draft)
+
+        assertEquals(listOf(PkdCode("35"), PkdCode("41.20.Z")), shown.map { it.code })
+        assertEquals("odnawialnych zrodlach energii", shown.first { it.code == PkdCode("35") }.matchedOn)
+        assertEquals(null, shown.first { it.code == PkdCode("41.20.Z") }.matchedOn, "a person matched nothing")
+    }
+
     @Test
     fun `an industry answers with everything classified beneath it`() {
         val building = subject()

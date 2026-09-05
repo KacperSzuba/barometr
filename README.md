@@ -193,6 +193,12 @@ What that buys is a number per code, and the number decides what happens to it:
 | below `app.taxonomy.acceptance-threshold` | recorded as pending: it routes nothing and waits in the review queue at `GET /api/v1/taxonomy/review`, which shows each one with the law's title and the words that caught it |
 | at or above it | accepted, and alerts route on it from that moment |
 
+Whoever is looking at a law can ask what it is about:
+`GET /api/v1/taxonomy/subjects/{act|draft}/{id}/industries` answers with the accepted
+tags, what decided each one, and the phrase it matched — any authenticated account, on
+the same footing as the rest of this system's description of a public process. Deciding
+stays operator-only, because a tag is what routes somebody else's alerts.
+
 **A verdict a person has looked at is never re-decided by a machine.** A code somebody
 rejected does not come back accepted on the next reading; that is a `CHECK`-shaped rule
 written into the upsert, and it is what makes the queue worth working through.

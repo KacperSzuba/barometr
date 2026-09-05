@@ -15,6 +15,8 @@ data class AuditEntry(
     val outcome: AuditOutcome,
     val status: Int?,
     val peer: String?,
+    /** Why, on the entries no request explains. */
+    val detail: String?,
     val hash: String,
     val previousHash: String?,
 )

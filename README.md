@@ -136,6 +136,13 @@ a decision for a deployment to make on its own network, not a default shipped he
 A password, a rotating refresh token, and — for an account that asks for it — a second
 factor. Three things are worth knowing before reading the code.
 
+**What the system ends on its own is in the trail.** A refresh token replayed is a
+theft this application acts on by revoking every session the account has, and a device
+that has gone quiet past the idle timeout ends the same way. Both leave one refused
+`POST /auth/refresh` behind, which is exactly what an expired token leaves — so the
+reason is recorded beside it, under the account it happened to, and comes back in
+`GET /api/v1/audit/me` and the CSV export as `detail`.
+
 **A session is a refresh-token family.** One login issues one family; every token
 descending from it belongs to the same device, and `identity.session` is what that
 family looks like to the person who owns it: user agent as sent, address, last seen.

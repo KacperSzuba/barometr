@@ -3,3 +3,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/audit/0001-audit-event.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/audit/0002-what-the-system-did.sql
+      relativeToChangelogFile: false

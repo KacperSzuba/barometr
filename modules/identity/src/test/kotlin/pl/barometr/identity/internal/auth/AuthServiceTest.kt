@@ -79,7 +79,7 @@ class AuthServiceTest {
         val properties = properties()
         service = AuthService(
             users = users,
-            refreshTokens = RefreshTokenService(tokens, sessions, policies, properties, SessionProperties(), clock),
+            refreshTokens = RefreshTokenService(tokens, sessions, policies, properties, SessionProperties(), events, clock),
             sessions = SignedInSessions(sessions, UnknownLocations, tokens, events, clock),
             deviceTrust = trust,
             policies = policies,

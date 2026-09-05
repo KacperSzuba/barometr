@@ -13,6 +13,11 @@ import java.util.HexFormat
  * write to this table. That is the property the trigger cannot give: the trigger stops
  * the application, and this makes tampering by anybody else *visible*.
  *
+ * **A field that was not there is not hashed as empty.** `detail` arrived after entries
+ * had been written, and appending it as an empty string would have changed the material
+ * of every one of them — a chain that no longer verifies its own history is a chain
+ * nobody can use to argue anything.
+ *
  * **The fields are joined by a separator none of them can contain.** Without one,
  * `POST` on `/a/b` and `POS` on `T/a/b` would hash identically, and a chain two
  * different histories can satisfy is evidence of neither.
@@ -30,7 +35,11 @@ object AuditHash {
             attempt.outcome.wireName,
             attempt.status?.toString().orEmpty(),
             attempt.peer.orEmpty(),
-        ).joinToString(SEPARATOR)
+            // Appended only when there is one, so an entry written before the column
+            // existed hashes exactly as it did and the chain over the whole table still
+            // verifies. Nothing can be smuggled between fields to exploit the two
+            // shapes: none of them may contain the separator.
+        ).plus(listOfNotNull(attempt.detail)).joinToString(SEPARATOR)
 
         return HexFormat.of().formatHex(
             MessageDigest.getInstance(ALGORITHM).digest(material.toByteArray(Charsets.UTF_8)),

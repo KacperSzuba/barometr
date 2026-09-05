@@ -63,6 +63,7 @@ class AuditEventRepository(
             .set(AUDIT_EVENT.OUTCOME, attempt.outcome.wireName)
             .set(AUDIT_EVENT.STATUS, attempt.status)
             .set(AUDIT_EVENT.PEER, attempt.peer)
+            .set(AUDIT_EVENT.DETAIL, attempt.detail)
             .set(AUDIT_EVENT.PREVIOUS_HASH, previous)
             .set(AUDIT_EVENT.HASH, hash)
             .returning(AUDIT_EVENT.SEQUENCE)
@@ -79,6 +80,7 @@ class AuditEventRepository(
             outcome = attempt.outcome,
             status = attempt.status,
             peer = attempt.peer,
+            detail = attempt.detail,
             hash = hash,
             previousHash = previous,
         )
@@ -122,6 +124,7 @@ class AuditEventRepository(
             ?: error("stored outcome '${row[AUDIT_EVENT.OUTCOME]}'"),
         status = row[AUDIT_EVENT.STATUS],
         peer = row[AUDIT_EVENT.PEER],
+        detail = row[AUDIT_EVENT.DETAIL],
         hash = row[AUDIT_EVENT.HASH]!!,
         previousHash = row[AUDIT_EVENT.PREVIOUS_HASH],
     )

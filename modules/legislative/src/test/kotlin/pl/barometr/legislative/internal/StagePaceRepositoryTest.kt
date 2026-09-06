@@ -102,9 +102,39 @@ class StagePaceRepositoryTest {
         )
     }
 
+    /**
+     * A stay is one observation however many times the register described it.
+     *
+     * The register restates a whole process on every reading, so a stay whose end
+     * moved is on record twice, and counting both would let a re-read buy an estimate
+     * the archive has not earned. Three real stays and one described twice is four —
+     * one short of the threshold — so the answer stays "not enough to say", where
+     * counting the correction would have produced a median off five.
+     */
+    @Test
+    fun `a stay whose end was corrected is one observation, not two`() {
+        repeat(3) { stayInCommittee(DraftInitiator.GOVERNMENT, days = 4) }
+        val corrected = draft(DraftInitiator.GOVERNMENT)
+        recordStay(corrected, days = 40)
+        clock.advanceBy(Duration.ofDays(30))
+        recordStay(corrected, days = 4)
+
+        assertNull(paces.measure().medianFor(DraftInitiator.GOVERNMENT, LegislativeStage.COMMITTEE_WORK))
+    }
+
     private fun stayInCommittee(initiator: DraftInitiator, days: Long) {
         transitions.recordFacts(
             draftId = draft(initiator),
+            facts = listOf(fact(LegislativeStage.COMMITTEE_WORK, ARRIVED, ARRIVED.plus(Duration.ofDays(days)))),
+            statedBy = DocumentVersionId(Ids.next()),
+            knownAt = clock.instant(),
+        )
+    }
+
+    /** The same stay, described again — same stage, same beginning, a different end. */
+    private fun recordStay(draft: DraftId, days: Long) {
+        transitions.recordFacts(
+            draftId = draft,
             facts = listOf(fact(LegislativeStage.COMMITTEE_WORK, ARRIVED, ARRIVED.plus(Duration.ofDays(days)))),
             statedBy = DocumentVersionId(Ids.next()),
             knownAt = clock.instant(),

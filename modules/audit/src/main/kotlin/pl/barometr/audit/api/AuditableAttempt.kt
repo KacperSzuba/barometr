@@ -26,4 +26,13 @@ data class AuditableAttempt(
      * honest answer — a forwarded header is one anybody can set.
      */
     val peer: String? = null,
+    /**
+     * Why, for the few entries a request does not explain.
+     *
+     * The system ends every session an account has when a refresh token is replayed or
+     * a device goes quiet, and the request that triggered that is indistinguishable
+     * from an expired token. Null for everything else, which is nearly all of it: the
+     * method and the path already say what happened.
+     */
+    val detail: String? = null,
 )

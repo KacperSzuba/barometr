@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import pl.barometr.testing.PostgresTestDatabase
 import tools.jackson.databind.json.JsonMapper
+import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertTrue
 
@@ -235,19 +236,38 @@ class WorkspaceEndpointTest {
      * on the other end.
      */
     private fun invitationTokenFor(email: String): String {
-        val payload = PostgresTestDatabase.applicationDsl()
-            .fetch(
-                "select payload::text from platform.job where type = 'alerts.invitation-mail' " +
-                    "and payload::text like ? order by created_at desc limit 1",
-                "%$email%",
-            )
-            .first()
-            .get(0, String::class.java)
+        val payload = awaitInvitationMail(email)
 
         val url = json.readTree(payload).get("acceptUrl").asString()
         assertTrue(url.contains("/zaproszenia/"), url)
 
         return url.substringAfterLast('/')
+    }
+
+    /**
+     * Polled rather than read once: the mail is queued by a listener that runs after
+     * the invitation's own transaction commits, on another thread, so "the row is there
+     * by the time the request returns" was never a guarantee — only a race this test
+     * kept winning. Under a full suite, with every module's listeners sharing the
+     * executor, it stopped winning it.
+     */
+    private fun awaitInvitationMail(email: String): String {
+        val deadline = System.nanoTime() + WAIT.toNanos()
+        var payload: String? = null
+
+        while (System.nanoTime() < deadline && payload == null) {
+            payload = PostgresTestDatabase.applicationDsl()
+                .fetch(
+                    "select payload::text from platform.job where type = 'alerts.invitation-mail' " +
+                        "and payload::text like ? order by created_at desc limit 1",
+                    "%$email%",
+                )
+                .firstOrNull()
+                ?.get(0, String::class.java)
+            if (payload == null) Thread.sleep(POLL.toMillis())
+        }
+
+        return checkNotNull(payload) { "no invitation mail was queued for $email" }
     }
 
     private fun register(): Account {
@@ -284,6 +304,10 @@ class WorkspaceEndpointTest {
         private const val WORKSPACES = "/api/v1/workspaces"
         private const val PROFILES = "/api/v1/profiles"
         private const val PASSWORD = "correct-horse-battery-staple"
+
+        /** How long the queued invitation is waited for, and how often it is looked for. */
+        private val WAIT: Duration = Duration.ofSeconds(10)
+        private val POLL: Duration = Duration.ofMillis(100)
 
         @JvmStatic
         @DynamicPropertySource

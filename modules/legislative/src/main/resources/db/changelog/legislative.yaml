@@ -36,3 +36,21 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0010-consultations-read-from-card.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0011-draft-continuation.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0012-stage-fact-as-it-stands.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0014-latest-statement-wins.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0015-act-source-document.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0016-what-was-filed.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0017-archive-walk.sql
+      relativeToChangelogFile: false

@@ -39,6 +39,7 @@ class AuditHistoryController(private val events: AuditEventRepository) {
                         entry.resource,
                         entry.outcome.wireName,
                         entry.status?.toString().orEmpty(),
+                        entry.detail.orEmpty(),
                     ).joinToString(",", transform = ::quoted),
                 )
             }
@@ -53,6 +54,10 @@ class AuditHistoryController(private val events: AuditEventRepository) {
         resource = entry.resource,
         outcome = entry.outcome.wireName,
         status = entry.status,
+        // Why, on the entries no request explains — which are the ones somebody asks
+        // about. A refused refresh and a family revoked for a replayed token are the
+        // same row without it.
+        detail = entry.detail,
         // The hash is theirs to keep: somebody who wrote down what we told them can
         // come back later and show it still matches. A trail is only evidence if the
         // person it is about can check it.
@@ -74,12 +79,18 @@ class AuditHistoryController(private val events: AuditEventRepository) {
         val resource: String,
         val outcome: String,
         val status: Int?,
+        /** Null on everything a method and a path already explain. */
+        val detail: String?,
         val hash: String,
     )
 
     private companion object {
         const val DEFAULT_LIMIT = 100
         const val MAX_LIMIT = 1000
-        const val HEADER = "at,action,resource,outcome,status"
+        /**
+         * A column added at the end, which is what makes it additive: a reader keying
+         * on position keeps working, and one reading the header finds the new field.
+         */
+        const val HEADER = "at,action,resource,outcome,status,detail"
     }
 }

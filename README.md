@@ -73,6 +73,22 @@ when the build ends — the same container code generation reads. Nine modules e
 starting their own and re-running the same changesets was most of what a test run spent
 its time on.
 
+**Where there is no Docker daemon, point the build at a Postgres that is running:**
+
+```bash
+./gradlew check -Pbarometr.postgres.url=jdbc:postgresql://localhost:5432
+BAROMETR_POSTGRES_URL=jdbc:postgresql://localhost:5432 ./gradlew check   # same thing, for an agent
+```
+
+It has to be Postgres 16 with `pgvector` — the schema declares `vector` columns — and it
+is migrated from nothing by this project's own changelog, so what the generated code and
+the tests see is the schema the migrations produce either way; what differs is who
+started the process. `barometr.postgres.username` and `.password` go with it, and default
+to `postgres`. The template and every per-class copy are dropped and remade on each run,
+because a server that outlives the build still holds the last one's. The tests needing
+something other than Postgres — the search index, the mail server, the storage emulator —
+still need Docker and are the only ones that fail without it.
+
 Inside it, each test class gets **its own database**, copied from the migrated template
 with `CREATE DATABASE … TEMPLATE` — about seventy milliseconds, so a class clearing a
 table is clearing its own copy and classes can run side by side. The methods inside one
@@ -120,6 +136,13 @@ a decision for a deployment to make on its own network, not a default shipped he
 A password, a rotating refresh token, and — for an account that asks for it — a second
 factor. Three things are worth knowing before reading the code.
 
+**What the system ends on its own is in the trail.** A refresh token replayed is a
+theft this application acts on by revoking every session the account has, and a device
+that has gone quiet past the idle timeout ends the same way. Both leave one refused
+`POST /auth/refresh` behind, which is exactly what an expired token leaves — so the
+reason is recorded beside it, under the account it happened to, and comes back in
+`GET /api/v1/audit/me` and the CSV export as `detail`.
+
 **A session is a refresh-token family.** One login issues one family; every token
 descending from it belongs to the same device, and `identity.session` is what that
 family looks like to the person who owns it: user agent as sent, address, last seen.
@@ -151,6 +174,50 @@ from one route, and gone the moment the factor is turned off.
 | `app.identity.session.idle-timeout` | how long a device may go quiet before it has to sign in again — fourteen days by default, and overridden by any workspace that asks for less |
 | `app.identity.geoip.database-path` | a MaxMind `.mmdb` file, if the deployment has one. Unset, the device list shows addresses without a place beside them; set to something unreadable, the application refuses to start |
 | `app.identity.workspace.invitation-base-url` | where an invitation link points |
+
+### Which industries a law concerns
+
+The question the product is sold on: a company says "we are in 41.20.Z", and something
+has to connect that to a bill about building work. Nothing in a title says so in those
+terms, so every act and draft is read against a **lexicon** — a list of Polish phrases
+with the PKD code each one points at, and how much a single occurrence of it is worth as
+evidence. It lives in
+[`pkd-lexicon.json`](modules/taxonomy/src/main/resources/taxonomy/pkd-lexicon.json) and
+is meant to be edited: that file is the knowledge, and the matcher around it is
+deliberately dull.
+
+Terms are written as **stems**, because Polish inflects everything a law is about:
+`transporcie drogow` matches *drogowym* and *drogowego* alike, and a lexicon of whole
+words would have to list every case ending or match nothing. Evidence combines rather
+than adding — `1 - Π(1 - w)` — so two hints are surer than either alone and no pile of
+weak ones ever becomes certainty.
+
+What that buys is a number per code, and the number decides what happens to it:
+
+| Confidence | What it means |
+|---|---|
+| below `app.taxonomy.floor-confidence` | not recorded at all — a lone weak stem is not a question worth putting to anybody |
+| below `app.taxonomy.acceptance-threshold` | recorded as pending: it routes nothing and waits in the review queue at `GET /api/v1/taxonomy/review`, which shows each one with the law's title and the words that caught it |
+| at or above it | accepted, and alerts route on it from that moment |
+
+Whoever is looking at a law can ask what it is about:
+`GET /api/v1/taxonomy/subjects/{act|draft}/{id}/industries` answers with the accepted
+tags, what decided each one, and the phrase it matched — any authenticated account, on
+the same footing as the rest of this system's description of a public process. Deciding
+stays operator-only, because a tag is what routes somebody else's alerts.
+
+**A verdict a person has looked at is never re-decided by a machine.** A code somebody
+rejected does not come back accepted on the next reading; that is a `CHECK`-shaped rule
+written into the upsert, and it is what makes the queue worth working through.
+
+**Correcting the lexicon is how coverage improves**, and it costs an edit and a version
+bump: a new `version` in that file has no progress recorded against it, so the walk over
+the archive starts again from the beginning and every act and draft meets the terms that
+have just been fixed. Live documents are classified as they are recorded; the walk exists
+for everything that was already stored, which on the day the classifier ships is all of
+it. `taxonomy.verdicts{status="accepted"|"pending"}` is how much of the archive carries
+an industry at all — a profile watching an industry nothing is tagged with is a
+subscription to silence, and silence is what a working alert engine also looks like.
 
 ### The public API
 
@@ -273,8 +340,8 @@ shared          value types. No Spring, no persistence, no HTTP.
 shared-testing  test harness: a migrated Postgres and a movable clock.
 platform        technical capability with no domain meaning: http · jobs · storage
 modules/        one bounded context each — identity, sources, ingestion (with the
-                connectors that read each source), corpus, legislative, search,
-                profiles, alerts, audit
+                connectors that read each source), corpus, legislative, taxonomy,
+                search, profiles, alerts, audit
 infra/          the Elasticsearch image, which is built rather than pulled: the
                 Polish analyser ships as a plugin Elastic distributes separately
 build-logic/    convention plugins, as an included build

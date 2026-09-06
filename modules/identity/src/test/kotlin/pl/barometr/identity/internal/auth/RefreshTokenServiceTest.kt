@@ -11,6 +11,7 @@ import pl.barometr.identity.internal.workspace.WorkspaceId
 import pl.barometr.identity.internal.workspace.InMemoryWorkspaces
 import pl.barometr.identity.internal.workspace.WorkspacePolicies
 import pl.barometr.identity.internal.user.SignedInSession
+import pl.barometr.identity.api.UserSessionsRevoked
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
@@ -39,11 +40,13 @@ class RefreshTokenServiceTest {
     private val policies = WorkspacePolicies(workspaces)
     private val userId = Ids.next()
 
+    private val events = RecordingEvents()
+
     private lateinit var service: RefreshTokenService
 
     @BeforeEach
     fun setUp() {
-        service = RefreshTokenService(tokens, sessions, policies, properties(), SessionProperties(), clock)
+        service = RefreshTokenService(tokens, sessions, policies, properties(), SessionProperties(), events, clock)
     }
 
     @Test
@@ -124,6 +127,25 @@ class RefreshTokenServiceTest {
         assertNotNull(tokens.all.first { it.id == rotated.refreshToken.id }.revokedAt)
     }
 
+    /**
+     * The half that was missing. A replay ends every session the account has, and the
+     * request that triggered it is recorded as a refused refresh — which is what an
+     * expired token looks like too. Unless it is announced, "why was I signed out
+     * everywhere" has no answer anywhere in the system.
+     */
+    @Test
+    fun `a replay says so, and says what it was`() {
+        val issued = service.issue(userId)
+        service.rotate(issued.raw)
+        clock.advanceBy(Duration.ofMinutes(5))
+
+        assertFailsWith<RefreshTokenReuseException> { service.rotate(issued.raw) }
+
+        val announced = events.of<UserSessionsRevoked>().single()
+        assertEquals(UserSessionsRevoked.RevocationReason.TOKEN_REUSE_DETECTED, announced.reason)
+        assertEquals(userId, announced.userId.value)
+    }
+
     @Test
     fun `presenting an already revoked token is treated as theft`() {
         val issued = service.issue(userId)
@@ -179,6 +201,30 @@ class RefreshTokenServiceTest {
         assertFailsWith<InvalidRefreshTokenException> { service.rotate(issued.raw) }
         assertTrue(tokens.live().isEmpty(), "the family goes with the session")
         assertNotNull(sessions.byFamily(issued.familyId)?.revokedAt)
+    }
+
+    /** Ended for a different reason, and the person is owed the difference. */
+    @Test
+    fun `a session ended for going quiet says that, not theft`() {
+        val issued = service.issue(userId)
+        sessions.open(
+            SignedInSession(
+                familyId = issued.familyId,
+                userId = userId,
+                userAgent = "Mozilla/5.0",
+                clientIp = "203.0.113.7",
+                createdAt = clock.instant(),
+                lastSeenAt = clock.instant(),
+            ),
+        )
+        clock.advanceBy(Duration.ofDays(15))
+
+        assertFailsWith<InvalidRefreshTokenException> { service.rotate(issued.raw) }
+
+        assertEquals(
+            UserSessionsRevoked.RevocationReason.IDLE,
+            events.of<UserSessionsRevoked>().single().reason,
+        )
     }
 
     @Test

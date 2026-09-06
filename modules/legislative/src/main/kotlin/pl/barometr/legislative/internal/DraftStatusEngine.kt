@@ -25,17 +25,18 @@ class DraftStatusEngine(private val clock: Clock) {
 
     /** Null when nothing is recorded about where the draft has been. */
     fun statusOf(draft: DraftSummary, history: List<RecordedStage>, paces: StagePaces): DraftStatus? {
-        // The latest stage the register put it at. Ordinal breaks the tie on a day
-        // that held three of them, which is the register's own ordering and the only
-        // one there is.
-        val current = history.maxWithOrNull(compareBy({ it.since }, { it.ordinal })) ?: return null
+        val current = whereItStands(history) ?: return null
         val closed = draft.closedOn != null
+        // A stage with an end is a stage the draft is no longer at, so nothing about
+        // what happens next or how long it has been waiting is this register's to say.
+        val left = current.until != null
         val median = paces.medianFor(draft.initiator, current.stage)
-        val expectedNext = if (closed) null else LegislativePath.expectedAfter(current.stage)
+        val expectedNext = if (closed || left) null else LegislativePath.expectedAfter(current.stage)
 
         return DraftStatus(
             currentStage = current.stage,
             since = current.since,
+            until = current.until,
             sourceLabel = current.sourceLabel,
             expectedNext = expectedNext,
             // Only where something is expected to happen. A date on a draft that has
@@ -44,9 +45,31 @@ class DraftStatusEngine(private val clock: Clock) {
             hardDeadline = draft.inForceFrom?.let {
                 HardDeadline(it.atStartOfDay(ZoneOffset.UTC).toInstant(), HardDeadlineKind.ENTRY_INTO_FORCE)
             },
-            stalledSince = stalledSince(current, median, closed),
+            stalledSince = if (left) null else stalledSince(current, median, closed),
         )
     }
+
+    /**
+     * The stage that describes where the draft stands, which is not always the latest
+     * one recorded.
+     *
+     * Normally it is: the latest stage the register put it at, with the ordinal
+     * breaking the tie on a day that held three of them, which is the register's own
+     * ordering and the only one there is.
+     *
+     * A government draft that reached the Sejm is the exception, and it is not a
+     * detail. An RPL card records the whole process as one coarse period and the change
+     * register dates the moves inside it; those finer stages have no end, because RPL
+     * never says a draft left — it leaves by being printed in the Sejm, which is
+     * [GovernmentProcessClosure]'s business and ends the coarse period alone. Taking
+     * the latest stage then leaves a bill sitting in the Sejm reported as out to public
+     * comment, and — once there are medians for those stages — stalled there for ever.
+     * So a government process that has ended is what the draft's status *is*: the
+     * register's whole record, and the day it stopped being the register that answers.
+     */
+    private fun whereItStands(history: List<RecordedStage>): RecordedStage? =
+        history.lastOrNull { it.stage == LegislativeStage.GOVERNMENT_PROCESS && it.until != null }
+            ?: history.maxWithOrNull(compareBy({ it.since }, { it.ordinal }))
 
     /**
      * Twice the usual stay, and not a day earlier.

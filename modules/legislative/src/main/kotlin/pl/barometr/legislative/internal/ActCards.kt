@@ -2,6 +2,7 @@ package pl.barometr.legislative.internal
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import pl.barometr.corpus.api.DocumentDiffs
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.PublishedAct
@@ -25,6 +26,8 @@ class ActCards(
     private val references: ActReferenceRepository,
     private val identifiers: ActIdentifierRepository,
     private val drafts: DraftRepository,
+    private val acts: ActRepository,
+    private val diffs: DocumentDiffs,
 ) {
 
     fun cardFor(id: ActId): ActCard =
@@ -45,6 +48,9 @@ class ActCards(
         changedBy = references.changesMadeTo(act.eli),
         identifiers = identifiers.identifiersOf(act.id),
         draft = drafts.draftBecoming(act.id),
+        // One more indexed lookup, and only where the act was projected from a
+        // document: corpus answers with the newest comparison of it or with nothing.
+        latestChange = acts.sourceDocumentOf(act.id)?.let(diffs::latestComparisonOf),
     )
 
     /**

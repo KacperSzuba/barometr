@@ -76,9 +76,16 @@ constraint, or seed data.
 18. **Postgres-only features are the point.** `SKIP LOCKED`, `tstzrange` with
     `btree_gist`, `pg_trgm`, `unaccent`, `pgvector`. There is no H2 fallback to
     protect, and tests run on `pgvector/pgvector:pg16`.
-19. **Do not store what you can derive** unless the denormalisation is deliberate and
+19. **A view that resolves "the latest" needs a total order.** `DISTINCT ON … ORDER BY
+    known_at DESC` reads as "the newest statement wins" and is not: two statements made
+    at the same instant leave the choice to the scan. A correction written in the same
+    reading that prompted it carries the same instant by construction, and
+    `stage_transition_latest` went on reporting a draft as still in a process it had
+    left (review F-1). Break the tie on something that orders — `created_at`, then the
+    row's own UUIDv7 id, which sorts by when it was made.
+20. **Do not store what you can derive** unless the denormalisation is deliberate and
     labelled as such — `blob_key` is derivable from `content_hash` (review A5).
-20. **Comment why a table is *not* partitioned, indexed or normalised** when someone
+21. **Comment why a table is *not* partitioned, indexed or normalised** when someone
     would reasonably expect it to be. `raw_document` explains both.
 
 ## Never

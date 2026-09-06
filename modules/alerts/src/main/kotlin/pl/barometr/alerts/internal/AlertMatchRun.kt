@@ -4,6 +4,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.Clock
 
 /**
  * Drains the buffer: everything that moved since the last run, judged in one pass.
@@ -23,6 +24,8 @@ class AlertMatchRun(
     private val pending: PendingItemRepository,
     private val items: BufferedItemReader,
     private val raiser: AlertRaiser,
+    private val properties: AlertMatchProperties,
+    private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -34,7 +37,10 @@ class AlertMatchRun(
         var passes = 0
 
         while (passes++ < MAX_BATCHES) {
-            val batch = pending.waiting(BATCH)
+            // Only what has stopped moving. What a judgement reads is written by
+            // listeners on the same event that buffered the item, so an item judged the
+            // moment it lands is judged against half of them.
+            val batch = pending.waiting(BATCH, clock.instant().minus(properties.settleDelay))
             if (batch.isEmpty()) break
 
             batch.forEach { item ->

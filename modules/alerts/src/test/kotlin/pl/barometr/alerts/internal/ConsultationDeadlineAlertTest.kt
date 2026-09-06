@@ -61,6 +61,10 @@ class ConsultationDeadlineAlertTest {
             AlertDecisionRepository(dsl, clock),
             clock,
         ),
+        // Nothing settles here: what a run waits for in life is other listeners
+        // finishing, and this test writes everything it judges itself.
+        AlertMatchProperties(settleDelay = Duration.ZERO),
+        clock,
     )
 
     private val ewa = UserId.next()

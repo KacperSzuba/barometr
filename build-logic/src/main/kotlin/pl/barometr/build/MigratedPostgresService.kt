@@ -7,6 +7,7 @@ import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.CompositeResourceAccessor
 import liquibase.resource.DirectoryResourceAccessor
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.postgresql.ds.PGSimpleDataSource
@@ -38,12 +39,43 @@ abstract class MigratedPostgresService :
     interface Params : BuildServiceParameters {
         /** Repository root; module resource roots are discovered underneath it. */
         val rootDirectory: DirectoryProperty
+
+        /**
+         * A Postgres that is already running, as `jdbc:postgresql://host:port`, or
+         * empty to start one. See [BuildPostgres] for what sets it and why.
+         */
+        val existingServer: Property<String>
+        val username: Property<String>
+        val password: Property<String>
     }
 
-    private val container: PostgreSQLContainer<*> by lazy {
+    /**
+     * The server this build talks to: one it started, or one it was pointed at.
+     *
+     * [own] is what gets stopped at the end of the build. A server somebody else is
+     * running is theirs, and stopping it would be this build reaching outside itself.
+     */
+    private class Server(
+        val baseUrl: String,
+        val username: String,
+        val password: String,
+        val own: PostgreSQLContainer<*>?,
+    )
+
+    private val server: Server by lazy {
+        val existing = parameters.existingServer.getOrElse("")
+
+        if (existing.isBlank()) startedContainer() else adopted(existing)
+    }
+
+    /**
+     * The ordinary path: a container of the image production runs, started for this
+     * build and stopped with it.
+     */
+    private fun startedContainer(): Server {
         // pgvector image, because the schema declares `vector` columns and HNSW
         // indexes that plain Postgres cannot create.
-        PostgreSQLContainer("pgvector/pgvector:pg16")
+        val container = PostgreSQLContainer("pgvector/pgvector:pg16")
             .withDatabaseName(TEMPLATE)
             .withUsername("barometr")
             .withPassword("barometr")
@@ -57,7 +89,41 @@ abstract class MigratedPostgresService :
             // class was unlucky rather than in the one that took the connections.
             .withCommand("postgres", "-c", "max_connections=$MAX_CONNECTIONS")
             .also { it.start() }
-            .also { migrate(it) }
+
+        return Server(
+            baseUrl = "jdbc:postgresql://${container.host}:${container.firstMappedPort}",
+            username = container.username,
+            password = container.password,
+            own = container,
+        ).also { migrate(it) }
+    }
+
+    /**
+     * A server that is already running, which the build was told about.
+     *
+     * For a machine with no Docker daemon — a hosted agent, a locked-down laptop —
+     * where the alternative is not "a different database" but "no build at all". It is
+     * still Postgres with `pgvector`, still migrated by this project's own changelog,
+     * so what the generated code and the tests see is unchanged; what differs is who
+     * started the process. That is why this is a URL and never a dialect switch: the
+     * rule that matters is the schema under test being the schema the migrations
+     * produce, and an H2 would break it where this does not.
+     *
+     * The template is dropped and made again, because a database left by an earlier
+     * build carries an earlier schema and would migrate onto it rather than from
+     * nothing.
+     */
+    private fun adopted(baseUrl: String): Server {
+        val server = Server(
+            baseUrl = baseUrl.trimEnd('/'),
+            username = parameters.username.getOrElse(ADMIN),
+            password = parameters.password.getOrElse(ADMIN),
+            own = null,
+        )
+
+        recreate(server, TEMPLATE)
+
+        return server.also { migrate(it) }
     }
 
     /**
@@ -84,19 +150,41 @@ abstract class MigratedPostgresService :
      */
     val templateUrl: String get() = urlOf(TEMPLATE)
 
-    val username: String get() = container.username
+    val username: String get() = server.username
 
-    val password: String get() = container.password
+    val password: String get() = server.password
 
+    /**
+     * A copy of the migrated template, replacing whatever an earlier build left under
+     * the same name — which cannot happen to a container and always happens to a
+     * server that outlives the build.
+     */
     private fun clone(database: String) {
-        DriverManager.getConnection(urlOf(ADMIN), container.username, container.password)
-            .use { it.createStatement().execute("""CREATE DATABASE "$database" TEMPLATE $TEMPLATE""") }
+        recreate(server, database, from = TEMPLATE)
     }
 
-    private fun urlOf(database: String) =
-        "jdbc:postgresql://${container.host}:${container.firstMappedPort}/$database"
+    private fun recreate(server: Server, database: String, from: String? = null) {
+        val template = from?.let { " TEMPLATE \"$it\"" }.orEmpty()
 
-    private fun migrate(container: PostgreSQLContainer<*>) {
+        DriverManager.getConnection(urlOf(server, ADMIN), server.username, server.password).use { admin ->
+            admin.createStatement().use { statement ->
+                statement.execute("""DROP DATABASE IF EXISTS "$database"""")
+                statement.execute("""CREATE DATABASE "$database"$template""")
+            }
+        }
+    }
+
+    /**
+     * Takes the server rather than reading it, which is not a style choice: the
+     * template is made from inside `server`'s own initialiser, and Kotlin's `lazy`
+     * answers a re-entrant call by running the initialiser again. It recursed until the
+     * stack ran out — the same trap [codegenDatabase] documents one field up.
+     */
+    private fun urlOf(server: Server, database: String) = "${server.baseUrl}/$database"
+
+    private fun urlOf(database: String) = urlOf(server, database)
+
+    private fun migrate(server: Server) {
         // Liquibase finds its own services — the MDC manager, the parsers, the
         // Postgres dialect — through the thread's context classloader. Inside a
         // Gradle build that is Gradle's, which has never heard of Liquibase, and the
@@ -106,13 +194,13 @@ abstract class MigratedPostgresService :
         val callersClassLoader = thread.contextClassLoader
         thread.contextClassLoader = javaClass.classLoader
         try {
-            runMigration(container)
+            runMigration(server)
         } finally {
             thread.contextClassLoader = callersClassLoader
         }
     }
 
-    private fun runMigration(container: PostgreSQLContainer<*>) {
+    private fun runMigration(server: Server) {
         val roots = resourceRoots()
         check(roots.isNotEmpty()) { "No src/main/resources directories found under the repository root" }
 
@@ -123,9 +211,9 @@ abstract class MigratedPostgresService :
         val accessor = CompositeResourceAccessor(roots.map { DirectoryResourceAccessor(it) })
 
         val dataSource = PGSimpleDataSource().apply {
-            setUrl(container.jdbcUrl)
-            user = container.username
-            password = container.password
+            setUrl("${server.baseUrl}/$TEMPLATE")
+            user = server.username
+            password = server.password
         }
 
         dataSource.connection
@@ -152,7 +240,7 @@ abstract class MigratedPostgresService :
             .toList()
 
     override fun close() {
-        if (container.isRunning) container.stop()
+        server.own?.takeIf { it.isRunning }?.stop()
     }
 
     private companion object {

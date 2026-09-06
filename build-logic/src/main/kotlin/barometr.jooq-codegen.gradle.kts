@@ -1,6 +1,7 @@
 import pl.barometr.build.GenerateJooqSources
 import pl.barometr.build.JooqCodegenExtension
 import pl.barometr.build.JooqCodegenLock
+import pl.barometr.build.BuildPostgres
 import pl.barometr.build.MigratedPostgresService
 
 plugins {
@@ -10,11 +11,8 @@ plugins {
 val codegen = extensions.create<JooqCodegenExtension>("jooqCodegen")
 
 // The build's Postgres, registered by `barometr.kotlin-base` and shared with the
-// tests. Fetched rather than registered again: one container, one migration.
-val migratedPostgres =
-    gradle.sharedServices.registerIfAbsent("migratedPostgres", MigratedPostgresService::class) {
-        parameters.rootDirectory.set(rootProject.layout.projectDirectory)
-    }
+// tests. The same registration rather than a second one: one server, one migration.
+val migratedPostgres = BuildPostgres.registerIn(project)
 
 // What serialises generation. It used to be a limit on the service above, which stopped
 // working the day the tests began sharing it — the same limit would have run every

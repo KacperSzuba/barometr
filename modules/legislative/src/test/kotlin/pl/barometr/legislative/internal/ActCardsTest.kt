@@ -2,6 +2,7 @@ package pl.barometr.legislative.internal
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.corpus.api.DocumentVersionId
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.legislative.internal.jooq.tables.references.ACT_IDENTIFIER
@@ -11,6 +12,7 @@ import pl.barometr.shared.Eli
 import pl.barometr.shared.Ids
 import pl.barometr.testing.PostgresTestDatabase
 import pl.barometr.testing.TestClock
+import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -33,7 +35,8 @@ class ActCardsTest {
     private val identifiers = ActIdentifierRepository(dsl, clock)
     private val references = ActReferenceRepository(dsl, clock)
     private val drafts = DraftRepository(dsl, clock)
-    private val cards = ActCards(LegislativeCatalogAdapter(dsl), references, identifiers, drafts)
+    private val diffs = FakeDiffs()
+    private val cards = ActCards(LegislativeCatalogAdapter(dsl), references, identifiers, drafts, acts, diffs)
 
     private val statedBy = DocumentVersionId(Ids.next())
 
@@ -177,11 +180,39 @@ class ActCardsTest {
         assertFailsWith<UnknownActException> { cards.cardFor(Eli("DU/2099/1")) }
     }
 
+    /**
+     * The whole reason corpus compares anything: a reader looking at a law wants to know
+     * what the journal changed in it, and until now the comparison existed and nothing
+     * could reach it — the id of the document an act was read from was thrown away the
+     * moment it had been used to cite a reference.
+     */
+    @Test
+    fun `the card carries what changed in the newest text of the act`() {
+        val document = DocumentId(Ids.next())
+        val act = record(Eli("DU/2024/1222"), "Ustawa o cenach energii", readFrom = document)
+        val diff = diffs.compared(document, changes = 41, substantive = 3, at = Instant.parse("2026-03-02T10:00:00Z"))
+
+        val card = cards.cardFor(act)
+
+        assertEquals(diff.id, card.latestChange?.id)
+        assertEquals(3, card.latestChange?.substantiveChanges)
+        assertEquals(41, card.latestChange?.changeCount)
+    }
+
+    /** One text and nothing to compare it with, which is most acts. */
+    @Test
+    fun `an act corpus has never compared says nothing about changes`() {
+        val act = record(Eli("DU/2024/1223"), "Ustawa o czymś innym")
+
+        assertNull(cards.cardFor(act).latestChange)
+    }
+
     private fun record(
         eli: Eli,
         title: String,
         announcedOn: LocalDate? = LocalDate.of(2024, 8, 1),
         appliesFrom: LocalDate? = LocalDate.of(2024, 9, 1),
+        readFrom: DocumentId = DocumentId(Ids.next()),
     ) = acts.actFor(
         EliActMetadata(
             eli = eli,
@@ -193,6 +224,7 @@ class ActCardsTest {
             references = emptyList(),
             unmappedLabels = emptyList(),
         ),
+        readFrom,
     )
 
     private companion object {

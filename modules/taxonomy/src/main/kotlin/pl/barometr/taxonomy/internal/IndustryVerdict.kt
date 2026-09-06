@@ -20,6 +20,12 @@ data class IndustryVerdict(
     val confidence: Double,
     val method: VerdictMethod,
     val modelVersion: String?,
+    /**
+     * The words that caught it, as the lexicon holds them — the reason a reviewer needs
+     * and the citation columns cannot give: a classifier reading a title has no document
+     * version to point at. Null for a person's judgement, who read the law and decided.
+     */
+    val matchedOn: String?,
     val citedVersion: DocumentVersionId?,
     val charStart: Int?,
     val charEnd: Int?,
@@ -32,5 +38,8 @@ data class IndustryVerdict(
             "A model verdict names its model and a person's does not"
         }
         require((citedVersion != null) == (charStart != null)) { "A citation is a version and a range" }
+        require(method == VerdictMethod.MODEL || matchedOn == null) {
+            "A person's judgement matched no phrase: they read the law and decided"
+        }
     }
 }

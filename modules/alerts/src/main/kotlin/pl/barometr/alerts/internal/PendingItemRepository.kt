@@ -38,10 +38,21 @@ class PendingItemRepository(
             .doNothing()
             .execute() == 1
 
-    /** The oldest [limit] things nobody has judged yet. */
-    fun waiting(limit: Int): List<PendingItem> =
+    /**
+     * The oldest [limit] things nobody has judged yet, and that have been waiting since
+     * at least [settledBefore].
+     *
+     * The cut-off is what keeps a judgement from racing the derivations it reads. An
+     * act is buffered by a listener on the same event that has taxonomy classifying it
+     * and legislative recording where it stands, all on one executor; an item judged
+     * the instant it lands is judged against whichever of those finished first. It is
+     * then marked judged, so nothing looks at it again — the failure is silent and
+     * permanent, which is the kind this system is built to refuse.
+     */
+    fun waiting(limit: Int, settledBefore: Instant): List<PendingItem> =
         dsl.selectFrom(PENDING_ITEM)
             .where(PENDING_ITEM.PROCESSED_AT.isNull)
+            .and(PENDING_ITEM.RECORDED_AT.le(at(settledBefore)))
             .orderBy(PENDING_ITEM.RECORDED_AT)
             .limit(limit)
             .fetch {

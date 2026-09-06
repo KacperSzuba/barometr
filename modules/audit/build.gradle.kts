@@ -25,6 +25,9 @@ dependencies {
     implementation(libs.springSecurityCore)
     implementation(libs.jacksonModuleKotlin)
     implementation(libs.springModulithStarterCore)
+    // Sessions this system ends on its own are announced by identity, and recorded
+    // here: the register that persists and redelivers those events is wired in :app.
+    implementation(libs.springModulithEventsApi)
 
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersJunit)

@@ -17,4 +17,5 @@ fun AuditEntry.asAttempt(): AuditableAttempt = AuditableAttempt(
     outcome = outcome,
     status = status,
     peer = peer,
+    detail = detail,
 )

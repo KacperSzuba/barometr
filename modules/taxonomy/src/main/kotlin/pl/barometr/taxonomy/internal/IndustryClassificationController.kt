@@ -34,7 +34,10 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api/v1/taxonomy")
 @PreAuthorize("hasRole('OPERATOR')")
-class IndustryClassificationController(private val classifications: IndustryClassifications) {
+class IndustryClassificationController(
+    private val classifications: IndustryClassifications,
+    private val queue: ClassificationReviewQueue,
+) {
 
     @PutMapping("/subjects/{kind}/{id}/industries")
     fun classify(
@@ -55,6 +58,7 @@ class IndustryClassificationController(private val classifications: IndustryClas
                         code = code,
                         confidence = industry.confidence,
                         modelVersion = industry.modelVersion,
+                        matchedOn = industry.matchedOn,
                         citedVersion = industry.documentVersionId?.let(::DocumentVersionId),
                         charStart = industry.charStart,
                         charEnd = industry.charEnd,
@@ -64,9 +68,15 @@ class IndustryClassificationController(private val classifications: IndustryClas
         }
     }
 
-    /** What a classifier was not sure enough about to route on, oldest first. */
+    /**
+     * What a classifier was not sure enough about to route on, oldest first — each with
+     * the law's title and the words that caught it, which is the whole of what deciding
+     * one takes.
+     */
     @GetMapping("/review")
-    fun review(): List<VerdictResponse> = classifications.pendingReview().map(::describe)
+    fun review(): List<ReviewItemResponse> = queue.awaitingReview().map { pending ->
+        ReviewItemResponse(title = pending.title, verdict = describe(pending.verdict))
+    }
 
     @PostMapping("/review/decision")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -91,6 +101,7 @@ class IndustryClassificationController(private val classifications: IndustryClas
         confidence = verdict.confidence,
         method = verdict.method.wireName,
         modelVersion = verdict.modelVersion,
+        matchedOn = verdict.matchedOn,
         documentVersionId = verdict.citedVersion?.value,
         charStart = verdict.charStart,
         charEnd = verdict.charEnd,
@@ -110,6 +121,8 @@ class IndustryClassificationController(private val classifications: IndustryClas
         val confidence: Double = 1.0,
         /** Null means a person decided, which the database refuses to leave pending. */
         val modelVersion: String? = null,
+        /** What the classifier matched on. A person's judgement matched nothing. */
+        val matchedOn: String? = null,
         val documentVersionId: UUID? = null,
         val charStart: Int? = null,
         val charEnd: Int? = null,
@@ -132,10 +145,24 @@ class IndustryClassificationController(private val classifications: IndustryClas
         val confidence: Double,
         val method: String,
         val modelVersion: String?,
+        /** The phrase a classifier matched, and the reason a reviewer can act in seconds. */
+        val matchedOn: String?,
         val documentVersionId: UUID?,
         val charStart: Int?,
         val charEnd: Int?,
         val decidedAt: String,
         val reviewedAt: String?,
+    )
+
+    /**
+     * One row of the queue: the verdict, and what the law is called.
+     *
+     * The title sits beside the verdict rather than inside it, because it is not part
+     * of what anybody decided — it is legislative's description of the subject, fetched
+     * to make the decision possible.
+     */
+    data class ReviewItemResponse(
+        val title: String?,
+        val verdict: VerdictResponse,
     )
 }

@@ -24,6 +24,9 @@ class DraftCards(
     private val drafts: DraftRepository,
     private val transitions: StageTransitionRepository,
     private val paces: StagePaceRepository,
+    private val continuations: DraftContinuationRepository,
+    private val identifiers: DraftIdentifierRepository,
+    private val filings: DraftFilingRepository,
     private val engine: DraftStatusEngine,
 ) {
 
@@ -35,6 +38,65 @@ class DraftCards(
             draft = draft,
             status = engine.statusOf(draft, history, paces.measure()),
             history = history,
+            otherRegister = otherRegisterOf(draftId),
+            filings = filingsUnder(draftId),
         )
+    }
+
+    /**
+     * What is filed under the draft in RPL, newest first.
+     *
+     * Two indexed lookups, and only for a draft RPL knows: a Sejm print has no project
+     * id, so the second query is not run rather than run to find nothing.
+     *
+     * The other register's filings are deliberately not fetched along with a join. A
+     * government draft and the print it became are kept apart everywhere else on this
+     * card, and folding one's documents into the other's list would be the merged story
+     * [otherRegisterOf] refuses to tell.
+     */
+    private fun filingsUnder(draftId: DraftId): List<DraftFiling> {
+        val projectId = identifiers.identifierOf(draftId, DraftIdentifierScheme.RCL_PROJECT) ?: return emptyList()
+
+        return filings.filingsOf(projectId, FILINGS_SHOWN)
+    }
+
+    /**
+     * The joined draft, read but never merged into the one asked for.
+     *
+     * Two registers, two histories, and they are kept apart on purpose: the status
+     * above is a judgement about *this* register's record, and folding six months of
+     * government process into a print's timeline would change what "where is it now"
+     * means without anybody asking for that. The reader gets both, labelled, and can
+     * see the whole passage without being told a merged story.
+     */
+    private fun otherRegisterOf(draftId: DraftId): JoinedDraft? {
+        val continuation = continuations.continuationOf(draftId) ?: return null
+        val counterpartId = continuation.counterpartOf(draftId) ?: return null
+        val counterpart = drafts.summaryOf(counterpartId) ?: return null
+
+        return JoinedDraft(
+            draft = counterpart,
+            register = if (counterpartId == continuation.governmentDraftId) {
+                DraftRegister.GOVERNMENT
+            } else {
+                DraftRegister.SEJM
+            },
+            joinedBy = continuation.joinedBy,
+            confidence = continuation.confidence,
+            history = transitions.historyOf(counterpartId),
+        )
+    }
+
+    private companion object {
+        /**
+         * How many filings a card carries.
+         *
+         * A cap rather than a page, because a card is not a place to walk a list: RPL
+         * files a handful of documents per stage across eight stages, so the ordinary
+         * draft is well under this and the response is bounded whatever a ministry
+         * files. A draft that reaches the cap loses its oldest filings from the card
+         * and no other reading of it, which is the right thing to lose first.
+         */
+        const val FILINGS_SHOWN = 150
     }
 }

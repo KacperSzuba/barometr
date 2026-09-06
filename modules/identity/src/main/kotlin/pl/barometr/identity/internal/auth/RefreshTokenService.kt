@@ -1,12 +1,14 @@
 package pl.barometr.identity.internal.auth
 
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import pl.barometr.identity.api.UserId
+import pl.barometr.identity.api.UserSessionsRevoked
 import pl.barometr.identity.internal.config.JwtProperties
 import pl.barometr.identity.internal.user.RefreshToken
 import pl.barometr.identity.internal.user.RefreshTokens
 import pl.barometr.identity.internal.user.Sessions
-import pl.barometr.identity.api.UserId
 import pl.barometr.identity.internal.workspace.WorkspacePolicies
 import pl.barometr.shared.Ids
 import java.nio.charset.StandardCharsets
@@ -14,6 +16,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -24,6 +27,7 @@ class RefreshTokenService(
     private val policies: WorkspacePolicies,
     private val properties: JwtProperties,
     private val sessionProperties: SessionProperties,
+    private val events: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
 
@@ -82,7 +86,7 @@ class RefreshTokenService(
             ?: throw InvalidRefreshTokenException()
 
         if (stored.revokedAt != null) {
-            tokens.revokeFamily(stored.familyId, now)
+            revokeAll(stored, now, UserSessionsRevoked.RevocationReason.TOKEN_REUSE_DETECTED)
             throw RefreshTokenReuseException()
         }
         if (stored.expiresAt.isBefore(now)) {
@@ -91,7 +95,7 @@ class RefreshTokenService(
 
         val usedAt = stored.usedAt
         if (usedAt != null && Duration.between(usedAt, now) > properties.refreshGrace) {
-            tokens.revokeFamily(stored.familyId, now)
+            revokeAll(stored, now, UserSessionsRevoked.RevocationReason.TOKEN_REUSE_DETECTED)
             throw RefreshTokenReuseException()
         }
 
@@ -106,7 +110,7 @@ class RefreshTokenService(
         val session = sessions.byFamily(stored.familyId)
         if (session != null && Duration.between(session.lastSeenAt, now) > idleTimeout) {
             sessions.revoke(stored.familyId, now)
-            tokens.revokeFamily(stored.familyId, now)
+            revokeAll(stored, now, UserSessionsRevoked.RevocationReason.IDLE)
             throw InvalidRefreshTokenException()
         }
 
@@ -127,6 +131,25 @@ class RefreshTokenService(
      * closes the session row, so the device stops appearing in the account's list.
      */
     @Transactional
+    /**
+     * Revokes the family and says so, which is the half that was missing.
+     *
+     * These two decisions — a token replayed, a device gone quiet for longer than a
+     * session may — are the only ones this system makes about somebody's sessions
+     * without being asked, and they left no trace anybody could find. The request that
+     * triggered them is recorded as a refused refresh, which is what an expired token
+     * looks like too; the reason it was refused was known here and nowhere else.
+     *
+     * Announced inside a transaction that is about to throw, and that works for one
+     * reason worth stating: `noRollbackFor` keeps the revocation, so the transaction
+     * commits and the listeners run. Were it rolled back, the revocation would be undone
+     * and the announcement with it — which is the correct pairing either way.
+     */
+    private fun revokeAll(stored: RefreshToken, now: Instant, reason: UserSessionsRevoked.RevocationReason) {
+        tokens.revokeFamily(stored.familyId, now)
+        events.publishEvent(UserSessionsRevoked(UserId(stored.userId), reason, now))
+    }
+
     fun revokeFamilyOf(rawToken: String): UUID? {
         val stored = tokens.byTokenHashForUpdate(sha256Hex(rawToken)) ?: return null
         val now = clock.instant()

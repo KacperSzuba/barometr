@@ -104,6 +104,30 @@ class IndustryClassificationsTest {
         assertEquals(emptyList(), classifications.pendingReview())
     }
 
+    /**
+     * What a reader is shown beside a law. A verdict nobody has confirmed is a question
+     * for a person, and showing it here would make the two look alike.
+     */
+    @Test
+    fun `a subject reads back with the industries somebody stands behind, and no others`() {
+        val draft = subject()
+        classifications.recordJudgement(draft, PkdCode("41.20.Z"))
+        classifications.recordClassification(
+            draft,
+            PkdCode("35"),
+            confidence = 0.9,
+            modelVersion = "pkd-v1",
+            matchedOn = "odnawialnych zrodlach energii",
+        )
+        classifications.recordClassification(draft, PkdCode("62"), confidence = 0.2, modelVersion = "pkd-v1")
+
+        val shown = classifications.industriesOf(draft)
+
+        assertEquals(listOf(PkdCode("35"), PkdCode("41.20.Z")), shown.map { it.code })
+        assertEquals("odnawialnych zrodlach energii", shown.first { it.code == PkdCode("35") }.matchedOn)
+        assertEquals(null, shown.first { it.code == PkdCode("41.20.Z") }.matchedOn, "a person matched nothing")
+    }
+
     @Test
     fun `an industry answers with everything classified beneath it`() {
         val building = subject()
@@ -156,6 +180,27 @@ class IndustryClassificationsTest {
                 .set(ITEM_INDUSTRY.CONFIDENCE, 1.0f)
                 .set(ITEM_INDUSTRY.METHOD, VerdictMethod.MANUAL.wireName)
                 .set(ITEM_INDUSTRY.DECIDED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .execute()
+        }
+    }
+
+    /**
+     * A person read the law and decided; they matched no phrase. Recording one against
+     * their verdict would be this system inventing a reason on somebody else's behalf.
+     */
+    @Test
+    fun `a person's judgement cannot carry a phrase a classifier matched`() {
+        assertFailsWith<DataAccessException> {
+            dsl.insertInto(ITEM_INDUSTRY)
+                .set(ITEM_INDUSTRY.SUBJECT_KIND, LegislativeKind.ACT)
+                .set(ITEM_INDUSTRY.SUBJECT_ID, Ids.next())
+                .set(ITEM_INDUSTRY.PKD, "41.20.Z")
+                .set(ITEM_INDUSTRY.STATUS, VerdictStatus.ACCEPTED.wireName)
+                .set(ITEM_INDUSTRY.CONFIDENCE, 1.0f)
+                .set(ITEM_INDUSTRY.METHOD, VerdictMethod.MANUAL.wireName)
+                .set(ITEM_INDUSTRY.MATCHED_ON, "prawo budowlane")
+                .set(ITEM_INDUSTRY.DECIDED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .set(ITEM_INDUSTRY.REVIEWED_AT, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
                 .execute()
         }
     }

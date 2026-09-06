@@ -1,3 +1,4 @@
+import pl.barometr.build.BuildPostgres
 import pl.barometr.build.MigratedPostgresService
 import pl.barometr.build.PostgresConnectionArguments
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -22,12 +23,10 @@ kotlin {
 }
 
 // One Postgres for the whole build, shared by code generation and by every module's
-// tests. Registered here because this plugin is applied everywhere; the container is
-// started on first use and stopped when the build ends.
-val migratedPostgres =
-    gradle.sharedServices.registerIfAbsent("migratedPostgres", MigratedPostgresService::class) {
-        parameters.rootDirectory.set(rootProject.layout.projectDirectory)
-    }
+// tests. Registered here because this plugin is applied everywhere; started on first
+// use and stopped when the build ends — unless the build was pointed at a server that
+// is already running, which is what `BuildPostgres` settles.
+val migratedPostgres = BuildPostgres.registerIn(project)
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()

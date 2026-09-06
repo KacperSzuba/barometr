@@ -160,6 +160,47 @@ class ArchivedCardSweepTest {
         assertNotNull(dsl.selectFrom(DRAFT).fetchOne()?.consultationsReadAt)
     }
 
+    /**
+     * The state this sweep spends nearly all its life in. The walk's only ending is the
+     * end of the archive, so without a question asked first it would page through every
+     * card ever stored, every hour, to find out there is nothing to do.
+     */
+    @Test
+    fun `with no card left to read the archive is not walked at all`() {
+        archiveCard()
+        sweep.openConsultationsFromArchivedCards()
+        val afterTheBacklog = archive.walks
+
+        sweep.openConsultationsFromArchivedCards()
+
+        assertEquals(afterTheBacklog, archive.walks, "the second run asked the drafts, not the archive")
+    }
+
+    /**
+     * A draft the Sejm's register created has no card and never will — the two
+     * registers keep separate rows — so its mark stays null for ever. Reading that as
+     * work outstanding would put the walk back exactly where it was.
+     */
+    @Test
+    fun `a draft that never had a card does not keep the sweep walking`() {
+        archiveCard()
+        sweep.openConsultationsFromArchivedCards()
+        val afterTheBacklog = archive.walks
+        val fromTheSejm = drafts.insertDraft(
+            DraftFromRegister(
+                title = "Rządowy projekt ustawy o zmianie ustawy o kredycie konsumenckim",
+                initiator = DraftInitiator.GOVERNMENT,
+                term = 10,
+                startedOn = LocalDate.of(2026, 6, 1),
+            ),
+        )
+        identifiers.claimForDraft(DraftIdentifierScheme.SEJM_PRINT, "term10/print/424", fromTheSejm)
+
+        sweep.openConsultationsFromArchivedCards()
+
+        assertEquals(afterTheBacklog, archive.walks)
+    }
+
     private fun archiveCard() {
         archive.holds(
             CARD,

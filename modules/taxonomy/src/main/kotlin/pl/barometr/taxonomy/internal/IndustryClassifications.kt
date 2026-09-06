@@ -42,6 +42,7 @@ class IndustryClassifications(
                 confidence = 1.0,
                 method = VerdictMethod.MANUAL,
                 modelVersion = null,
+                matchedOn = null,
                 citedVersion = null,
                 charStart = null,
                 charEnd = null,
@@ -63,6 +64,8 @@ class IndustryClassifications(
         code: PkdCode,
         confidence: Double,
         modelVersion: String,
+        /** What the classifier matched on, which is the whole of what a reviewer is shown. */
+        matchedOn: String? = null,
         citedVersion: DocumentVersionId? = null,
         charStart: Int? = null,
         charEnd: Int? = null,
@@ -79,6 +82,7 @@ class IndustryClassifications(
                 confidence = confidence,
                 method = VerdictMethod.MODEL,
                 modelVersion = modelVersion,
+                matchedOn = matchedOn,
                 citedVersion = citedVersion,
                 charStart = charStart,
                 charEnd = charEnd,
@@ -103,6 +107,19 @@ class IndustryClassifications(
 
         return settled
     }
+
+    /**
+     * The industries a subject is in, as anybody reading a card sees them.
+     *
+     * Accepted only, which is the same rule the port publishes: what a classifier was
+     * unsure about is a queue for somebody to look at, not a fact to show a reader
+     * beside the ones a person confirmed. The verdicts rather than the codes, because
+     * "why is this act tagged construction" is answered by what decided it and what it
+     * matched — and a reader who cannot ask that has to take the tag on faith.
+     */
+    @Transactional(readOnly = true)
+    fun industriesOf(subject: ClassifiedSubject): List<IndustryVerdict> =
+        verdicts.verdictsFor(subject).filter { it.status == VerdictStatus.ACCEPTED }
 
     fun pendingReview(): List<IndustryVerdict> = verdicts.pendingVerdicts(properties.reviewPageSize)
 

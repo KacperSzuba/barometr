@@ -57,8 +57,25 @@ class DraftCardController(private val cards: DraftCards) {
             // once: a draft has one predecessor or one continuation, not both.
             precededBy = card.otherRegister?.takeIf { it.register == DraftRegister.GOVERNMENT }?.let(::describeJoined),
             continuedAs = card.otherRegister?.takeIf { it.register == DraftRegister.SEJM }?.let(::describeJoined),
+            filings = card.filings.map(::describe),
         )
     }
+
+    /**
+     * One filed document, with the id that reaches it.
+     *
+     * `documentId` is what a client follows to `/api/v1/corpus/documents/{id}/changes`,
+     * and it is null for a file RPL lists that this system does not hold. Reported
+     * anyway, because "the ministry filed an impact assessment and we have not got it"
+     * is a truer answer than a shorter list.
+     */
+    private fun describe(filing: DraftFiling) = FilingResponse(
+        documentId = filing.documentId?.value,
+        fileName = filing.fileName,
+        folder = filing.catalogId,
+        author = filing.author,
+        filedOn = filing.filedOn?.toString(),
+    )
 
     private fun describeJoined(joined: JoinedDraft) = JoinedDraftResponse(
         id = joined.draft.id.value,
@@ -110,6 +127,19 @@ class DraftCardController(private val cards: DraftCards) {
         val precededBy: JoinedDraftResponse?,
         /** The print this government draft became, once the two have been joined. */
         val continuedAs: JoinedDraftResponse?,
+        /** What the ministry filed, newest first. Empty for a Sejm print. */
+        val filings: List<FilingResponse>,
+    )
+
+    /** A document filed under the draft in RPL. */
+    data class FilingResponse(
+        /** Corpus's id for the file; null for one RPL lists and the archive does not hold. */
+        val documentId: UUID?,
+        val fileName: String?,
+        /** RPL's id for the folder it sits in, which is how one filing is grouped with another. */
+        val folder: String,
+        val author: String?,
+        val filedOn: String?,
     )
 
     /** The other register's record of the same draft, with its own timeline. */

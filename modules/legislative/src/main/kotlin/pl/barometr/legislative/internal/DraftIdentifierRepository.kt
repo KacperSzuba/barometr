@@ -30,6 +30,25 @@ class DraftIdentifierRepository(
             .fetchOne { DraftId(it.value1()!!) }
 
     /**
+     * What a draft is called in one scheme, or null when it is called nothing there.
+     *
+     * The way back from a draft to RPL's own id for it, which is what everything filed
+     * under the draft is addressed by. A Sejm print has no such id and never will, and
+     * null is the whole answer for it.
+     *
+     * The oldest claim wins where a draft somehow carries two in one scheme, so that
+     * the same question keeps giving the same answer.
+     */
+    fun identifierOf(draftId: DraftId, scheme: DraftIdentifierScheme): String? =
+        dsl.select(DRAFT_IDENTIFIER.VALUE)
+            .from(DRAFT_IDENTIFIER)
+            .where(DRAFT_IDENTIFIER.DRAFT_ID.eq(draftId.value))
+            .and(DRAFT_IDENTIFIER.SCHEME.eq(scheme.wireName))
+            .orderBy(DRAFT_IDENTIFIER.RESOLVED_AT.asc(), DRAFT_IDENTIFIER.VALUE.asc())
+            .limit(1)
+            .fetchOne { it.value1() }
+
+    /**
      * Claims an identifier for a draft just created under it, and fails if somebody
      * else already has.
      *

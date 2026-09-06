@@ -29,7 +29,7 @@ data class RclCatalogAddress(val projectId: String, val catalogId: String) {
         private val CATALOG_PAGE = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)""")
 
         /** `projekt/ustawa/12409051/katalog/13196868/dokument/778141` — a file in a folder. */
-        private val FILED_DOCUMENT = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)/dokument/[^/]+""")
+        private val FILED_DOCUMENT = Regex("""projekt/[^/]+/([^/]+)/katalog/([^/]+)/dokument/([^/]+)""")
 
         /**
          * The project a card's address names, or null when the address is not a card's.
@@ -48,6 +48,16 @@ data class RclCatalogAddress(val projectId: String, val catalogId: String) {
         fun ofCatalogPage(externalId: ExternalId): RclCatalogAddress? = read(CATALOG_PAGE, externalId)
 
         fun ofFiledDocument(externalId: ExternalId): RclCatalogAddress? = read(FILED_DOCUMENT, externalId)
+
+        /**
+         * RPL's own id for the file, which is what the catalog page names it by.
+         *
+         * Read here rather than by cutting the last segment off the address, so that a
+         * caller joining what the page says to what the archive holds is matching on the
+         * same shape both sides were parsed with.
+         */
+        fun filedDocumentIn(externalId: ExternalId): String? =
+            FILED_DOCUMENT.matchEntire(externalId.value)?.groupValues?.get(3)
 
         /**
          * The same two shapes written rather than read, for a caller going the other

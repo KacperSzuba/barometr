@@ -601,6 +601,33 @@ downstream is unchanged — the same changelog into a fresh template, the same p
 copies — because the rule that matters is that the schema under test is the schema the
 migrations produce, not who started the process.
 
+### F-9 · An archive nobody could reach through the thing it is about
+
+The connector has been following stage catalogs and fetching what is filed under them
+for as long as it has been able to read a catalog page: a bill's text, its
+justification, the impact assessment, the letters sending it out for comment, the
+tables of comments that came back. All of it is archived, versioned and diffed. None of
+it was reachable from the draft it belongs to, because no table said which draft a file
+was filed under — RPL addresses a file by the folder it sits in, corpus addresses it by
+its own identifier, and the two were never joined. A reader on a draft's card was shown
+a title, a stage and a timeline, and could not learn that the bill's own text existed.
+
+Two pages state the join and neither states both, which is why `draft_filing` is
+written by two hands: the stage's catalog page is the only place a file is ever named,
+dated and attributed, and the archived file itself is the only place its corpus
+identifier appears. Both writes are upserts that touch their own columns and nothing
+else, because which of the pair is read first is decided by the order a walk happened to
+fetch pages in — the ordering hazard `catalog_folder` was already keyed around, and the
+reason this table is keyed by RPL's project id rather than by a draft that may not exist
+yet.
+
+The backfill needed a cursor rather than a marker, and that is the one new idea here. A
+stage folder holding no files is a real answer and looks exactly like a folder nobody
+has opened, so a walk that asked the derived rows where to resume would re-read every
+empty folder in the archive on every run — F-6's trap, one table over. `archive_walk`
+remembers the last document read; identities are time-ordered, so nothing stored
+mid-run is skipped and a caught-up walk costs one empty page an hour.
+
 ---
 
 ## What the second pass built
@@ -611,6 +638,7 @@ migrations produce, not who started the process.
 | The government process ended on the day the Sejm printed the draft | A card cannot state a departure; the join is where the other register's word arrives |
 | The first classifier — a stemmed Polish lexicon over titles, evidence combined rather than added | `item_industry` was empty, so every industry code was a subscription to silence |
 | A designed digest, an industry lookup, a review queue with names and reasons | The output somebody actually reads |
+| `draft_filing` and the walk that backfills it — what a ministry filed, with the id that reaches it | The archive held the documents and the draft they belong to could not name one |
 
 Coverage is the number to watch next: `taxonomy.verdicts{status}` says how much of the
 archive carries an industry at all, and the lexicon is a file to correct rather than a

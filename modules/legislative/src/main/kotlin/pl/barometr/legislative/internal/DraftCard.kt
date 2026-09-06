@@ -10,4 +10,6 @@ data class DraftCard(
     val history: List<RecordedStage>,
     /** Null while nothing has been joined to this draft, which is most of them. */
     val otherRegister: JoinedDraft?,
+    /** What the ministry filed under it. Always empty for a Sejm print, which files nothing in RPL. */
+    val filings: List<DraftFiling>,
 )

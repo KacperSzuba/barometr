@@ -73,6 +73,18 @@ delivers at-least-once semantics with nothing extra to operate.
     what has been waiting longer than `app.alerts.settle-delay` for exactly this
     reason (review F-2). Asking the other context "are you done with this one" is not
     the fix: "nothing to say about it" and "not read yet" are the same absence.
+17. **A sweep over the archive resumes from a marker, or from a cursor when "nothing
+    to do" cannot be told from "not done yet".** A marker on the thing being derived
+    is the cheaper answer and the right one where the derivation always leaves a
+    trace — `ArchivedCardSweep` reads a draft's card once and marks the draft. Where
+    an empty result is indistinguishable from work not started — a stage folder with
+    no files in it — no question asked of the derived rows can end the walk, and the
+    sweep re-reads the whole archive for ever. Store where it got to instead
+    (`legislative.archive_walk`): document identities are time-ordered, so a keyset
+    walk skips nothing stored mid-run and costs one empty page per run once caught
+    up. Write the cursor when the run finishes, never per page — a repeated run of
+    idempotent upserts is cheap, and a cursor ahead of the work steps over documents
+    nothing has read (review F-6, F-9).
 
 ## Patterns to copy
 

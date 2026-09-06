@@ -15,7 +15,7 @@ crawlerCommons = "1.6"
 jsoup = "1.23.2"
 # Text extraction from the files RPL and the BIPs publish. Nothing in Spring or the
 # JDK reads a PDF or a Word document, and the archive is now mostly both.
-tika = "3.3.1"
+tika = "4.0.0"
 # Myers diff over arbitrary lists, for the word-level half of a version comparison.
 # Neither the JDK nor Spring ships a diff algorithm, and the naive alternative — longest
 # common subsequence written here — is the part of this feature least worth owning: the

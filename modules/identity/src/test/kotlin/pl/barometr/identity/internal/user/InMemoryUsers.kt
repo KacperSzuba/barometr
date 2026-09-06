@@ -15,6 +15,8 @@ class InMemoryUsers : Users {
 
     override fun byId(id: UUID): User? = byId[id]
 
+    override fun allById(ids: Set<UUID>): List<User> = ids.mapNotNull(byId::get)
+
     override fun byEmail(email: String): User? = byId.values.firstOrNull { it.email == email }
 
     override fun existsWithEmail(email: String): Boolean = byEmail(email) != null

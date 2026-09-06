@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.scheduling.config.ScheduledTaskHolder
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import pl.barometr.inference.InferenceClient
 import pl.barometr.ingestion.api.Connector
 import pl.barometr.platform.JobHandler
 import pl.barometr.testing.PostgresTestDatabase
@@ -40,6 +41,24 @@ class ApplicationContextTest {
             handlers.size,
             handlers.map { it.type }.distinct().size,
             "two handlers for one job type means one of them never runs",
+        )
+    }
+
+    /**
+     * The door to the inference service is built from `app.ai.*`, and nothing else in
+     * the build constructs it.
+     *
+     * Worth a line here because the failure it catches is invisible: the properties
+     * class is reached by `@ConfigurationPropertiesScan` from a module `:app` does not
+     * name, so a package renamed or a prefix mistyped leaves a bean that binds silently
+     * to its defaults and sends every call at this container's own port.
+     */
+    @Test
+    fun `the inference client is wired from configuration`() {
+        assertEquals(
+            1,
+            context.getBeansOfType(InferenceClient::class.java).size,
+            "one door to the inference service, or the key and the client id have two homes",
         )
     }
 

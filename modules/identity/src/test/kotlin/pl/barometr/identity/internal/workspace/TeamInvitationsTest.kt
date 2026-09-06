@@ -5,6 +5,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.api.Role
 import pl.barometr.identity.api.UserId
+import pl.barometr.identity.internal.user.InMemoryUsers
 import pl.barometr.identity.api.UserLookup
 import pl.barometr.identity.api.UserSnapshot
 import pl.barometr.identity.api.WorkspaceInvitationIssued
@@ -27,8 +28,9 @@ class TeamInvitationsTest {
     private val clock = TestClock()
     private val workspaces = InMemoryWorkspaces()
     private val invitations = InMemoryWorkspaceInvitations()
+    private val accounts = InMemoryUsers()
     private val properties = WorkspaceProperties(defaultSeats = 2, invitationBaseUrl = "https://barometr.example")
-    private val team = TeamWorkspaces(workspaces, invitations, properties, clock)
+    private val team = TeamWorkspaces(workspaces, accounts, invitations, properties, clock)
     private val events = RecordingEvents()
 
     private val service = TeamInvitations(invitations, workspaces, team, Accounts, properties, events, clock)

@@ -2,11 +2,14 @@ package pl.barometr.identity.internal.workspace
 
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.api.UserId
+import pl.barometr.identity.internal.user.InMemoryUsers
+import pl.barometr.identity.internal.user.User
 import pl.barometr.shared.Ids
 import pl.barometr.testing.TestClock
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -18,9 +21,10 @@ class TeamWorkspacesTest {
     private val clock = TestClock()
     private val workspaces = InMemoryWorkspaces()
     private val invitations = InMemoryWorkspaceInvitations()
+    private val accounts = InMemoryUsers()
     private val properties = WorkspaceProperties(defaultSeats = 3, invitationBaseUrl = "https://barometr.example")
 
-    private val team = TeamWorkspaces(workspaces, invitations, properties, clock)
+    private val team = TeamWorkspaces(workspaces, accounts, invitations, properties, clock)
 
     private val ewa = UserId(Ids.next())
     private val marek = UserId(Ids.next())
@@ -125,4 +129,45 @@ class TeamWorkspacesTest {
     private fun join(workspace: WorkspaceId, user: UserId, role: WorkspaceRole) {
         workspaces.addMember(WorkspaceMembership(workspace, user, role, clock.instant()))
     }
+
+    /**
+     * A members list is read by an administrator deciding who to remove, and three
+     * identifiers is not enough to decide anything: the address is the only thing on the
+     * row a person recognises.
+     */
+    @Test
+    fun `a members list names everybody on it`() {
+        accounts.add(account(ewa, "ewa@example.test"))
+        accounts.add(account(marek, "marek@example.test"))
+        val workspace = team.createWorkspace(ewa, "Enerpol")
+        workspaces.addMember(WorkspaceMembership(workspace.id, marek, WorkspaceRole.MEMBER, clock.instant()))
+
+        val named = team.namedMembersOf(ewa, workspace.id)
+
+        assertEquals(
+            setOf("ewa@example.test", "marek@example.test"),
+            named.map { it.email }.toSet(),
+        )
+    }
+
+    /**
+     * Closing an account is a route this system implements, and the membership row can
+     * outlive it. That row is exactly the one somebody needs to see in order to remove
+     * it, so an unresolvable address drops the name rather than the member.
+     */
+    @Test
+    fun `a member whose account is gone still appears, without a name`() {
+        accounts.add(account(ewa, "ewa@example.test"))
+        val workspace = team.createWorkspace(ewa, "Enerpol")
+        workspaces.addMember(WorkspaceMembership(workspace.id, marek, WorkspaceRole.MEMBER, clock.instant()))
+
+        val named = team.namedMembersOf(ewa, workspace.id)
+
+        assertEquals(2, named.size)
+        assertNull(named.single { it.user == marek }.email)
+    }
+
+    private fun account(id: UserId, email: String) =
+        User(id = id.value, email = email, passwordHash = "irrelevant", createdAt = clock.instant())
+
 }

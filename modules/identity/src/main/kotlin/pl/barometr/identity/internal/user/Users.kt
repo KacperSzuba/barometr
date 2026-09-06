@@ -13,6 +13,16 @@ interface Users {
 
     fun byId(id: UUID): User?
 
+    /**
+     * Several users at once, for a list that has to name them.
+     *
+     * Here rather than left to the caller looping over [byId], because the caller that
+     * loops is a members endpoint and a workspace may hold as many seats as somebody
+     * bought — one query per row is a page that gets slower the more it has to show.
+     * Users that do not exist are absent from the result rather than null in it.
+     */
+    fun allById(ids: Set<UUID>): List<User>
+
     fun byEmail(email: String): User?
 
     fun existsWithEmail(email: String): Boolean

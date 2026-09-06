@@ -9,13 +9,15 @@ convention plugins in an included build.
 ## Running it
 
 ```bash
-docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on 9200
+docker compose up -d          # Postgres with pgvector on 5432, Elasticsearch on 9200,
+                              # and the inference service on 8000
 ./gradlew :app:bootRun        # local profile, no further setup needed
 ```
 
-`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET` and — for the
-default `gcs` storage — `GCP_PROJECT`. None has a production fallback, deliberately: a
-missing secret must stop the application rather than sign tokens with a known key.
+`SPRING_PROFILES_ACTIVE=prod` requires `DATABASE_URL`, `JWT_SECRET`, `AI_BASE_URL`,
+`AI_API_KEY` and — for the default `gcs` storage — `GCP_PROJECT`. None has a production
+fallback, deliberately: a missing secret must stop the application rather than sign
+tokens with a known key.
 
 ### Where the archive is kept
 
@@ -218,6 +220,34 @@ for everything that was already stored, which on the day the classifier ships is
 it. `taxonomy.verdicts{status="accepted"|"pending"}` is how much of the archive carries
 an industry at all — a profile watching an industry nothing is tagged with is a
 subscription to silence, and silence is what a working alert engine also looks like.
+
+### The inference service
+
+Embeddings, classification, clustering and summaries with provenance come from
+[barometr-ai](https://github.com/KacperSzuba/barometr-ai), a stateless Python service
+this application calls over HTTP. Stateless is the load-bearing word: it holds no
+database, reaches nothing, and works only on what arrives in the request body. This
+side owns the archive, and there is exactly one thing that owns it.
+
+`compose.yaml` builds it from a checkout beside this one (`../barometr-ai`), because
+there is no registry to pull it from yet. It is reached through one client —
+[`InferenceClient`](platform/src/main/kotlin/pl/barometr/inference/InferenceClient.kt) —
+and nothing else in this application may open a connection to it. The key, the client
+id, the timeouts and the two shapes its errors arrive in are decisions to make once.
+
+| Setting | What it is |
+|---|---|
+| `app.ai.base-url` | where the service is; no production fallback, because the default is a loopback address and an unset one would look like an outage rather than a mistake |
+| `app.ai.api-key` | sent as `X-Api-Key`. The service has no user model: this is the whole of the authentication. Empty locally, required in production |
+| `app.ai.client-id` | sent as `X-Client-Id`. Not a credential — the service bills its daily token budget against it, so staging and production must not share one |
+
+**The service can be healthy and still not be a model.** With no Anthropic key it runs
+a deterministic fallback and says so on every response it produces
+(`is_generative: false`, `model_version: heuristic-v0`). That is a correct state, not a
+degraded one, and `GET /actuator/health` reports it `UP` with `generative: false`
+rather than red — a deployment has to be able to tell "no key configured" from "the
+models failed to load". What must never happen is a summary from that adapter reaching
+a screen presented as model output.
 
 ### The public API
 

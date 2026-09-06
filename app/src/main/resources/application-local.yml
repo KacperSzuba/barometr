@@ -39,6 +39,11 @@ app:
       # handed out pointing at localhost is a subscription that silently never
       # updates.
       base-url: http://localhost:8080
+  ai:
+    # The inference service from compose.yaml. No key locally: the service accepts an
+    # empty one outside production and refuses to start with one in it, so a developer
+    # gets a working system and a deployment cannot inherit this silence.
+    base-url: http://localhost:8000
   jobs:
     poll-interval: 1000
   ingestion:

@@ -82,7 +82,7 @@ class ModularityTest {
     private companion object {
         /**
          * Every package under `pl.barometr` that owns internals of its own: the
-         * bounded contexts, and the three technical capabilities that make up
+         * bounded contexts, and the four technical capabilities that make up
          * `platform`. `shared` and `testing` are absent because they have no internals
          * to hide.
          *
@@ -106,6 +106,7 @@ class ModularityTest {
             "alerts",
             "platform",
             "http",
+            "inference",
             "storage",
         )
     }

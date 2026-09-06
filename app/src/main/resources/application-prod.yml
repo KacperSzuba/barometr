@@ -18,6 +18,18 @@ spring:
       max-lifetime: 300000
 
 app:
+  ai:
+    # No fallback for either, and for the same reason as the JWT secret: the default
+    # base URL is a loopback address, so an unset one would not fail — it would send
+    # every inference call at this container's own port 8000 and report the service as
+    # unreachable, which is a misconfiguration wearing an outage's clothes. The key is
+    # the only thing standing between that service's token budget and anybody who can
+    # reach it.
+    base-url: ${AI_BASE_URL}
+    api-key: ${AI_API_KEY}
+    # Which deployment is spending the budget. The service bills against this and tags
+    # its own metrics with it, so staging and production must not share one.
+    client-id: ${AI_CLIENT_ID:barometr}
   jwt:
     # No fallback: the application must refuse to start without a real secret.
     secret: ${JWT_SECRET}

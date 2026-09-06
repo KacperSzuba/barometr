@@ -57,6 +57,42 @@ services:
       timeout: 5s
       retries: 20
 
+  inference:
+    # The AI service, from the sibling repository. Built rather than pulled for the same
+    # reason Elasticsearch is: there is no registry to pull it from yet.
+    #
+    # It is stateless and has no database of its own — deliberately, so the archive has
+    # exactly one owner. Everything it works on arrives in the request body, which is why
+    # it is not on the same dependency chain as anything else here.
+    build: ../barometr-ai
+    environment:
+      # Development, so an empty ANTHROPIC_API_KEY degrades to the deterministic fallback
+      # adapter instead of refusing to start. Summaries then come back with
+      # `is_generative: false`, which is the honest answer and the one the UI must show.
+      APP_ENV: development
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # No key locally: `app.ai.api-key` is unset on the local profile to match, and the
+      # service refuses to start without one the moment APP_ENV is production.
+      SERVICE_API_KEY: ""
+    # The first start downloads the embedding model, which is about 2 GB. A named volume
+    # rather than a rebuild each time.
+    volumes:
+      - inference-models:/home/barometr/.cache/huggingface
+    # One worker, and not a tuning choice: the token budget is counted in process memory,
+    # so a second worker would mean a second budget and twice the declared daily limit.
+    cpus: 2
+    mem_limit: 4g
+    ports:
+      - "8000:8000"
+    healthcheck:
+      # /v1/ready rather than /v1/health: the second answers before any model exists.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/ready')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Loading ONNX on a cold cache is measured in minutes, not seconds.
+      start_period: 180s
+
   storage:
     # Google Cloud Storage, emulated. The application talks to this exactly as it talks
     # to the real thing — same client, same API — so `app.storage.kind: gcs` locally
@@ -80,3 +116,4 @@ services:
 volumes:
   postgres-data:
   storage-data:
+  inference-models:

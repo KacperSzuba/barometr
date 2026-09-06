@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import pl.barometr.identity.api.UserId
+import pl.barometr.identity.internal.user.Users
 import pl.barometr.shared.Ids
 import java.time.Clock
 import java.time.Duration
@@ -23,6 +24,7 @@ import java.time.Duration
 @Service
 class TeamWorkspaces(
     private val workspaces: Workspaces,
+    private val users: Users,
     private val invitations: WorkspaceInvitations,
     private val properties: WorkspaceProperties,
     private val clock: Clock,
@@ -61,6 +63,22 @@ class TeamWorkspaces(
         membershipOf(caller, id)
 
         return workspaces.membersOf(id)
+    }
+
+    /**
+     * The same list, with each member's address resolved.
+     *
+     * The join lives here rather than in the endpoint because it is one read of two
+     * tables, and doing it above would mean the endpoint knowing that a membership and
+     * a user are stored apart. One query for the addresses, not one per member.
+     */
+    @Transactional(readOnly = true)
+    fun namedMembersOf(caller: UserId, id: WorkspaceId): List<NamedMember> {
+        val members = membersOf(caller, id)
+        val addresses = users.allById(members.map { it.user.value }.toSet())
+            .associate { it.id to it.email }
+
+        return members.map { NamedMember(it.user, addresses[it.user.value], it.role, it.joinedAt) }
     }
 
     /**

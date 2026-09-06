@@ -310,7 +310,7 @@ class AuthServiceTest {
 
     /** A workspace that insists on a second factor, with this account in it. */
     private fun requireTwoFactorFor(user: UserId) {
-        val workspace = TeamWorkspaces(workspaces, InMemoryWorkspaceInvitations(), WorkspaceProperties(), clock)
+        val workspace = TeamWorkspaces(workspaces, users, InMemoryWorkspaceInvitations(), WorkspaceProperties(), clock)
             .createWorkspace(user, "Kancelaria Nowak")
 
         workspaces.updatePolicy(workspace.id, requireTwoFactor = true, idleTimeout = null)

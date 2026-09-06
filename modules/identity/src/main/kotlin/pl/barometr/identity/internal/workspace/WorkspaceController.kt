@@ -53,8 +53,8 @@ class WorkspaceController(private val workspaces: TeamWorkspaces) {
 
     @GetMapping("/{id}/members")
     fun members(caller: Principal, @PathVariable id: UUID): List<MemberResponse> =
-        workspaces.membersOf(callerOf(caller), WorkspaceId(id)).map {
-            MemberResponse(it.user.value, it.role.wireName, it.joinedAt.toString())
+        workspaces.namedMembersOf(callerOf(caller), WorkspaceId(id)).map {
+            MemberResponse(it.user.value, it.email, it.role.wireName, it.joinedAt.toString())
         }
 
     @PutMapping("/{id}/members/{userId}/role")
@@ -160,5 +160,15 @@ class WorkspaceController(private val workspaces: TeamWorkspaces) {
 
     data class MembershipResponse(val workspaceId: UUID, val role: String, val joinedAt: String)
 
-    data class MemberResponse(val userId: UUID, val role: String, val joinedAt: String)
+    data class MemberResponse(
+        val userId: UUID,
+        /**
+         * Null when the account behind this membership has been closed. A list of
+         * identifiers is a list an administrator cannot check, and this is the only
+         * thing on it a person recognises.
+         */
+        val email: String?,
+        val role: String,
+        val joinedAt: String,
+    )
 }

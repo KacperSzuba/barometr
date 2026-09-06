@@ -35,6 +35,9 @@ class JooqUsers(private val dsl: DSLContext) : Users {
 
     override fun byId(id: UUID): User? = selectUser().where(USERS.ID.eq(id)).fetchOne(::toUser)
 
+    override fun allById(ids: Set<UUID>): List<User> =
+        if (ids.isEmpty()) emptyList() else selectUser().where(USERS.ID.`in`(ids)).fetch(::toUser)
+
     override fun byEmail(email: String): User? =
         selectUser().where(USERS.EMAIL.eq(email)).fetchOne(::toUser)
 

@@ -40,5 +40,6 @@ class ApiExceptionHandler {
         ErrorKind.NOT_FOUND -> HttpStatus.NOT_FOUND
         ErrorKind.CONFLICT -> HttpStatus.CONFLICT
         ErrorKind.INVALID -> HttpStatus.BAD_REQUEST
+        ErrorKind.RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS
     }
 }

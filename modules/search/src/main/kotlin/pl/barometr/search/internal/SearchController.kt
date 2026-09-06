@@ -49,9 +49,17 @@ class SearchController(private val search: LegislativeSearch) {
                     kind = it.kind,
                     title = it.title,
                     highlightedTitle = it.highlightedTitle,
+                    passages = it.passages,
                     eli = it.eli,
                     stage = it.stage,
                     outcome = it.outcome,
+                    filedUnder = it.filedUnder?.let { filed ->
+                        FiledUnderResponse(
+                            draftId = filed.draftId.value,
+                            draftTitle = filed.draftTitle,
+                            fileName = filed.fileName,
+                        )
+                    },
                     score = it.score,
                 )
             },
@@ -68,13 +76,29 @@ class SearchController(private val search: LegislativeSearch) {
 
     data class HitResponse(
         val id: String,
+        /** `ustawa`, `projekt`, or `document` for a file filed under a draft. */
         val kind: String,
         val title: String,
         /** The title with the matching words marked, when the match was on the title. */
         val highlightedTitle: String?,
+        /**
+         * Sentences from the file with the matching words marked, when the match was
+         * inside one. Empty for everything else.
+         */
+        val passages: List<String>,
         val eli: String?,
         val stage: String?,
         val outcome: String?,
+        /** For a document, the draft it was filed under — which is how a reader gets from a passage to the bill. */
+        val filedUnder: FiledUnderResponse?,
         val score: Double,
+    )
+
+    /** The draft a matching file belongs to, and what the file is called. */
+    data class FiledUnderResponse(
+        val draftId: java.util.UUID,
+        val draftTitle: String,
+        /** RPL's name for the file: what tells a reader this is the bill and not the comments on it. */
+        val fileName: String?,
     )
 }

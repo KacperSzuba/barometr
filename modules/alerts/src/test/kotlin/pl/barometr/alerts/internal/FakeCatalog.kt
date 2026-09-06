@@ -1,7 +1,9 @@
 package pl.barometr.alerts.internal
 
 import pl.barometr.legislative.api.ActId
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.api.FiledUnderDraft
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
@@ -45,6 +47,9 @@ class FakeCatalog : LegislativeCatalog {
     override fun actByEli(eli: Eli) = acts.values.firstOrNull { it.eli == eli }
 
     override fun draftById(id: DraftId) = drafts[id]
+
+    /** No documents here: alerting asks about drafts and acts, never about files. */
+    override fun filedUnderDrafts(documentIds: List<DocumentId>): List<FiledUnderDraft> = emptyList()
 
     override fun signalsForDraft(id: DraftId) = signals[id]
 

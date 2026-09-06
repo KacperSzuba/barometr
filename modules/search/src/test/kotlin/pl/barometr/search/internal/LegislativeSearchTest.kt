@@ -29,7 +29,7 @@ class LegislativeSearchTest {
     private val entries = LegislativeEntries(clock)
     private val writer = LegislativeIndexWriter(client)
     private val maintenance = LegislativeIndexMaintenance(client, Clock.systemUTC())
-    private val search = LegislativeSearch(client)
+    private val search = LegislativeSearch(client, FakeCatalog())
 
     @BeforeEach
     fun indexTheCorpus() {

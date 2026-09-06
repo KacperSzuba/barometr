@@ -1,7 +1,9 @@
 package pl.barometr.taxonomy.internal
 
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.api.FiledUnderDraft
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
@@ -56,6 +58,9 @@ class FakeLegislation : LegislativeCatalog {
     override fun actByEli(eli: Eli): PublishedAct? = acts.values.firstOrNull { it.eli == eli }
 
     override fun draftById(id: DraftId): TrackedDraft? = drafts[id]
+
+    /** No documents here: classification reads titles, never the files under them. */
+    override fun filedUnderDrafts(documentIds: List<DocumentId>): List<FiledUnderDraft> = emptyList()
 
     override fun signalsForDraft(id: DraftId): LegislativeSignals? = null
 

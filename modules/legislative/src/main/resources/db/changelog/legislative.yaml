@@ -54,3 +54,9 @@ databaseChangeLog:
   - include:
       file: db/changelog/legislative/0017-archive-walk.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0018-how-the-house-voted.sql
+      relativeToChangelogFile: false
+  - include:
+      file: db/changelog/legislative/0019-filings-by-document.sql
+      relativeToChangelogFile: false

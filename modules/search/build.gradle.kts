@@ -9,6 +9,11 @@ plugins {
 dependencies {
     api(project(":shared"))
     api(project(":legislative"))
+    // What a document says, and where the archive keeps it: the text of a filed
+    // document is announced by corpus and fetched from the blob store by the hash the
+    // announcement carries, which is what that event exists to let a consumer do.
+    implementation(project(":corpus"))
+    implementation(project(":platform"))
 
     implementation(libs.springBootStarter)
     implementation(libs.springBootStarterElasticsearch)
@@ -19,6 +24,10 @@ dependencies {
     implementation(libs.jacksonModuleKotlin)
     implementation(libs.springModulithStarterCore)
     implementation(libs.springModulithEventsApi)
+    // MeterRegistry: how much of the archive has reached the text index is a number to
+    // watch rather than a query somebody remembers to run — an index quietly missing a
+    // source's documents looks exactly like a source with nothing to say.
+    implementation(libs.springBootStarterActuator)
 
     testImplementation(project(":shared-testing"))
     testImplementation(libs.testcontainersElasticsearch)

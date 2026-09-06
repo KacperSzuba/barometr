@@ -4,7 +4,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import pl.barometr.identity.api.UserId
 import pl.barometr.legislative.api.ActId
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.legislative.api.DraftId
+import pl.barometr.legislative.api.FiledUnderDraft
 import pl.barometr.legislative.api.LegislativeCatalog
 import pl.barometr.legislative.api.LegislativeKind
 import pl.barometr.legislative.api.LegislativeSignals
@@ -243,6 +245,9 @@ class ProfileMatchPreviewTest {
         override fun actByEli(eli: Eli) = acts.firstOrNull { it.eli == eli }
 
         override fun draftById(id: DraftId) = drafts.firstOrNull { it.id == id }
+
+        /** No documents here: a profile matches subjects, never the files under them. */
+        override fun filedUnderDrafts(documentIds: List<DocumentId>): List<FiledUnderDraft> = emptyList()
 
         /** Nothing here ranks anything; the signals are somebody else's question. */
         override fun signalsForDraft(id: DraftId): LegislativeSignals? = null

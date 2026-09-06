@@ -5,14 +5,17 @@ import org.jooq.Record
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import pl.barometr.corpus.api.DocumentId
 import pl.barometr.legislative.api.ActId
 import pl.barometr.legislative.api.DraftId
 import pl.barometr.legislative.api.LegislativeCatalog
+import pl.barometr.legislative.api.FiledUnderDraft
 import pl.barometr.legislative.api.LegislativeSignals
 import pl.barometr.legislative.api.PublishedAct
 import pl.barometr.legislative.api.TrackedDraft
 import pl.barometr.legislative.internal.jooq.tables.references.ACT
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT
+import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_FILING
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_IDENTIFIER
 import pl.barometr.legislative.internal.jooq.tables.references.DRAFT_STATUS
 import pl.barometr.shared.Eli
@@ -77,6 +80,34 @@ class LegislativeCatalogAdapter(private val dsl: DSLContext) : LegislativeCatalo
         val identifiers = identifiersOf(page.map { it[DRAFT.ID]!! })
 
         return page.map { toDraft(it, identifiers[it[DRAFT.ID]].orEmpty()) }
+    }
+
+    /**
+     * The filings pointing at these documents, and the drafts those filings belong to.
+     *
+     * Two joins, both on an indexed column: the document to its filing, and the filing's
+     * RPL project id to the draft that claims it. The second is where a document with a
+     * filing legitimately goes missing from the answer — a file can reach the archive
+     * before the card that creates the draft, and until that card is read nothing here
+     * can say which bill the file belongs to.
+     */
+    override fun filedUnderDrafts(documentIds: List<DocumentId>): List<FiledUnderDraft> {
+        if (documentIds.isEmpty()) return emptyList()
+
+        return dsl.select(DRAFT_FILING.DOCUMENT_ID, DRAFT_FILING.FILE_NAME, DRAFT.ID, DRAFT.TITLE)
+            .from(DRAFT_FILING)
+            .join(DRAFT_IDENTIFIER).on(DRAFT_IDENTIFIER.VALUE.eq(DRAFT_FILING.SOURCE_PROJECT))
+            .join(DRAFT).on(DRAFT.ID.eq(DRAFT_IDENTIFIER.DRAFT_ID))
+            .where(DRAFT_FILING.DOCUMENT_ID.`in`(documentIds.map { it.value }))
+            .and(DRAFT_IDENTIFIER.SCHEME.eq(DraftIdentifierScheme.RCL_PROJECT.wireName))
+            .fetch { record ->
+                FiledUnderDraft(
+                    documentId = DocumentId(record[DRAFT_FILING.DOCUMENT_ID]!!),
+                    draftId = DraftId(record[DRAFT.ID]!!),
+                    draftTitle = record[DRAFT.TITLE]!!,
+                    fileName = record[DRAFT_FILING.FILE_NAME],
+                )
+            }
     }
 
     private fun acts() = dsl.select(

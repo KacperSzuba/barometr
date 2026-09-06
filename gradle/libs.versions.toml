@@ -61,7 +61,6 @@ googleCloudStorage = "2.72.0"
 liquibaseBuild = "5.0.4"
 postgresqlBuild = "42.7.13"
 uuidCreator = "6.1.1"
-pgvector = "0.1.6"
 # The Elasticsearch *server*, pinned here and in infra/elasticsearch/Dockerfile
 # together. Elastic versions the server and the Java client separately — the client
 # comes from the Boot BOM — but the Polish analyser is published per server release and
@@ -223,7 +222,6 @@ javaDiffUtils = { module = "io.github.java-diff-utils:java-diff-utils", version.
 
 liquibaseCore = { module = "org.liquibase:liquibase-core" }
 postgresql = { module = "org.postgresql:postgresql" }
-pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
 # Time-ordered identifiers: B-tree locality of a bigint without its coordination cost.
 uuidCreator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuidCreator" }
 shedlockSpring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }

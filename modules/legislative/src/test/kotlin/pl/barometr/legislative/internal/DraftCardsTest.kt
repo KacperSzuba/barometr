@@ -31,6 +31,7 @@ class DraftCardsTest {
     private val drafts = DraftRepository(dsl, clock)
     private val identifiers = DraftIdentifierRepository(dsl, clock)
     private val filings = DraftFilingRepository(dsl, clock)
+    private val votes = VoteRepository(dsl, clock)
     private val cards = DraftCards(
         drafts,
         StageTransitionRepository(dsl, clock),
@@ -38,6 +39,7 @@ class DraftCardsTest {
         DraftContinuationRepository(dsl, clock),
         identifiers,
         filings,
+        votes,
         DraftStatusEngine(clock),
     )
 

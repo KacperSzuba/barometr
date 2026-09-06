@@ -3,6 +3,7 @@ package pl.barometr.identity.internal.auth
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.context.ApplicationEvent
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import pl.barometr.identity.api.UserId
 import pl.barometr.identity.api.UserRegistered
@@ -72,6 +73,12 @@ class AuthServiceTest {
     // the work factor proves nothing here that the configuration does not state.
     private val passwords = BCryptPasswordEncoder(4)
 
+    // The real throttle over a counting limiter, at the numbers the deployment runs:
+    // what these tests are about is which attempts it counts, and a tightened limit here
+    // would prove that against a configuration nobody uses.
+    private val throttleProperties = SignInThrottleProperties()
+    private val throttle = SignInThrottle(CountingRateLimiter(), throttleProperties, SimpleMeterRegistry())
+
     private lateinit var service: AuthService
 
     @BeforeEach
@@ -84,6 +91,7 @@ class AuthServiceTest {
             deviceTrust = trust,
             policies = policies,
             twoFactor = TwoFactorSignIn(secrets, recoveryCodes, challenges, codes, enrolment, twoFactorProperties, clock),
+            throttle = throttle,
             tokens = TokenService(JwtConfig(properties).jwtEncoder(), properties, clock),
             passwordEncoder = passwords,
             events = events,
@@ -184,6 +192,56 @@ class AuthServiceTest {
 
         assertEquals(wrongPassword.code, unknownAddress.code)
         assertEquals("invalid_credentials", wrongPassword.code)
+    }
+
+    /**
+     * The property that separates a throttle from a lockout: guessing at somebody's
+     * address must not cost them their own account. The failures below exhaust the
+     * account's budget, and the person who knows the password is let in anyway.
+     */
+    @Test
+    fun `a correct password is admitted however many guesses have been counted against the account`() {
+        service.register(RegisterRequest("poslanka@example.test", "correct-horse"))
+        repeat(throttleProperties.perAccount) {
+            assertFailsWith<InvalidCredentialsException> {
+                service.login(LoginRequest("poslanka@example.test", "not-the-password"))
+            }
+        }
+
+        val pair = assertIs<TokenPairResponse>(service.login(LoginRequest("poslanka@example.test", "correct-horse")))
+
+        assertTrue(pair.accessToken.isNotBlank())
+    }
+
+    @Test
+    fun `an account whose failures run out stops answering guesses`() {
+        service.register(RegisterRequest("poslanka@example.test", "correct-horse"))
+        repeat(throttleProperties.perAccount) {
+            assertFailsWith<InvalidCredentialsException> {
+                service.login(LoginRequest("poslanka@example.test", "not-the-password"))
+            }
+        }
+
+        assertFailsWith<TooManyAttemptsException> {
+            service.login(LoginRequest("poslanka@example.test", "still-not-the-password"))
+        }
+    }
+
+    /**
+     * An account that does not exist must run the counter down exactly as one that does,
+     * or the throttle becomes the oracle the identical error code exists to prevent.
+     */
+    @Test
+    fun `guesses at an unregistered address are counted like any other`() {
+        repeat(throttleProperties.perAccount) {
+            assertFailsWith<InvalidCredentialsException> {
+                service.login(LoginRequest("nobody@example.test", "guessing"))
+            }
+        }
+
+        assertFailsWith<TooManyAttemptsException> {
+            service.login(LoginRequest("nobody@example.test", "guessing"))
+        }
     }
 
     @Test

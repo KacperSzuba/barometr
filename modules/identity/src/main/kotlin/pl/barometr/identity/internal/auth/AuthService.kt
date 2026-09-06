@@ -25,6 +25,7 @@ class AuthService(
     private val sessions: SignedInSessions,
     private val tokens: TokenService,
     private val twoFactor: TwoFactorSignIn,
+    private val throttle: SignInThrottle,
     private val deviceTrust: DeviceTrust,
     private val policies: WorkspacePolicies,
     private val passwordEncoder: PasswordEncoder,
@@ -34,6 +35,11 @@ class AuthService(
 
     @Transactional
     fun register(request: RegisterRequest, from: ClientFingerprint = ClientFingerprint.UNKNOWN): TokenPairResponse {
+        // Registration is open, which is what makes it worth bounding: an account is
+        // the credential every authenticated route in this system trusts, and a route
+        // that mints them without limit mints them for whoever asks fastest.
+        throttle.admitAttemptFrom(from)
+
         val email = normaliseEmail(request.email)
         if (users.existsWithEmail(email)) throw EmailAlreadyUsedException()
 
@@ -62,16 +68,20 @@ class AuthService(
      * has proved they know the password for it.
      */
     fun login(request: LoginRequest, from: ClientFingerprint = ClientFingerprint.UNKNOWN): LoginOutcome {
-        val user = users.byEmail(normaliseEmail(request.email))
+        // Before the password is looked at, because looking at it is the expensive part.
+        throttle.admitAttemptFrom(from)
+
+        val email = normaliseEmail(request.email)
+        val user = users.byEmail(email)
 
         if (user == null) {
             // Hash anyway: returning early would make an unknown e-mail measurably
             // faster than a wrong password and turn response time into an oracle.
             passwordEncoder.encode(request.password)
-            throw InvalidCredentialsException()
+            refuseCredentials(email)
         }
         if (!user.enabled || !passwordEncoder.matches(request.password, user.passwordHash)) {
-            throw InvalidCredentialsException()
+            refuseCredentials(email)
         }
         if (!twoFactor.isRequiredFor(user.id)) return issuePair(user, from)
 
@@ -102,6 +112,11 @@ class AuthService(
         rememberDevice: Boolean = false,
         from: ClientFingerprint = ClientFingerprint.UNKNOWN,
     ): TokenPairResponse {
+        // The challenge counts its own wrong codes and dies after a few; this counts the
+        // requests, which is what stops somebody working through challenge identifiers
+        // rather than through codes.
+        throttle.admitAttemptFrom(from)
+
         val userId = twoFactor.answerChallenge(challengeId, code)
         val user = users.byId(userId)?.takeIf { it.enabled } ?: throw InvalidCredentialsException()
 
@@ -176,6 +191,19 @@ class AuthService(
      */
     private fun mustEnrol(user: User): Boolean =
         policies.requiresTwoFactor(UserId(user.id)) && !twoFactor.isRequiredFor(user.id)
+
+    /**
+     * A sign-in that failed, counted and then refused.
+     *
+     * Both branches above come through here, including the one for an address nobody has
+     * registered: an account that exists and one that does not have to be
+     * indistinguishable in what they answer *and* in what they count, or the throttle
+     * itself becomes the oracle the identical error code exists to prevent.
+     */
+    private fun refuseCredentials(email: String): Nothing {
+        throttle.countFailedAttempt(email)
+        throw InvalidCredentialsException()
+    }
 
     private fun normaliseEmail(email: String) = email.trim().lowercase()
 

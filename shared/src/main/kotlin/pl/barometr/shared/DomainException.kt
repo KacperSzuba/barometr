@@ -1,20 +1,12 @@
 package pl.barometr.shared
 
 /**
- * How a failure should be surfaced, described without reference to HTTP.
+ * A failure a caller caused, carrying how it should be surfaced and a code the caller
+ * can act on.
  *
- * Translating these into status codes is the application layer's job, which
- * keeps domain modules unaware of the transport that happens to carry them —
- * the same exception is equally meaningful to a scheduled job or a CLI.
+ * The kind lives in [ErrorKind], in a file of its own: the two are read together but
+ * changed apart, and the enum is what the application maps to status codes.
  */
-enum class ErrorKind {
-    UNAUTHENTICATED,
-    FORBIDDEN,
-    NOT_FOUND,
-    CONFLICT,
-    INVALID,
-}
-
 abstract class DomainException(
     val kind: ErrorKind,
     /** Stable, machine-readable code such as `invalid_credentials`. Part of the API contract. */

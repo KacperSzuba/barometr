@@ -27,6 +27,7 @@ class DraftCards(
     private val continuations: DraftContinuationRepository,
     private val identifiers: DraftIdentifierRepository,
     private val filings: DraftFilingRepository,
+    private val votes: VoteRepository,
     private val engine: DraftStatusEngine,
 ) {
 
@@ -40,6 +41,11 @@ class DraftCards(
             history = history,
             otherRegister = otherRegisterOf(draftId),
             filings = filingsUnder(draftId),
+            // One indexed join, run for every draft: unlike the filings above there is no
+            // identifier to check first that would tell us not to bother — a Sejm print
+            // is exactly the kind of draft that has votes, and a government draft that
+            // has none costs an empty index lookup to establish it.
+            votes = votes.votesCiting(draftId, VOTES_SHOWN),
         )
     }
 
@@ -98,5 +104,16 @@ class DraftCards(
          * and no other reading of it, which is the right thing to lose first.
          */
         const val FILINGS_SHOWN = 150
+
+        /**
+         * How many votes a card carries.
+         *
+         * A bill reaching a third reading is voted on a few times; one whose amendments
+         * are each put separately reaches a few dozen, and a heavily contested one — the
+         * budget — a few hundred. Capped where the card stops being readable rather than
+         * where the query stops being cheap, and the newest are what survives the cap,
+         * because "what happened to it most recently" is the question a card answers.
+         */
+        const val VOTES_SHOWN = 100
     }
 }

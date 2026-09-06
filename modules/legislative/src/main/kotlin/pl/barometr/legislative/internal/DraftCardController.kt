@@ -58,8 +58,33 @@ class DraftCardController(private val cards: DraftCards) {
             precededBy = card.otherRegister?.takeIf { it.register == DraftRegister.GOVERNMENT }?.let(::describeJoined),
             continuedAs = card.otherRegister?.takeIf { it.register == DraftRegister.SEJM }?.let(::describeJoined),
             filings = card.filings.map(::describe),
+            votes = card.votes.map(::describe),
         )
     }
+
+    /**
+     * One vote, with the numbers and the rule they were counted under — and no verdict.
+     *
+     * There is no `passed` field, and its absence is deliberate: the Sejm's record does
+     * not state one, and a boolean computed here from the majority and the tally would
+     * be this system's arithmetic reaching a client as the Sejm's word. A reader is shown
+     * what was counted and how many votes the rule required.
+     */
+    private fun describe(vote: RecordedVote) = VoteResponse(
+        term = vote.term,
+        sitting = vote.sitting,
+        votingNumber = vote.votingNumber,
+        takenAt = vote.takenAt.toString(),
+        title = vote.title,
+        subject = vote.subject,
+        method = vote.method,
+        majority = vote.majority,
+        yes = vote.yes,
+        no = vote.no,
+        abstained = vote.abstained,
+        notParticipating = vote.notParticipating,
+        totalVoted = vote.totalVoted,
+    )
 
     /**
      * One filed document, with the id that reaches it.
@@ -129,6 +154,30 @@ class DraftCardController(private val cards: DraftCards) {
         val continuedAs: JoinedDraftResponse?,
         /** What the ministry filed, newest first. Empty for a Sejm print. */
         val filings: List<FilingResponse>,
+        /** How the Sejm voted on it, newest first. Empty until it has been voted on. */
+        val votes: List<VoteResponse>,
+    )
+
+    /** One voting of the Sejm whose agenda item named a print of this draft. */
+    data class VoteResponse(
+        val term: Int,
+        /** The sitting and the number within it, which is how the Sejm cites a vote. */
+        val sitting: Int,
+        val votingNumber: Int,
+        val takenAt: String,
+        /** The agenda item, in the register's words. */
+        val title: String,
+        /** What this vote decided, where the register says it separately from the item. */
+        val subject: String?,
+        /** `ELECTRONIC`, `ON_LIST`, `TRADITIONAL` — the register's own word. */
+        val method: String,
+        /** The rule the vote was held under, as stated; null where it was not. */
+        val majority: String?,
+        val yes: Int,
+        val no: Int,
+        val abstained: Int,
+        val notParticipating: Int,
+        val totalVoted: Int,
     )
 
     /** A document filed under the draft in RPL. */

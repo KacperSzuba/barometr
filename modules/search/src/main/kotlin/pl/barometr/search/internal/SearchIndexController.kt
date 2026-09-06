@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RestController
  * Postgres.
  *
  * Operator-only, and not because it is dangerous — it cannot lose anything, since the
- * index holds nothing that is not derived — but because it walks every act and draft
- * there is and writes them all. That is somebody's afternoon of I/O, and registration
- * is open.
+ * index holds nothing that is not derived — but because it walks every act, draft and
+ * archived document there is, reads the text of each of them out of object storage and
+ * writes them all. That is somebody's afternoon of I/O, and registration is open.
  */
 @RestController
 @RequestMapping("/api/v1/search/index")
@@ -23,8 +23,13 @@ class SearchIndexController(private val rebuild: SearchIndexRebuild) {
     fun rebuildIndex(): RebuildResponse {
         val report = rebuild.rebuild()
 
-        return RebuildResponse(index = report.index, acts = report.acts, drafts = report.drafts)
+        return RebuildResponse(
+            index = report.index,
+            acts = report.acts,
+            drafts = report.drafts,
+            documents = report.documents,
+        )
     }
 
-    data class RebuildResponse(val index: String, val acts: Int, val drafts: Int)
+    data class RebuildResponse(val index: String, val acts: Int, val drafts: Int, val documents: Int)
 }

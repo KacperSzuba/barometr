@@ -7,21 +7,17 @@ import co.elastic.clients.transport.rest5_client.Rest5ClientTransport
 import co.elastic.clients.transport.rest5_client.low_level.Rest5Client
 import org.apache.hc.core5.http.HttpHost
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.api.parallel.ResourceLock
-import pl.barometr.legislative.api.ActId
-import pl.barometr.legislative.api.DraftId
-import pl.barometr.legislative.api.LegislativeCatalog
-import pl.barometr.legislative.api.LegislativeSignals
-import pl.barometr.legislative.api.PublishedAct
-import pl.barometr.legislative.api.TrackedDraft
-import pl.barometr.shared.Eli
-import pl.barometr.shared.Ids
+import pl.barometr.corpus.api.DocumentKind
+import pl.barometr.storage.internal.FilesystemBlobStore
 import pl.barometr.testing.ElasticsearchTestNode
 import java.net.URI
+import java.nio.file.Path
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -39,15 +35,45 @@ import kotlin.test.assertTrue
 @ResourceLock(ElasticsearchTestNode.INDEX_LOCK)
 class SearchIndexRebuildTest {
 
+    @TempDir
+    lateinit var blobRoot: Path
+
     private val clock = Clock.fixed(Instant.parse("2026-08-21T10:00:00Z"), ZoneOffset.UTC)
     private val catalog = FakeCatalog()
-    private val maintenance = LegislativeIndexMaintenance(client, Clock.systemUTC())
-    private val rebuild = SearchIndexRebuild(
-        catalog = catalog,
-        entries = LegislativeEntries(clock),
-        writer = LegislativeIndexWriter(client),
-        maintenance = maintenance,
-    )
+
+    private lateinit var archive: FakeArchive
+    private lateinit var rebuild: SearchIndexRebuild
+
+    @BeforeEach
+    fun fillTheArchive() {
+        val blobs = FilesystemBlobStore(blobRoot)
+        archive = FakeArchive(blobs)
+        archive.archive(
+            kind = FILED_DOCUMENT,
+            externalId = "projekt/12409051/12345/katalog/1/dokument/9",
+            title = null,
+            text = "Projekt ustawy o zmianie ustawy o cenach energii. Art. 1. W ustawie wprowadza sie " +
+                "zmiany dotyczace taryf dla odbiorcow przemyslowych.",
+        )
+        // A payload of the kind text is extracted from and nobody should be searching:
+        // the JSON a register's API returned.
+        archive.archive(
+            kind = DocumentKind("print"),
+            externalId = "term10/print/424",
+            title = "Rzadowy projekt ustawy",
+            text = "{\"title\":\"Rzadowy projekt ustawy o cenach energii\",\"number\":\"424\"}",
+        )
+
+        rebuild = SearchIndexRebuild(
+            catalog = catalog,
+            documents = archive,
+            blobs = blobs,
+            entries = LegislativeEntries(clock),
+            documentEntries = DocumentEntries(clock),
+            writer = LegislativeIndexWriter(client),
+            maintenance = LegislativeIndexMaintenance(client, Clock.systemUTC()),
+        )
+    }
 
     @Test
     fun `a rebuild indexes everything the database holds and points the alias at it`() {
@@ -56,6 +82,7 @@ class SearchIndexRebuildTest {
 
         assertEquals(2, report.acts)
         assertEquals(1, report.drafts)
+        assertEquals(1, report.documents, "the filed document, and not the API payload beside it")
         assertEquals(listOf(report.index), indicesBehindAlias())
         assertTrue(search("cenach energii").isNotEmpty(), "an act indexed by the rebuild is findable")
         assertTrue(search("projekt zmiany ustawy").any { it.startsWith("draft:") })
@@ -98,6 +125,20 @@ class SearchIndexRebuildTest {
     private fun indicesBehindAlias(): List<String> =
         client.indices().getAlias { it.name(LegislativeIndex.ALIAS) }.aliases().keys.toList()
 
+    /**
+     * The rule that keeps a search for a word from returning the JSON that happens to
+     * contain it: text is extracted from everything the archive holds, and only the
+     * kinds somebody wrote for people to read are indexed.
+     */
+    @Test
+    fun `a rebuild indexes prose and leaves the register's own payloads out`() {
+        rebuild.rebuild()
+        refresh()
+
+        assertTrue(search("taryf odbiorcow przemyslowych", "content").isNotEmpty(), "the bill's text is searchable")
+        assertEquals(1, search("ustawie", "content").size, "one document holds prose, and only it is indexed")
+    }
+
     private fun indexExists(index: String): Boolean = client.indices().exists { it.index(index) }.value()
 
     private fun search(query: String, field: String = "title"): List<String> {
@@ -107,59 +148,9 @@ class SearchIndexRebuildTest {
             .hits().hits().mapNotNull { it.id() }
     }
 
-    private class FakeCatalog : LegislativeCatalog {
-        private val acts = listOf(
-            PublishedAct(
-                id = ActId(Ids.next()),
-                eli = Eli("DU/2026/1074"),
-                title = "Ustawa z dnia 17 lipca 2026 r. o cenach energii elektrycznej",
-                type = "Ustawa",
-                publisher = "DU",
-                announcedOn = LocalDate.parse("2026-08-10"),
-                inForceFrom = LocalDate.parse("2027-02-11"),
-            ),
-            PublishedAct(
-                id = ActId(Ids.next()),
-                eli = Eli("MP/2026/12"),
-                title = "Uchwała Sejmu w sprawie powołania członka Rady",
-                type = "Uchwała",
-                publisher = "MP",
-                announcedOn = LocalDate.parse("2026-01-20"),
-                inForceFrom = null,
-            ),
-        )
-
-        private val drafts = listOf(
-            TrackedDraft(
-                id = DraftId(Ids.next()),
-                title = "Rządowy projekt ustawy o zmianie ustawy o cenach energii",
-                initiator = "rzadowy",
-                term = 10,
-                startedOn = LocalDate.parse("2026-03-01"),
-                closedOn = null,
-                outcome = null,
-                currentStage = "ii_czytanie",
-                identifiers = listOf("term10/print/424", "UD383"),
-            ),
-        )
-
-        override fun actById(id: ActId) = acts.firstOrNull { it.id == id }
-
-        override fun actByEli(eli: Eli) = acts.firstOrNull { it.eli == eli }
-
-        override fun draftById(id: DraftId) = drafts.firstOrNull { it.id == id }
-
-        /** Nothing here ranks anything; the signals are somebody else's question. */
-        override fun signalsForDraft(id: DraftId): LegislativeSignals? = null
-
-        override fun actsAfter(after: ActId?, limit: Int) =
-            acts.dropWhile { after != null && it.id.value <= after.value }.take(limit)
-
-        override fun draftsAfter(after: DraftId?, limit: Int) =
-            drafts.dropWhile { after != null && it.id.value <= after.value }.take(limit)
-    }
-
     companion object {
+        private val FILED_DOCUMENT = DocumentKind("rcl-filed-document")
+
         private lateinit var client: ElasticsearchClient
 
         @JvmStatic

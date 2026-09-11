@@ -5,7 +5,7 @@
 kotlin = "2.4.10"
 springBoot = "4.1.1"
 springModulith = "2.1.1"
-jooq = "3.21.7"
+jooq = "3.21.8"
 shedlock = "7.9.0"
 # Used only by build-logic, which has no Boot BOM to inherit versions from.
 # Neither has a Spring equivalent: the framework ships no client-side rate
